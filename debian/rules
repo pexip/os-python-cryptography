@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+export PYBUILD_NAME=cryptography
+export PYBUILD_TEST_PYTEST=1
+export PYBUILD_TEST_ARGS={dir}/tests/
+export PYBUILD_BEFORE_TEST=cp -R {dir}/${PYBUILD_NAME}.egg-info {build_dir}
+
+
+%:
+	dh $@ --with python2,python3 --buildsystem=pybuild
+
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf cryptography/hazmat/bindings/__pycache__ \
+	       cryptography/hazmat/primitives/__pycache__
+
+
+override_dh_python3:
+	dh_python3
+	rm -rf debian/python3-cryptography/usr/lib/python3.?

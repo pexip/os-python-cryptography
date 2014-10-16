@@ -1,0 +1,98 @@
+Source: python-cryptography
+Maintainer: Tristan Seligmann <mithrandi@debian.org>
+Section: python
+Priority: optional
+Build-Depends:
+ debhelper (>= 9),
+ dh-python,
+ python-all-dev,
+ python3-all-dev,
+ python-setuptools,
+ python3-setuptools,
+ python-cffi (>= 0.8),
+ python3-cffi (>= 0.8),
+ python-six (>= 1.4.1),
+ python3-six (>= 1.4.1),
+ libssl-dev,
+ python-cryptography-vectors (>= 0.6.1),
+ python-cryptography-vectors (<< 0.6.2~),
+ python3-cryptography-vectors (>= 0.6.1),
+ python3-cryptography-vectors (<< 0.6.2~),
+ python-iso8601,
+ python3-iso8601,
+ python-pytest,
+ python3-pytest,
+ python-pretend,
+ python3-pretend,
+ python-pyasn1,
+ python3-pyasn1,
+Standards-Version: 3.9.6
+Homepage: https://cryptography.io/
+Vcs-Svn: svn://anonscm.debian.org/python-modules/packages/python-cryptography/trunk/
+Vcs-Browser: http://anonscm.debian.org/viewvc/python-modules/packages/python-cryptography/trunk/
+XS-Python-Version: >= 2.6
+X-Python3-Version: >= 3.2
+XS-Testsuite: autopkgtest
+
+Package: python-cryptography
+Architecture: any
+Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}
+Suggests: python-cryptography-doc, python-cryptography-vectors
+Description: Python library exposing cryptographic recipes and primitives (Python 2)
+ The cryptography library is designed to be a "one-stop-shop" for
+ all your cryptographic needs in Python.
+ .
+ As an alternative to the libraries that came before it, cryptography
+ tries to address some of the issues with those libraries:
+  - Lack of PyPy and Python 3 support.
+  - Lack of maintenance.
+  - Use of poor implementations of algorithms (i.e. ones with known
+    side-channel attacks).
+  - Lack of high level, "Cryptography for humans", APIs.
+  - Absence of algorithms such as AES-GCM.
+  - Poor introspectability, and thus poor testability.
+  - Extremely error prone APIs, and bad defaults.
+ .
+ This package contains the Python 2 version of cryptography.
+
+Package: python3-cryptography
+Architecture: any
+Depends: ${python3:Depends}, ${shlibs:Depends}, ${misc:Depends}
+Suggests: python-cryptography-doc, python3-cryptography-vectors
+Description: Python library exposing cryptographic recipes and primitives (Python 3)
+ The cryptography library is designed to be a "one-stop-shop" for
+ all your cryptographic needs in Python.
+ .
+ As an alternative to the libraries that came before it, cryptography
+ tries to address some of the issues with those libraries:
+  - Lack of PyPy and Python 3 support.
+  - Lack of maintenance.
+  - Use of poor implementations of algorithms (i.e. ones with known
+    side-channel attacks).
+  - Lack of high level, "Cryptography for humans", APIs.
+  - Absence of algorithms such as AES-GCM.
+  - Poor introspectability, and thus poor testability.
+  - Extremely error prone APIs, and bad defaults.
+ .
+ This package contains the Python 3 version of cryptography.
+
+Package: python-cryptography-doc
+Architecture: all
+Depends: ${misc:Depends}
+Section: doc
+Description: Python library exposing cryptographic recipes and primitives (documentation)
+ The cryptography library is designed to be a "one-stop-shop" for
+ all your cryptographic needs in Python.
+ .
+ As an alternative to the libraries that came before it, cryptography
+ tries to address some of the issues with those libraries:
+  - Lack of PyPy and Python 3 support.
+  - Lack of maintenance.
+  - Use of poor implementations of algorithms (i.e. ones with known
+    side-channel attacks).
+  - Lack of high level, "Cryptography for humans", APIs.
+  - Absence of algorithms such as AES-GCM.
+  - Poor introspectability, and thus poor testability.
+  - Extremely error prone APIs, and bad defaults.
+ .
+ This package contains the documentation for cryptography.

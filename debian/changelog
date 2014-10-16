@@ -1,0 +1,59 @@
+python-cryptography (0.6.1-1) unstable; urgency=medium
+
+  * New upstream release.
+    - Fixes FTBFS with OpenSSL 1.0.1j caused by API change (closes: #765544).
+    - No other upstream changes that affect Debian.
+  * Bump Standard-Version to 3.9.6 (no changes).
+
+ -- Tristan Seligmann <mithrandi@debian.org>  Thu, 16 Oct 2014 06:45:38 +0200
+
+python-cryptography (0.6-1) unstable; urgency=medium
+
+  * New upstream release.
+    - Copy .egg-info into build directory so entry points can be found by the
+      tests.
+
+ -- Tristan Seligmann <mithrandi@debian.org>  Tue, 30 Sep 2014 06:33:34 +0200
+
+python-cryptography (0.5.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Tristan Seligmann <mithrandi@debian.org>  Thu, 21 Aug 2014 19:45:02 +0200
+
+python-cryptography (0.5.2-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Add python{,3}-cryptography-vectors to Suggests.
+
+ -- Tristan Seligmann <mithrandi@debian.org>  Sun, 27 Jul 2014 18:07:42 +0200
+
+python-cryptography (0.4-2) unstable; urgency=medium
+
+  * Enable test suite at build time.
+  * Enable test suite via autopkgtest.
+
+ -- Tristan Seligmann <mithrandi@debian.org>  Mon, 16 Jun 2014 21:29:23 +0200
+
+python-cryptography (0.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Tristan Seligmann <mithrandi@debian.org>  Sat, 03 May 2014 18:00:14 +0200
+
+python-cryptography (0.3-1) unstable; urgency=medium
+
+  * New upstream release.
+    - The test vectors are now in a separate top-level package (will be
+      packaged in a separate source package, see #742911).
+    - Upstream now ships their docs (the previous release was accidentally
+      missing the docs); these are placed in a new Debian package
+      python-cryptography-doc.
+
+ -- Tristan Seligmann <mithrandi@debian.org>  Sat, 29 Mar 2014 01:01:04 +0200
+
+python-cryptography (0.2-1) unstable; urgency=medium
+
+  * Initial release. (Closes: #737356)
+
+ -- Tristan Seligmann <mithrandi@debian.org>  Fri, 21 Feb 2014 18:36:35 +0200
