@@ -1,0 +1,40 @@
+From d945a5213f2b2bbb189bbc2be407aa35e0dab204 Mon Sep 17 00:00:00 2001
+From: Alex Gaynor <alex.gaynor@gmail.com>
+Date: Sat, 5 Nov 2016 21:18:15 -0400
+Subject: [PATCH] Fixes #3211 -- fixed hkdf's output with short length
+
+Index: python-cryptography/cryptography/hazmat/primitives/kdf/hkdf.py
+===================================================================
+--- python-cryptography.orig/cryptography/hazmat/primitives/kdf/hkdf.py	2017-01-01 22:24:27.090828930 +0200
++++ python-cryptography/cryptography/hazmat/primitives/kdf/hkdf.py	2017-01-01 22:24:27.086828861 +0200
+@@ -99,7 +99,7 @@
+         output = [b""]
+         counter = 1
+ 
+-        while (self._algorithm.digest_size // 8) * len(output) < self._length:
++        while self._algorithm.digest_size * (len(output) - 1) < self._length:
+             h = hmac.HMAC(key_material, self._algorithm, backend=self._backend)
+             h.update(output[-1])
+             h.update(self._info)
+Index: python-cryptography/tests/hazmat/primitives/test_hkdf.py
+===================================================================
+--- python-cryptography.orig/tests/hazmat/primitives/test_hkdf.py	2017-01-01 22:24:27.090828930 +0200
++++ python-cryptography/tests/hazmat/primitives/test_hkdf.py	2017-01-01 22:24:27.086828861 +0200
+@@ -152,6 +152,17 @@
+ 
+             hkdf.verify(b"foo", six.u("bar"))
+ 
++    def test_derive_short_output(self, backend):
++        hkdf = HKDF(
++            hashes.SHA256(),
++            4,
++            salt=None,
++            info=None,
++            backend=backend
++        )
++
++        assert hkdf.derive(b"\x01" * 16) == b"gJ\xfb{"
++
+ 
+ @pytest.mark.hmac
+ class TestHKDFExpand(object):
