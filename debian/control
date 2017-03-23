@@ -1,5 +1,6 @@
 Source: python-cryptography
-Maintainer: Tristan Seligmann <mithrandi@debian.org>
+Maintainer: Pexip AS <packaging@pexip.com>
+XSBC-Pexip-Original-Maintainer: Tristan Seligmann <mithrandi@debian.org>
 Section: python
 Priority: optional
 Build-Depends:
@@ -33,6 +34,7 @@ Vcs-Browser: http://anonscm.debian.org/viewvc/python-modules/packages/python-cry
 XS-Python-Version: >= 2.6
 X-Python3-Version: >= 3.2
 XS-Testsuite: autopkgtest
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie
 
 Package: python-cryptography
 Architecture: any
