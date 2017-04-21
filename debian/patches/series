@@ -1,2 +1,3 @@
 fix-sslv2-ftbfs.patch
 fix-sslv3-ftbfs.patch
+fix-bio-ftbfs.patch
