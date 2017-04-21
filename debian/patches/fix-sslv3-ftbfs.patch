@@ -1,0 +1,42 @@
+Source: https://github.com/pyca/cryptography/commit/12c9f3a007608c483c21bb92d080477928aaf9e5
+diff --git a/cryptography/hazmat/bindings/openssl/ssl.py b/cryptography/hazmat/bindings/openssl/ssl.py
+index 7d805e7..0290a59 100644
+--- a/cryptography/hazmat/bindings/openssl/ssl.py
++++ b/cryptography/hazmat/bindings/openssl/ssl.py
+@@ -24,6 +24,7 @@ TYPES = """
+  * Internally invented symbols to tell which versions of SSL/TLS are supported.
+ */
+ static const long Cryptography_HAS_SSL2;
++static const long Cryptography_HAS_SSL3_METHOD;
+ static const long Cryptography_HAS_TLSv1_1;
+ static const long Cryptography_HAS_TLSv1_2;
+ static const long Cryptography_HAS_SECURE_RENEGOTIATION;
+@@ -393,6 +394,15 @@ SSL_METHOD* (*SSLv2_server_method)(void) = NULL;
+ #endif
+ #endif
+ 
++#ifdef OPENSSL_NO_SSL3_METHOD
++static const long Cryptography_HAS_SSL3_METHOD = 0;
++SSL_METHOD* (*SSLv3_method)(void) = NULL;
++SSL_METHOD* (*SSLv3_client_method)(void) = NULL;
++SSL_METHOD* (*SSLv3_server_method)(void) = NULL;
++#else
++static const long Cryptography_HAS_SSL3_METHOD = 1;
++#endif
++
+ #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+ static const long Cryptography_HAS_TLSEXT_HOSTNAME = 1;
+ #else
+@@ -563,6 +573,12 @@ CONDITIONAL_NAMES = {
+         "SSLv2_server_method",
+     ],
+ 
++    "Cryptography_HAS_SSL3_METHOD": [
++        "SSLv3_method",
++        "SSLv3_client_method",
++        "SSLv3_server_method",
++    ],
++
+     "Cryptography_HAS_TLSEXT_HOSTNAME": [
+         "SSL_set_tlsext_host_name",
+         "SSL_get_servername",
