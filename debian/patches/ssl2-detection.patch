@@ -1,0 +1,13 @@
+Index: python-cryptography/cryptography/hazmat/bindings/openssl/ssl.py
+===================================================================
+--- python-cryptography.orig/cryptography/hazmat/bindings/openssl/ssl.py	2017-01-01 22:33:41.640198755 +0200
++++ python-cryptography/cryptography/hazmat/bindings/openssl/ssl.py	2017-01-01 22:34:20.336845122 +0200
+@@ -384,7 +384,7 @@
+ #else
+ static const long Cryptography_HAS_SECURE_RENEGOTIATION = 1;
+ #endif
+-#ifdef OPENSSL_NO_SSL2
++#ifdef OPENSSL_NO_SSL2_METHOD
+ static const long Cryptography_HAS_SSL2 = 0;
+ SSL_METHOD* (*SSLv2_method)(void) = NULL;
+ SSL_METHOD* (*SSLv2_client_method)(void) = NULL;

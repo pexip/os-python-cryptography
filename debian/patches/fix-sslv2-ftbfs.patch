@@ -2,14 +2,7 @@ diff --git a/cryptography/hazmat/bindings/openssl/ssl.py b/cryptography/hazmat/b
 index 7d805e7..139a5dd 100644
 --- a/cryptography/hazmat/bindings/openssl/ssl.py
 +++ b/cryptography/hazmat/bindings/openssl/ssl.py
-@@ -384,14 +384,18 @@ const long SSL_OP_LEGACY_SERVER_CONNECT = 0;
- #else
- static const long Cryptography_HAS_SECURE_RENEGOTIATION = 1;
- #endif
--#ifdef OPENSSL_NO_SSL2
-+#ifdef OPENSSL_NO_SSL2_METHOD
- static const long Cryptography_HAS_SSL2 = 0;
- SSL_METHOD* (*SSLv2_method)(void) = NULL;
+@@ -390,8 +390,12 @@ const long SSL_OP_LEGACY_SERVER_CONNECT = 0;
  SSL_METHOD* (*SSLv2_client_method)(void) = NULL;
  SSL_METHOD* (*SSLv2_server_method)(void) = NULL;
  #else
