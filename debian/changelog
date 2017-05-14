@@ -1,3 +1,9 @@
+python-cryptography (0.6.1-1+deb8u1pexip2) pexip; urgency=low
+
+  * debian/patches/ecpkparameters.patch: Expose PEM_read_bio_ECPKParameters
+
+ -- John-Mark Bell <jmb@pexip.com>  Sun, 14 May 2017 02:44:53 +0100
+
 python-cryptography (0.6.1-1+deb8u1pexip1) pexip; urgency=low
 
   * New upstream release
