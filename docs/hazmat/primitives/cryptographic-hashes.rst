@@ -3,7 +3,7 @@
 Message digests
 ===============
 
-.. currentmodule:: cryptography.hazmat.primitives.hashes
+.. module:: cryptography.hazmat.primitives.hashes
 
 .. class:: Hash(algorithm, backend)
 
@@ -12,9 +12,9 @@ Message digests
     results (with a high probability) in different digests.
 
     This is an implementation of
-    :class:`~cryptography.hazmat.primitives.interfaces.HashContext` meant to
+    :class:`~cryptography.hazmat.primitives.hashes.HashContext` meant to
     be used with
-    :class:`~cryptography.hazmat.primitives.interfaces.HashAlgorithm`
+    :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
     implementations to provide an incremental interface to calculating
     various message digests.
 
@@ -39,12 +39,12 @@ Message digests
     `Lifetimes of cryptographic hash functions`_.
 
     :param algorithm: A
-        :class:`~cryptography.hazmat.primitives.interfaces.HashAlgorithm`
-        provider such as those described in
+        :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
+        instance such as those described in
         :ref:`below <cryptographic-hash-algorithms>`.
     :param backend: A
         :class:`~cryptography.hazmat.backends.interfaces.HashBackend`
-        provider.
+        instance.
 
     :raises cryptography.exceptions.UnsupportedAlgorithm: This is raised if the
         provided ``backend`` does not implement
@@ -90,7 +90,9 @@ SHA-1
 .. class:: SHA1()
 
     SHA-1 is a cryptographic hash function standardized by NIST. It produces an
-    160-bit message digest.
+    160-bit message digest. Cryptanalysis of SHA-1 has demonstrated that it is
+    vulnerable to practical collision attacks, though no actual collisions are
+    publicly known.
 
 SHA-2 family
 ~~~~~~~~~~~~
@@ -114,6 +116,38 @@ SHA-2 family
 
     SHA-512 is a cryptographic hash function from the SHA-2 family and is
     standardized by NIST. It produces a 512-bit message digest.
+
+BLAKE2
+~~~~~~
+
+`BLAKE2`_ is a cryptographic hash function specified in :rfc:`7693`. BLAKE2's
+design makes it immune to `length-extension attacks`_, an advantage over the
+SHA-family of hashes.
+
+.. note::
+
+    While the RFC specifies keying, personalization, and salting features,
+    these are not supported at this time due to limitations in OpenSSL 1.1.0.
+
+.. class:: BLAKE2b(digest_size)
+
+    BLAKE2b is optimized for 64-bit platforms and produces an 1 to 64-byte
+    message digest.
+
+    :param int digest_size: The desired size of the hash output in bytes. Only
+        ``64`` is supported at this time.
+
+    :raises ValueError: If the ``digest_size`` is invalid.
+
+.. class:: BLAKE2s(digest_size)
+
+    BLAKE2s is optimized for 8 to 32-bit platforms and produces a
+    1 to 32-byte message digest.
+
+    :param int digest_size: The desired size of the hash output in bytes. Only
+        ``32`` is supported at this time.
+
+    :raises ValueError: If the ``digest_size`` is invalid.
 
 RIPEMD160
 ~~~~~~~~~
@@ -146,4 +180,50 @@ MD5
     message digest and has practical known collision attacks.
 
 
+Interfaces
+~~~~~~~~~~
+
+.. class:: HashAlgorithm
+
+    .. attribute:: name
+
+        :type: str
+
+        The standard name for the hash algorithm, for example: ``"sha256"`` or
+        ``"whirlpool"``.
+
+    .. attribute:: digest_size
+
+        :type: int
+
+        The size of the resulting digest in bytes.
+
+    .. attribute:: block_size
+
+        :type: int
+
+        The internal block size of the hash algorithm in bytes.
+
+
+.. class:: HashContext
+
+    .. attribute:: algorithm
+
+        A :class:`HashAlgorithm` that will be used by this context.
+
+    .. method:: update(data)
+
+        :param bytes data: The data you want to hash.
+
+    .. method:: finalize()
+
+        :return: The final digest as bytes.
+
+    .. method:: copy()
+
+        :return: A :class:`HashContext` that is a copy of the current context.
+
+
 .. _`Lifetimes of cryptographic hash functions`: http://valerieaurora.org/hash.html
+.. _`BLAKE2`: https://blake2.net
+.. _`length-extension attacks`: https://en.wikipedia.org/wiki/Length_extension_attack

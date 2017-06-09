@@ -1,0 +1,33 @@
+From 6fee9abaaa16550faaacf10e51053f36614a804b Mon Sep 17 00:00:00 2001
+From: Paul Kehrer <paul.l.kehrer@gmail.com>
+Date: Thu, 25 May 2017 12:26:08 -0500
+Subject: fix compilation on 1.1.0f (#3603)
+
+---
+ src/_cffi_src/openssl/asn1.py | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/_cffi_src/openssl/asn1.py b/src/_cffi_src/openssl/asn1.py
+index 4afca3d..5074248 100644
+--- a/src/_cffi_src/openssl/asn1.py
++++ b/src/_cffi_src/openssl/asn1.py
+@@ -77,8 +77,6 @@ int ASN1_INTEGER_set(ASN1_INTEGER *, long);
+ /*  ASN1 TIME */
+ ASN1_TIME *ASN1_TIME_new(void);
+ void ASN1_TIME_free(ASN1_TIME *);
+-ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(ASN1_TIME *,
+-                                                   ASN1_GENERALIZEDTIME **);
+ ASN1_TIME *ASN1_TIME_set(ASN1_TIME *, time_t);
+ 
+ /*  ASN1 UTCTIME */
+@@ -112,6 +110,10 @@ int ASN1_STRING_to_UTF8(unsigned char **, ASN1_STRING *);
+ long ASN1_ENUMERATED_get(ASN1_ENUMERATED *);
+ int i2a_ASN1_INTEGER(BIO *, ASN1_INTEGER *);
+ 
++/* This became const ASN1_TIME in 1.1.0f */
++ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(ASN1_TIME *,
++                                                   ASN1_GENERALIZEDTIME **);
++
+ ASN1_UTF8STRING *ASN1_UTF8STRING_new(void);
+ void ASN1_UTF8STRING_free(ASN1_UTF8STRING *);
+ 

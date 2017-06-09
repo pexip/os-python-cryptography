@@ -17,7 +17,7 @@ available on Mac OS X versions 10.8 and above.
 
     .. attribute:: ffi
 
-        This is a :class:`cffi.FFI` instance. It can be used to allocate and
+        This is a ``cffi.FFI`` instance. It can be used to allocate and
         otherwise manipulate CommonCrypto structures.
 
     .. attribute:: lib
@@ -26,5 +26,5 @@ available on Mac OS X versions 10.8 and above.
         functions, and access constants.
 
 
-.. _`CFFI`: https://cffi.readthedocs.org/
-.. _`CommonCrypto`: https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/Common%20Crypto.3cc.html
+.. _`CFFI`: https://cffi.readthedocs.io
+.. _`CommonCrypto`: https://developer.apple.com/library/content/documentation/Security/Conceptual/cryptoservices/GeneralPurposeCrypto/GeneralPurposeCrypto.html#//apple_ref/doc/uid/TP40011172-CH9-SW10

@@ -1,2 +1,2 @@
-ssl2-detection.patch
-3215.patch
+0001-add-memory-limit-check-for-scrypt.patch
+0002-fix-compilation-on-1.1.0f-3603.patch

@@ -14,34 +14,55 @@ to NaCl.
 
 If you prefer NaCl's design, we highly recommend `PyNaCl`_.
 
-When I try to use ``cryptography`` on Windows I get a ``cffi.ffiplatform.VerificationError``
---------------------------------------------------------------------------------------------
+Compiling ``cryptography`` on OS X produces a ``fatal error: 'openssl/aes.h' file not found`` error
+---------------------------------------------------------------------------------------------------
 
-This error looks something like:
+This happens because OS X 10.11 no longer includes a copy of OpenSSL.
+``cryptography`` now provides wheels which include a statically linked copy of
+OpenSSL. You're seeing this error because your copy of pip is too old to find
+our wheel files. Upgrade your copy of pip with ``pip install -U pip`` and then
+try install ``cryptography`` again.
 
-.. code-block:: console
+Starting ``cryptography`` using ``mod_wsgi`` produces an ``InternalError`` during a call in ``_register_osrandom_engine``
+-------------------------------------------------------------------------------------------------------------------------
 
-    cffi.ffiplatform.VerificationError: importing '<some_path>.pyd': DLL load failed:
+This happens because ``mod_wsgi`` uses sub-interpreters, which can cause a
+problem during initialization of the OpenSSL backend. To resolve this set the
+`WSGIApplicationGroup`_ to ``%{GLOBAL}`` in the ``mod_wsgi`` configuration.
 
-It typically occurs on Windows when you have not installed OpenSSL. Download
-a `pre-compiled binary`_ to resolve the issue. To select the right architecture
-(32-bit or 64-bit) open a command prompt and start your Python interpreter.
+``cryptography`` raised an ``InternalError`` and I'm not sure what to do?
+-------------------------------------------------------------------------
 
-If it is 32-bit it will say ``32 bit`` as well as ``Intel`` in the output:
+Frequently ``InternalError`` is raised when there are errors on the OpenSSL
+error stack that were placed there by other libraries that are also using
+OpenSSL. Try removing the other libraries and see if the problem persists.
+If you have no other libraries using OpenSSL in your process, or they do not
+appear to be at fault, it's possible that this is a bug in ``cryptography``.
+Please file an `issue`_ with instructions on how to reproduce it.
 
-.. code-block:: console
+Importing cryptography causes a ``RuntimeError`` about OpenSSL 1.0.0
+--------------------------------------------------------------------
 
-    Python 2.7.6 (default, Nov 10 2013, 19:24:18) [MSC v.1500 32 bit (Intel)] on win32
+The OpenSSL project has dropped support for the 1.0.0 release series. Since it
+is no longer receiving security patches from upstream, ``cryptography`` is also
+dropping support for it. To fix this issue you should upgrade to a newer
+version of OpenSSL (1.0.1 or later). This may require you to upgrade to a newer
+operating system.
 
-If it is 64-bit you will see ``64 bit`` as well as ``AMD64``:
+For the 1.7 release, you can set the ``CRYPTOGRAPHY_ALLOW_OPENSSL_100``
+environment variable. Please note that this is *temporary* and will be removed
+in ``cryptography`` 1.8.
 
-.. code-block:: console
+Installing cryptography with OpenSSL 0.9.8 fails
+------------------------------------------------
 
-    Python 2.7.6 (default, Nov 10 2013, 19:24:24) [MSC v.1500 64 bit (AMD64)] on win32
+The OpenSSL project has dropped support for the 0.9.8 release series. Since it
+is no longer receiving security patches from upstream, ``cryptography`` is also
+dropping support for it. To fix this issue you should upgrade to a newer
+version of OpenSSL (1.0.1 or later). This may require you to upgrade to a newer
+operating system.
 
-Note that for both 32-bit and 64-bit it will say ``win32``, but other data
-in the string may vary based on your version of Python.
-
-.. _`NaCl`: http://nacl.cr.yp.to/
-.. _`PyNaCl`: https://pynacl.readthedocs.org
-.. _`pre-compiled binary`: https://www.openssl.org/related/binaries.html
+.. _`NaCl`: https://nacl.cr.yp.to/
+.. _`PyNaCl`: https://pynacl.readthedocs.io
+.. _`WSGIApplicationGroup`: https://modwsgi.readthedocs.io/en/develop/configuration-directives/WSGIApplicationGroup.html
+.. _`issue`: https://github.com/pyca/cryptography/issues
