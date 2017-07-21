@@ -1,15 +1,6 @@
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This file is dual licensed under the terms of the Apache License, Version
+# 2.0, and the BSD License. See the LICENSE file in the root of this repository
+# for complete details.
 
 from __future__ import absolute_import, division, print_function
 
@@ -20,10 +11,10 @@ from cryptography.exceptions import (
     UnsupportedAlgorithm, _Reasons
 )
 from cryptography.hazmat.backends.interfaces import (
-    CMACBackend, CipherBackend, DSABackend, EllipticCurveBackend, HMACBackend,
-    HashBackend, PBKDF2HMACBackend, PEMSerializationBackend,
-    PKCS8SerializationBackend, RSABackend,
-    TraditionalOpenSSLSerializationBackend
+    CMACBackend, CipherBackend, DERSerializationBackend, DHBackend,
+    DSABackend, EllipticCurveBackend, HMACBackend, HashBackend,
+    PBKDF2HMACBackend, PEMSerializationBackend, RSABackend, ScryptBackend,
+    X509Backend
 )
 from cryptography.hazmat.backends.multibackend import MultiBackend
 from cryptography.hazmat.primitives import cmac, hashes, hmac
@@ -33,20 +24,30 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from ...utils import raises_unsupported_algorithm
 
 
+class DummyBackend(object):
+    pass
+
+
+@utils.register_interface(ec.EllipticCurve)
+class DummyCurve(object):
+    name = "dummy-curve"
+    key_size = 1
+
+
 @utils.register_interface(CipherBackend)
 class DummyCipherBackend(object):
     def __init__(self, supported_ciphers):
         self._ciphers = supported_ciphers
 
-    def cipher_supported(self, algorithm, mode):
-        return (type(algorithm), type(mode)) in self._ciphers
+    def cipher_supported(self, cipher, mode):
+        return (type(cipher), type(mode)) in self._ciphers
 
-    def create_symmetric_encryption_ctx(self, algorithm, mode):
-        if not self.cipher_supported(algorithm, mode):
+    def create_symmetric_encryption_ctx(self, cipher, mode):
+        if not self.cipher_supported(cipher, mode):
             raise UnsupportedAlgorithm("", _Reasons.UNSUPPORTED_CIPHER)
 
-    def create_symmetric_decryption_ctx(self, algorithm, mode):
-        if not self.cipher_supported(algorithm, mode):
+    def create_symmetric_decryption_ctx(self, cipher, mode):
+        if not self.cipher_supported(cipher, mode):
             raise UnsupportedAlgorithm("", _Reasons.UNSUPPORTED_CIPHER)
 
 
@@ -92,29 +93,13 @@ class DummyPBKDF2HMACBackend(object):
 
 @utils.register_interface(RSABackend)
 class DummyRSABackend(object):
-    def generate_rsa_private_key(self, public_exponent, private_key):
-        pass
-
-    def create_rsa_signature_ctx(self, private_key, padding, algorithm):
-        pass
-
-    def create_rsa_verification_ctx(self, public_key, signature, padding,
-                                    algorithm):
-        pass
-
-    def mgf1_hash_supported(self, algorithm):
+    def generate_rsa_private_key(self, public_exponent, key_size):
         pass
 
     def rsa_padding_supported(self, padding):
         pass
 
     def generate_rsa_parameters_supported(self, public_exponent, key_size):
-        pass
-
-    def decrypt_rsa(self, private_key, ciphertext, padding):
-        pass
-
-    def encrypt_rsa(self, public_key, plaintext, padding):
         pass
 
     def load_rsa_private_numbers(self, numbers):
@@ -135,12 +120,6 @@ class DummyDSABackend(object):
     def generate_dsa_private_key_and_parameters(self, key_size):
         pass
 
-    def create_dsa_signature_ctx(self, private_key, algorithm):
-        pass
-
-    def create_dsa_verification_ctx(self, public_key, signature, algorithm):
-        pass
-
     def dsa_hash_supported(self, algorithm):
         pass
 
@@ -151,6 +130,9 @@ class DummyDSABackend(object):
         pass
 
     def load_dsa_public_numbers(self, numbers):
+        pass
+
+    def load_dsa_parameter_numbers(self, numbers):
         pass
 
 
@@ -183,10 +165,7 @@ class DummyEllipticCurveBackend(object):
     ):
         return (
             isinstance(signature_algorithm, ec.ECDSA) and
-            any(
-                isinstance(curve, curve_type)
-                for curve_type in self._curves
-            )
+            self.elliptic_curve_supported(curve)
         )
 
     def generate_elliptic_curve_private_key(self, curve):
@@ -197,29 +176,19 @@ class DummyEllipticCurveBackend(object):
         if not self.elliptic_curve_supported(numbers.public_numbers.curve):
             raise UnsupportedAlgorithm(_Reasons.UNSUPPORTED_ELLIPTIC_CURVE)
 
-    def elliptic_curve_private_key_from_numbers(self, numbers):
-        if not self.elliptic_curve_supported(numbers.public_numbers.curve):
-            raise UnsupportedAlgorithm(_Reasons.UNSUPPORTED_ELLIPTIC_CURVE)
-
-    def elliptic_curve_public_key_from_numbers(self, numbers):
-        if not self.elliptic_curve_supported(numbers.curve):
-            raise UnsupportedAlgorithm(_Reasons.UNSUPPORTED_ELLIPTIC_CURVE)
-
     def load_elliptic_curve_public_numbers(self, numbers):
         if not self.elliptic_curve_supported(numbers.curve):
             raise UnsupportedAlgorithm(_Reasons.UNSUPPORTED_ELLIPTIC_CURVE)
 
+    def elliptic_curve_exchange_algorithm_supported(self, algorithm, curve):
+        return (
+            isinstance(algorithm, ec.ECDH) and
+            self.elliptic_curve_supported(curve)
+        )
 
-@utils.register_interface(PKCS8SerializationBackend)
-class DummyPKCS8SerializationBackend(object):
-    def load_pkcs8_pem_private_key(self, data, password):
-        pass
-
-
-@utils.register_interface(TraditionalOpenSSLSerializationBackend)
-class DummyTraditionalOpenSSLSerializationBackend(object):
-    def load_traditional_openssl_pem_private_key(self, data, password):
-        pass
+    def derive_elliptic_curve_private_key(self, private_value, curve):
+        if not self.elliptic_curve_supported(curve):
+            raise UnsupportedAlgorithm(_Reasons.UNSUPPORTED_ELLIPTIC_CURVE)
 
 
 @utils.register_interface(PEMSerializationBackend)
@@ -231,7 +200,86 @@ class DummyPEMSerializationBackend(object):
         pass
 
 
+@utils.register_interface(DERSerializationBackend)
+class DummyDERSerializationBackend(object):
+    def load_der_private_key(self, data, password):
+        pass
+
+    def load_der_public_key(self, data):
+        pass
+
+
+@utils.register_interface(X509Backend)
+class DummyX509Backend(object):
+    def load_pem_x509_certificate(self, data):
+        pass
+
+    def load_der_x509_certificate(self, data):
+        pass
+
+    def load_pem_x509_crl(self, data):
+        pass
+
+    def load_der_x509_crl(self, data):
+        pass
+
+    def load_pem_x509_csr(self, data):
+        pass
+
+    def load_der_x509_csr(self, data):
+        pass
+
+    def create_x509_csr(self, builder, private_key, algorithm):
+        pass
+
+    def create_x509_certificate(self, builder, private_key, algorithm):
+        pass
+
+    def create_x509_crl(self, builder, private_key, algorithm):
+        pass
+
+    def create_x509_revoked_certificate(self, builder):
+        pass
+
+    def x509_name_bytes(self, name):
+        pass
+
+
+@utils.register_interface(DHBackend)
+class DummyDHBackend(object):
+    def generate_dh_parameters(self, generator, key_size):
+        pass
+
+    def load_dh_parameter_numbers(self, numbers):
+        pass
+
+    def generate_dh_private_key(self, parameters):
+        pass
+
+    def load_dh_private_numbers(self, numbers):
+        pass
+
+    def load_dh_public_numbers(self, numbers):
+        pass
+
+    def generate_dh_private_key_and_parameters(self, generator, key_size):
+        pass
+
+    def dh_parameters_supported(self, p, g):
+        pass
+
+
+@utils.register_interface(ScryptBackend)
+class DummyScryptBackend(object):
+    def derive_scrypt(self, key_material, salt, length, n, r, p):
+        pass
+
+
 class TestMultiBackend(object):
+    def test_raises_error_with_empty_list(self):
+        with pytest.raises(ValueError):
+            MultiBackend([])
+
     def test_ciphers(self):
         backend = MultiBackend([
             DummyHashBackend([]),
@@ -241,6 +289,9 @@ class TestMultiBackend(object):
         ])
         assert backend.cipher_supported(
             algorithms.AES(b"\x00" * 16), modes.CBC(b"\x00" * 16)
+        )
+        assert not backend.cipher_supported(
+            algorithms.TripleDES(b"\x00" * 16), modes.CBC(b"\x00" * 16)
         )
 
         cipher = Cipher(
@@ -266,6 +317,7 @@ class TestMultiBackend(object):
             DummyHashBackend([hashes.MD5])
         ])
         assert backend.hash_supported(hashes.MD5())
+        assert not backend.hash_supported(hashes.SHA256())
 
         hashes.Hash(hashes.MD5(), backend=backend)
 
@@ -277,6 +329,7 @@ class TestMultiBackend(object):
             DummyHMACBackend([hashes.MD5])
         ])
         assert backend.hmac_supported(hashes.MD5())
+        assert not backend.hmac_supported(hashes.SHA256())
 
         hmac.HMAC(b"", hashes.MD5(), backend=backend)
 
@@ -303,48 +356,19 @@ class TestMultiBackend(object):
             key_size=1024, public_exponent=65537
         )
 
-        backend.create_rsa_signature_ctx("private_key", padding.PKCS1v15(),
-                                         hashes.MD5())
-
-        backend.create_rsa_verification_ctx("public_key", "sig",
-                                            padding.PKCS1v15(), hashes.MD5())
-
-        backend.mgf1_hash_supported(hashes.MD5())
-
         backend.rsa_padding_supported(padding.PKCS1v15())
 
         backend.generate_rsa_parameters_supported(65537, 1024)
-
-        backend.encrypt_rsa("public_key", "encryptme", padding.PKCS1v15())
-
-        backend.decrypt_rsa("private_key", "encrypted", padding.PKCS1v15())
 
         backend.load_rsa_private_numbers("private_numbers")
 
         backend.load_rsa_public_numbers("public_numbers")
 
-        backend = MultiBackend([])
+        backend = MultiBackend([DummyBackend()])
         with raises_unsupported_algorithm(
             _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
         ):
             backend.generate_rsa_private_key(key_size=1024, public_exponent=3)
-
-        with raises_unsupported_algorithm(
-            _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
-        ):
-            backend.create_rsa_signature_ctx("private_key", padding.PKCS1v15(),
-                                             hashes.MD5())
-
-        with raises_unsupported_algorithm(
-            _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
-        ):
-            backend.create_rsa_verification_ctx(
-                "public_key", "sig", padding.PKCS1v15(), hashes.MD5())
-
-        with raises_unsupported_algorithm(
-            _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
-        ):
-            backend.mgf1_hash_supported(hashes.MD5())
 
         with raises_unsupported_algorithm(
             _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
@@ -355,16 +379,6 @@ class TestMultiBackend(object):
             _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
         ):
             backend.generate_rsa_parameters_supported(65537, 1024)
-
-        with raises_unsupported_algorithm(
-            _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
-        ):
-            backend.encrypt_rsa("public_key", "encryptme", padding.PKCS1v15())
-
-        with raises_unsupported_algorithm(
-            _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
-        ):
-            backend.decrypt_rsa("private_key", "encrypted", padding.PKCS1v15())
 
         with raises_unsupported_algorithm(
             _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
@@ -387,14 +401,13 @@ class TestMultiBackend(object):
         backend.generate_dsa_private_key(parameters)
         backend.generate_dsa_private_key_and_parameters(key_size=1024)
 
-        backend.create_dsa_verification_ctx("public_key", "sig", hashes.SHA1())
-        backend.create_dsa_signature_ctx("private_key", hashes.SHA1())
         backend.dsa_hash_supported(hashes.SHA1())
         backend.dsa_parameters_supported(1, 2, 3)
         backend.load_dsa_private_numbers("numbers")
         backend.load_dsa_public_numbers("numbers")
+        backend.load_dsa_parameter_numbers("numbers")
 
-        backend = MultiBackend([])
+        backend = MultiBackend([DummyBackend()])
         with raises_unsupported_algorithm(
             _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
         ):
@@ -409,18 +422,6 @@ class TestMultiBackend(object):
             _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
         ):
             backend.generate_dsa_private_key_and_parameters(key_size=1024)
-
-        with raises_unsupported_algorithm(
-            _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
-        ):
-            backend.create_dsa_signature_ctx("private_key", hashes.SHA1())
-
-        with raises_unsupported_algorithm(
-            _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
-        ):
-            backend.create_dsa_verification_ctx(
-                "public_key", b"sig", hashes.SHA1()
-            )
 
         with raises_unsupported_algorithm(
             _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
@@ -442,6 +443,11 @@ class TestMultiBackend(object):
         ):
             backend.load_dsa_public_numbers("numbers")
 
+        with raises_unsupported_algorithm(
+            _Reasons.UNSUPPORTED_PUBLIC_KEY_ALGORITHM
+        ):
+            backend.load_dsa_parameter_numbers("numbers")
+
     def test_cmac(self):
         backend = MultiBackend([
             DummyCMACBackend([algorithms.AES])
@@ -449,8 +455,10 @@ class TestMultiBackend(object):
 
         fake_key = b"\x00" * 16
 
-        assert backend.cmac_algorithm_supported(
-            algorithms.AES(fake_key)) is True
+        assert backend.cmac_algorithm_supported(algorithms.AES(fake_key))
+        assert not backend.cmac_algorithm_supported(
+            algorithms.TripleDES(fake_key)
+        )
 
         cmac.CMAC(algorithms.AES(fake_key), backend)
 
@@ -523,68 +531,19 @@ class TestMultiBackend(object):
                 )
             )
 
-    def test_deprecated_elliptic_curve(self):
-        backend = MultiBackend([
-            DummyEllipticCurveBackend([
-                ec.SECT283K1
-            ])
-        ])
-
-        assert backend.elliptic_curve_signature_algorithm_supported(
-            ec.ECDSA(hashes.SHA256()),
-            ec.SECT163K1()
-        ) is False
-
-        pub_numbers = ec.EllipticCurvePublicNumbers(2, 3, ec.SECT283K1())
-        numbers = ec.EllipticCurvePrivateNumbers(1, pub_numbers)
-
-        pytest.deprecated_call(
-            backend.elliptic_curve_private_key_from_numbers,
-            numbers
+        assert backend.elliptic_curve_exchange_algorithm_supported(
+            ec.ECDH(), ec.SECT283K1()
         )
-        pytest.deprecated_call(
-            backend.elliptic_curve_public_key_from_numbers,
-            pub_numbers
+        backend2 = MultiBackend([DummyEllipticCurveBackend([])])
+        assert not backend2.elliptic_curve_exchange_algorithm_supported(
+            ec.ECDH(), ec.SECT163K1()
         )
 
-        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_ELLIPTIC_CURVE):
-            backend.elliptic_curve_private_key_from_numbers(
-                ec.EllipticCurvePrivateNumbers(
-                    1,
-                    ec.EllipticCurvePublicNumbers(
-                        2,
-                        3,
-                        ec.SECT163K1()
-                    )
-                )
-            )
+        with pytest.raises(UnsupportedAlgorithm):
+            backend.derive_elliptic_curve_private_key(123, DummyCurve())
 
-        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_ELLIPTIC_CURVE):
-            backend.elliptic_curve_public_key_from_numbers(
-                ec.EllipticCurvePublicNumbers(
-                    2,
-                    3,
-                    ec.SECT163K1()
-                )
-            )
-
-    def test_pkcs8_serialization_backend(self):
-        backend = MultiBackend([DummyPKCS8SerializationBackend()])
-
-        backend.load_pkcs8_pem_private_key(b"keydata", None)
-
-        backend = MultiBackend([])
-        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_SERIALIZATION):
-            backend.load_pkcs8_pem_private_key(b"keydata", None)
-
-    def test_traditional_openssl_serialization_backend(self):
-        backend = MultiBackend([DummyTraditionalOpenSSLSerializationBackend()])
-
-        backend.load_traditional_openssl_pem_private_key(b"keydata", None)
-
-        backend = MultiBackend([])
-        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_SERIALIZATION):
-            backend.load_traditional_openssl_pem_private_key(b"keydata", None)
+        assert backend.derive_elliptic_curve_private_key(
+            123, ec.SECT283K1()) is None
 
     def test_pem_serialization_backend(self):
         backend = MultiBackend([DummyPEMSerializationBackend()])
@@ -592,8 +551,98 @@ class TestMultiBackend(object):
         backend.load_pem_private_key(b"keydata", None)
         backend.load_pem_public_key(b"keydata")
 
-        backend = MultiBackend([])
+        backend = MultiBackend([DummyBackend()])
         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_SERIALIZATION):
             backend.load_pem_private_key(b"keydata", None)
         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_SERIALIZATION):
             backend.load_pem_public_key(b"keydata")
+
+    def test_der_serialization_backend(self):
+        backend = MultiBackend([DummyDERSerializationBackend()])
+
+        backend.load_der_private_key(b"keydata", None)
+        backend.load_der_public_key(b"keydata")
+
+        backend = MultiBackend([DummyBackend()])
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_SERIALIZATION):
+            backend.load_der_private_key(b"keydata", None)
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_SERIALIZATION):
+            backend.load_der_public_key(b"keydata")
+
+    def test_x509_backend(self):
+        backend = MultiBackend([DummyX509Backend()])
+
+        backend.load_pem_x509_certificate(b"certdata")
+        backend.load_der_x509_certificate(b"certdata")
+        backend.load_pem_x509_crl(b"crldata")
+        backend.load_der_x509_crl(b"crldata")
+        backend.load_pem_x509_csr(b"reqdata")
+        backend.load_der_x509_csr(b"reqdata")
+        backend.create_x509_csr(object(), b"privatekey", hashes.SHA1())
+        backend.create_x509_certificate(object(), b"privatekey", hashes.SHA1())
+        backend.create_x509_crl(object(), b"privatekey", hashes.SHA1())
+        backend.create_x509_revoked_certificate(object())
+        backend.x509_name_bytes(object())
+
+        backend = MultiBackend([DummyBackend()])
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.load_pem_x509_certificate(b"certdata")
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.load_der_x509_certificate(b"certdata")
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.load_pem_x509_crl(b"crldata")
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.load_der_x509_crl(b"crldata")
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.load_pem_x509_csr(b"reqdata")
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.load_der_x509_csr(b"reqdata")
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.create_x509_csr(object(), b"privatekey", hashes.SHA1())
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.create_x509_certificate(
+                object(), b"privatekey", hashes.SHA1()
+            )
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.create_x509_crl(
+                object(), b"privatekey", hashes.SHA1()
+            )
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.create_x509_revoked_certificate(object())
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_X509):
+            backend.x509_name_bytes(object())
+
+    def test_dh_backend(self):
+        backend = MultiBackend([DummyDHBackend()])
+
+        backend.generate_dh_parameters(2, 512)
+        backend.load_dh_parameter_numbers(object())
+        backend.generate_dh_private_key(object())
+        backend.load_dh_private_numbers(object())
+        backend.load_dh_public_numbers(object())
+        backend.generate_dh_private_key_and_parameters(2, 512)
+        backend.dh_parameters_supported(2, 3)
+
+        backend = MultiBackend([DummyBackend()])
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_DIFFIE_HELLMAN):
+            backend.generate_dh_parameters(2, 512)
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_DIFFIE_HELLMAN):
+            backend.load_dh_parameter_numbers(object())
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_DIFFIE_HELLMAN):
+            backend.generate_dh_private_key(object())
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_DIFFIE_HELLMAN):
+            backend.load_dh_private_numbers(object())
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_DIFFIE_HELLMAN):
+            backend.load_dh_public_numbers(object())
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_DIFFIE_HELLMAN):
+            backend.generate_dh_private_key_and_parameters(2, 512)
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_DIFFIE_HELLMAN):
+            backend.dh_parameters_supported(2, 3)
+
+    def test_scrypt(self):
+        backend = MultiBackend([DummyScryptBackend()])
+        backend.derive_scrypt(b"key", b"salt", 1, 1, 1, 1)
+
+        backend = MultiBackend([DummyBackend])
+        with pytest.raises(UnsupportedAlgorithm):
+            backend.derive_scrypt(b"key", b"salt", 1, 1, 1, 1)

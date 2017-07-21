@@ -1,15 +1,6 @@
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This file is dual licensed under the terms of the Apache License, Version
+# 2.0, and the BSD License. See the LICENSE file in the root of this repository
+# for complete details.
 
 from __future__ import absolute_import, division, print_function
 
@@ -17,35 +8,22 @@ import binascii
 
 import pytest
 
-from cryptography import utils
 from cryptography.exceptions import (
     AlreadyFinalized, _Reasons
 )
-from cryptography.hazmat.primitives import interfaces
+from cryptography.hazmat.backends.interfaces import CipherBackend
 from cryptography.hazmat.primitives.ciphers import (
-    Cipher, algorithms, modes
+    Cipher, algorithms, base, modes
 )
 
 from .utils import (
     generate_aead_exception_test, generate_aead_tag_exception_test
 )
+from ...doubles import DummyCipherAlgorithm, DummyMode
 from ...utils import raises_unsupported_algorithm
 
 
-@utils.register_interface(interfaces.Mode)
-class DummyMode(object):
-    name = "dummy-mode"
-
-    def validate_for_algorithm(self, algorithm):
-        pass
-
-
-@utils.register_interface(interfaces.CipherAlgorithm)
-class DummyCipher(object):
-    name = "dummy-cipher"
-
-
-@pytest.mark.cipher
+@pytest.mark.requires_backend_interface(interface=CipherBackend)
 class TestCipher(object):
     def test_creates_encryptor(self, backend):
         cipher = Cipher(
@@ -53,7 +31,7 @@ class TestCipher(object):
             modes.CBC(binascii.unhexlify(b"0" * 32)),
             backend
         )
-        assert isinstance(cipher.encryptor(), interfaces.CipherContext)
+        assert isinstance(cipher.encryptor(), base.CipherContext)
 
     def test_creates_decryptor(self, backend):
         cipher = Cipher(
@@ -61,7 +39,7 @@ class TestCipher(object):
             modes.CBC(binascii.unhexlify(b"0" * 32)),
             backend
         )
-        assert isinstance(cipher.decryptor(), interfaces.CipherContext)
+        assert isinstance(cipher.decryptor(), base.CipherContext)
 
     def test_instantiate_with_non_algorithm(self, backend):
         algorithm = object()
@@ -69,7 +47,7 @@ class TestCipher(object):
             Cipher(algorithm, mode=None, backend=backend)
 
 
-@pytest.mark.cipher
+@pytest.mark.requires_backend_interface(interface=CipherBackend)
 class TestCipherContext(object):
     def test_use_after_finalize(self, backend):
         cipher = Cipher(
@@ -115,7 +93,7 @@ class TestCipherContext(object):
     @pytest.mark.parametrize("mode", [DummyMode(), None])
     def test_nonexistent_cipher(self, backend, mode):
         cipher = Cipher(
-            DummyCipher(), mode, backend
+            DummyCipherAlgorithm(), mode, backend
         )
         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_CIPHER):
             cipher.encryptor()
@@ -142,11 +120,11 @@ class TestCipherContext(object):
 
 @pytest.mark.supported(
     only_if=lambda backend: backend.cipher_supported(
-        algorithms.AES("\x00" * 16), modes.GCM("\x00" * 12)
+        algorithms.AES(b"\x00" * 16), modes.GCM(b"\x00" * 12)
     ),
     skip_message="Does not support AES GCM",
 )
-@pytest.mark.cipher
+@pytest.mark.requires_backend_interface(interface=CipherBackend)
 class TestAEADCipherContext(object):
     test_aead_exceptions = generate_aead_exception_test(
         algorithms.AES,
@@ -158,7 +136,7 @@ class TestAEADCipherContext(object):
     )
 
 
-@pytest.mark.cipher
+@pytest.mark.requires_backend_interface(interface=CipherBackend)
 class TestModeValidation(object):
     def test_cbc(self, backend):
         with pytest.raises(ValueError):
@@ -199,3 +177,33 @@ class TestModeValidation(object):
                 modes.CTR(b"abc"),
                 backend,
             )
+
+
+class TestModesRequireBytes(object):
+    def test_cbc(self):
+        with pytest.raises(TypeError):
+            modes.CBC([1] * 16)
+
+    def test_cfb(self):
+        with pytest.raises(TypeError):
+            modes.CFB([1] * 16)
+
+    def test_cfb8(self):
+        with pytest.raises(TypeError):
+            modes.CFB8([1] * 16)
+
+    def test_ofb(self):
+        with pytest.raises(TypeError):
+            modes.OFB([1] * 16)
+
+    def test_ctr(self):
+        with pytest.raises(TypeError):
+            modes.CTR([1] * 16)
+
+    def test_gcm_iv(self):
+        with pytest.raises(TypeError):
+            modes.GCM([1] * 16)
+
+    def test_gcm_tag(self):
+        with pytest.raises(TypeError):
+            modes.GCM(b"\x00" * 16, [1] * 16)

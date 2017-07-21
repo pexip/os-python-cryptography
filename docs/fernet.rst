@@ -3,9 +3,10 @@ Fernet (symmetric encryption)
 
 .. currentmodule:: cryptography.fernet
 
-Fernet provides guarantees that a message encrypted using it cannot be
+Fernet guarantees that a message encrypted using it cannot be
 manipulated or read without the key. `Fernet`_ is an implementation of
-symmetric (also known as "secret key") authenticated cryptography.
+symmetric (also known as "secret key") authenticated cryptography. Fernet also
+has support for implementing key rotation via :class:`MultiFernet`.
 
 .. class:: Fernet(key)
 
@@ -40,7 +41,8 @@ symmetric (also known as "secret key") authenticated cryptography.
         :returns bytes: A secure message that cannot be read or altered
                         without the key. It is URL-safe base64-encoded. This is
                         referred to as a "Fernet token".
-        :raises TypeError: This exception is raised if ``data`` is not ``bytes``.
+        :raises TypeError: This exception is raised if ``data`` is not
+                           ``bytes``.
 
         .. note::
 
@@ -67,12 +69,83 @@ symmetric (also known as "secret key") authenticated cryptography.
                                                   ``ttl``, it is malformed, or
                                                   it does not have a valid
                                                   signature.
-        :raises TypeError: This exception is raised if ``token`` is not ``bytes``.
+        :raises TypeError: This exception is raised if ``token`` is not
+                           ``bytes``.
+
+
+.. class:: MultiFernet(fernets)
+
+    .. versionadded:: 0.7
+
+    This class implements key rotation for Fernet. It takes a ``list`` of
+    :class:`Fernet` instances, and implements the same API:
+
+    .. doctest::
+
+        >>> from cryptography.fernet import Fernet, MultiFernet
+        >>> key1 = Fernet(Fernet.generate_key())
+        >>> key2 = Fernet(Fernet.generate_key())
+        >>> f = MultiFernet([key1, key2])
+        >>> token = f.encrypt(b"Secret message!")
+        >>> token
+        '...'
+        >>> f.decrypt(token)
+        'Secret message!'
+
+    MultiFernet performs all encryption options using the *first* key in the
+    ``list`` provided. MultiFernet attempts to decrypt tokens with each key in
+    turn. A :class:`cryptography.fernet.InvalidToken` exception is raised if
+    the correct key is not found in the ``list`` provided.
+
+    Key rotation makes it easy to replace old keys. You can add your new key at
+    the front of the list to start encrypting new messages, and remove old keys
+    as they are no longer needed.
 
 
 .. class:: InvalidToken
 
     See :meth:`Fernet.decrypt` for more information.
+
+
+Using passwords with Fernet
+---------------------------
+
+It is possible to use passwords with Fernet. To do this, you need to run the
+password through a key derivation function such as
+:class:`~cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC`, bcrypt or
+scrypt.
+
+.. doctest::
+
+    >>> import base64
+    >>> import os
+    >>> from cryptography.fernet import Fernet
+    >>> from cryptography.hazmat.backends import default_backend
+    >>> from cryptography.hazmat.primitives import hashes
+    >>> from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    >>> password = b"password"
+    >>> salt = os.urandom(16)
+    >>> kdf = PBKDF2HMAC(
+    ...     algorithm=hashes.SHA256(),
+    ...     length=32,
+    ...     salt=salt,
+    ...     iterations=100000,
+    ...     backend=default_backend()
+    ... )
+    >>> key = base64.urlsafe_b64encode(kdf.derive(password))
+    >>> f = Fernet(key)
+    >>> token = f.encrypt(b"Secret message!")
+    >>> token
+    '...'
+    >>> f.decrypt(token)
+    'Secret message!'
+
+In this scheme, the salt has to be stored in a retrievable location in order
+to derive the same key from the password in the future.
+
+The iteration count used should be adjusted to be as high as your server can
+tolerate. A good default is at least 100,000 iterations which is what Django
+`recommends`_ in 2014.
 
 Implementation
 --------------
@@ -93,3 +166,4 @@ For complete details consult the `specification`_.
 
 .. _`Fernet`: https://github.com/fernet/spec/
 .. _`specification`: https://github.com/fernet/spec/blob/master/Spec.md
+.. _`recommends`: https://github.com/django/django/blob/master/django/utils/crypto.py#L148
