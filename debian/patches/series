@@ -1,7 +1,3 @@
 0001-add-memory-limit-check-for-scrypt.patch
 0002-fix-compilation-on-1.1.0f-3603.patch
-fix-sslv2-ftbfs.patch
-fix-sslv3-ftbfs.patch
-fix-bio-ftbfs.patch
-fix-dsa-error-stack-ftbfs.patch
 ecpkparameters.patch

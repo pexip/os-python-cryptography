@@ -1,6 +1,14 @@
 python-cryptography (1.7.1-3~bpo8+1pexip1) pexip; urgency=low
 
   * Migrate to jessie-backports
+  * debian/patches/{
+      fix-sslv2-ftbfs.patch,
+      fix-sslv3-ftbfs.patch,
+      fix-bio-ftbfs.patch,
+      fix-dsa-error-stack-ftbfs.patch}:
+    Drop: merged upstream
+  * debian/patches/ecpkparameters.patch:
+    Refresh
 
  -- John-Mark Bell <jmb@pexip.com>  Fri, 21 Jul 2017 18:47:51 +0100
 
