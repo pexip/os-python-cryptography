@@ -1,1 +1,2 @@
-docs/
+.pybuild/docs/*
+README.rst

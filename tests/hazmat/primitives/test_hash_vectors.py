@@ -1,15 +1,6 @@
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This file is dual licensed under the terms of the Apache License, Version
+# 2.0, and the BSD License. See the LICENSE file in the root of this repository
+# for complete details.
 
 from __future__ import absolute_import, division, print_function
 
@@ -17,6 +8,7 @@ import os
 
 import pytest
 
+from cryptography.hazmat.backends.interfaces import HashBackend
 from cryptography.hazmat.primitives import hashes
 
 from .utils import generate_hash_test, generate_long_string_hash_test
@@ -27,7 +19,7 @@ from ...utils import load_hash_vectors
     only_if=lambda backend: backend.hash_supported(hashes.SHA1()),
     skip_message="Does not support SHA1",
 )
-@pytest.mark.hash
+@pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA1(object):
     test_SHA1 = generate_hash_test(
         load_hash_vectors,
@@ -44,7 +36,7 @@ class TestSHA1(object):
     only_if=lambda backend: backend.hash_supported(hashes.SHA224()),
     skip_message="Does not support SHA224",
 )
-@pytest.mark.hash
+@pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA224(object):
     test_SHA224 = generate_hash_test(
         load_hash_vectors,
@@ -61,7 +53,7 @@ class TestSHA224(object):
     only_if=lambda backend: backend.hash_supported(hashes.SHA256()),
     skip_message="Does not support SHA256",
 )
-@pytest.mark.hash
+@pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA256(object):
     test_SHA256 = generate_hash_test(
         load_hash_vectors,
@@ -78,7 +70,7 @@ class TestSHA256(object):
     only_if=lambda backend: backend.hash_supported(hashes.SHA384()),
     skip_message="Does not support SHA384",
 )
-@pytest.mark.hash
+@pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA384(object):
     test_SHA384 = generate_hash_test(
         load_hash_vectors,
@@ -95,7 +87,7 @@ class TestSHA384(object):
     only_if=lambda backend: backend.hash_supported(hashes.SHA512()),
     skip_message="Does not support SHA512",
 )
-@pytest.mark.hash
+@pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA512(object):
     test_SHA512 = generate_hash_test(
         load_hash_vectors,
@@ -112,7 +104,7 @@ class TestSHA512(object):
     only_if=lambda backend: backend.hash_supported(hashes.RIPEMD160()),
     skip_message="Does not support RIPEMD160",
 )
-@pytest.mark.hash
+@pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestRIPEMD160(object):
     test_RIPEMD160 = generate_hash_test(
         load_hash_vectors,
@@ -133,7 +125,7 @@ class TestRIPEMD160(object):
     only_if=lambda backend: backend.hash_supported(hashes.Whirlpool()),
     skip_message="Does not support Whirlpool",
 )
-@pytest.mark.hash
+@pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestWhirlpool(object):
     test_whirlpool = generate_hash_test(
         load_hash_vectors,
@@ -156,7 +148,7 @@ class TestWhirlpool(object):
     only_if=lambda backend: backend.hash_supported(hashes.MD5()),
     skip_message="Does not support MD5",
 )
-@pytest.mark.hash
+@pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestMD5(object):
     test_md5 = generate_hash_test(
         load_hash_vectors,
@@ -165,4 +157,38 @@ class TestMD5(object):
             "rfc-1321.txt",
         ],
         hashes.MD5(),
+    )
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.hash_supported(
+        hashes.BLAKE2b(digest_size=64)),
+    skip_message="Does not support BLAKE2b",
+)
+@pytest.mark.requires_backend_interface(interface=HashBackend)
+class TestBLAKE2b(object):
+    test_b2b = generate_hash_test(
+        load_hash_vectors,
+        os.path.join("hashes", "blake2"),
+        [
+            "blake2b.txt",
+        ],
+        hashes.BLAKE2b(digest_size=64),
+    )
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.hash_supported(
+        hashes.BLAKE2s(digest_size=32)),
+    skip_message="Does not support BLAKE2s",
+)
+@pytest.mark.requires_backend_interface(interface=HashBackend)
+class TestBLAKE2s256(object):
+    test_b2s = generate_hash_test(
+        load_hash_vectors,
+        os.path.join("hashes", "blake2"),
+        [
+            "blake2s.txt",
+        ],
+        hashes.BLAKE2s(digest_size=32),
     )

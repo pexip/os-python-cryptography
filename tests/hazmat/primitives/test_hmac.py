@@ -1,15 +1,6 @@
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This file is dual licensed under the terms of the Apache License, Version
+# 2.0, and the BSD License. See the LICENSE file in the root of this repository
+# for complete details.
 
 from __future__ import absolute_import, division, print_function
 
@@ -17,54 +8,43 @@ import pretend
 
 import pytest
 
-import six
-
-from cryptography import utils
 from cryptography.exceptions import (
     AlreadyFinalized, InvalidSignature, _Reasons
 )
 from cryptography.hazmat.backends.interfaces import HMACBackend
-from cryptography.hazmat.primitives import hashes, hmac, interfaces
+from cryptography.hazmat.primitives import hashes, hmac
 
 from .utils import generate_base_hmac_test
+from ..backends.test_multibackend import DummyHMACBackend
+from ...doubles import DummyHashAlgorithm
 from ...utils import raises_unsupported_algorithm
-
-
-@utils.register_interface(interfaces.HashAlgorithm)
-class UnsupportedDummyHash(object):
-        name = "unsupported-dummy-hash"
 
 
 @pytest.mark.supported(
     only_if=lambda backend: backend.hmac_supported(hashes.MD5()),
     skip_message="Does not support MD5",
 )
-@pytest.mark.hmac
+@pytest.mark.requires_backend_interface(interface=HMACBackend)
 class TestHMACCopy(object):
     test_copy = generate_base_hmac_test(
         hashes.MD5(),
     )
 
 
-@pytest.mark.hmac
+@pytest.mark.requires_backend_interface(interface=HMACBackend)
 class TestHMAC(object):
     def test_hmac_reject_unicode(self, backend):
         h = hmac.HMAC(b"mykey", hashes.SHA1(), backend=backend)
         with pytest.raises(TypeError):
-            h.update(six.u("\u00FC"))
+            h.update(u"\u00FC")
 
     def test_copy_backend_object(self):
-        @utils.register_interface(HMACBackend)
-        class PretendBackend(object):
-            pass
-
-        pretend_backend = PretendBackend()
+        backend = DummyHMACBackend([hashes.SHA1])
         copied_ctx = pretend.stub()
         pretend_ctx = pretend.stub(copy=lambda: copied_ctx)
-        h = hmac.HMAC(b"key", hashes.SHA1(), backend=pretend_backend,
-                      ctx=pretend_ctx)
-        assert h._backend is pretend_backend
-        assert h.copy()._backend is pretend_backend
+        h = hmac.HMAC(b"key", hashes.SHA1(), backend=backend, ctx=pretend_ctx)
+        assert h._backend is backend
+        assert h.copy()._backend is backend
 
     def test_hmac_algorithm_instance(self, backend):
         with pytest.raises(TypeError):
@@ -104,11 +84,11 @@ class TestHMAC(object):
     def test_verify_reject_unicode(self, backend):
         h = hmac.HMAC(b'', hashes.SHA1(), backend=backend)
         with pytest.raises(TypeError):
-            h.verify(six.u(''))
+            h.verify(u'')
 
     def test_unsupported_hash(self, backend):
         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_HASH):
-            hmac.HMAC(b"key", UnsupportedDummyHash(), backend)
+            hmac.HMAC(b"key", DummyHashAlgorithm(), backend)
 
 
 def test_invalid_backend():

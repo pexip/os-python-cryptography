@@ -1,15 +1,6 @@
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This file is dual licensed under the terms of the Apache License, Version
+# 2.0, and the BSD License. See the LICENSE file in the root of this repository
+# for complete details.
 
 from __future__ import absolute_import, division, print_function
 
@@ -17,9 +8,11 @@ import os
 
 import pytest
 
-from cryptography.exceptions import InvalidToken, _Reasons
+from cryptography.exceptions import _Reasons
+from cryptography.hazmat.backends.interfaces import HMACBackend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.hashes import MD5, SHA1
+from cryptography.hazmat.primitives.twofactor import InvalidToken
 from cryptography.hazmat.primitives.twofactor.hotp import HOTP
 
 from ....utils import (
@@ -34,13 +27,17 @@ vectors = load_vectors_from_file(
     only_if=lambda backend: backend.hmac_supported(hashes.SHA1()),
     skip_message="Does not support HMAC-SHA1."
 )
-@pytest.mark.hmac
+@pytest.mark.requires_backend_interface(interface=HMACBackend)
 class TestHOTP(object):
     def test_invalid_key_length(self, backend):
         secret = os.urandom(10)
 
         with pytest.raises(ValueError):
             HOTP(secret, 6, SHA1(), backend)
+
+    def test_unenforced_invalid_kwy_length(self, backend):
+        secret = os.urandom(10)
+        HOTP(secret, 6, SHA1(), backend, enforce_key_length=False)
 
     def test_invalid_hotp_length(self, backend):
         secret = os.urandom(16)
@@ -98,6 +95,19 @@ class TestHOTP(object):
 
         with pytest.raises(TypeError):
             HOTP(secret, b"foo", SHA1(), backend)
+
+    def test_get_provisioning_uri(self, backend):
+        secret = b"12345678901234567890"
+        hotp = HOTP(secret, 6, SHA1(), backend)
+
+        assert hotp.get_provisioning_uri("Alice Smith", 1, None) == (
+            "otpauth://hotp/Alice%20Smith?digits=6&secret=GEZDGNBV"
+            "GY3TQOJQGEZDGNBVGY3TQOJQ&algorithm=SHA1&counter=1")
+
+        assert hotp.get_provisioning_uri("Alice Smith", 1, 'Foo') == (
+            "otpauth://hotp/Foo:Alice%20Smith?digits=6&secret=GEZD"
+            "GNBVGY3TQOJQGEZDGNBVGY3TQOJQ&algorithm=SHA1&issuer=Foo"
+            "&counter=1")
 
 
 def test_invalid_backend():

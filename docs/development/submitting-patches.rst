@@ -8,6 +8,9 @@ Submitting patches
 * Larger changes should be discussed on `our mailing list`_ before submission.
 * New features and significant bug fixes should be documented in the
   :doc:`/changelog`.
+* You must have legal permission to distribute any code you contribute to
+  ``cryptography``, and it must be available under both the BSD and Apache
+  Software License Version 2.0 licenses.
 
 If you believe you've identified a security issue in ``cryptography``, please
 follow the directions on the :doc:`security page </security>`.
@@ -22,7 +25,17 @@ configuration. You can also run the ``tox`` job with ``tox -e pep8``.
 
 `Write comments as complete sentences.`_
 
-Every code file must start with the boilerplate notice of the Apache License.
+Class names which contains acronyms or initialisms should always be
+capitalized. A class should be named ``HTTPClient``, not ``HttpClient``.
+
+Every code file must start with the boilerplate licensing notice:
+
+.. code-block:: python
+
+    # This file is dual licensed under the terms of the Apache License, Version
+    # 2.0, and the BSD License. See the LICENSE file in the root of this repository
+    # for complete details.
+
 Additionally, every Python code file must contain
 
 .. code-block:: python
@@ -35,7 +48,7 @@ API considerations
 Most projects' APIs are designed with a philosophy of "make easy things easy,
 and make hard things possible". One of the perils of writing cryptographic code
 is that secure code looks just like insecure code, and its results are almost
-always indistinguishable. As a result ``cryptography`` has, as a design
+always indistinguishable. As a result, ``cryptography`` has, as a design
 philosophy: "make it hard to do insecure things". Here are a few strategies for
 API design that should be both followed, and should inspire other API choices:
 
@@ -113,6 +126,11 @@ should begin with the "Hazardous Materials" warning:
 
     .. hazmat::
 
+Always prefer terminology that is most broadly accepted. For example:
+
+* When referring to class instances use "an instance of ``Foo``"
+  instead of "a ``Foo`` provider".
+
 When referring to a hypothetical individual (such as "a person receiving an
 encrypted message") use gender neutral pronouns (they/them/their).
 
@@ -138,6 +156,6 @@ So, specifically:
 
 .. _`Write comments as complete sentences.`: http://nedbatchelder.com/blog/201401/comments_should_be_sentences.html
 .. _`syntax`: http://sphinx-doc.org/domains.html#info-field-lists
-.. _`Studies have shown`: http://www.ibm.com/developerworks/rational/library/11-proven-practices-for-peer-review/
+.. _`Studies have shown`: https://smartbear.com/SmartBear/media/pdfs/11_Best_Practices_for_Peer_Code_Review.pdf
 .. _`our mailing list`: https://mail.python.org/mailman/listinfo/cryptography-dev
-.. _`doc8`: https://github.com/stackforge/doc8
+.. _`doc8`: https://github.com/openstack/doc8

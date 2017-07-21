@@ -1,55 +1,46 @@
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# This file is dual licensed under the terms of the Apache License, Version
+# 2.0, and the BSD License. See the LICENSE file in the root of this repository
+# for complete details.
 
 from __future__ import absolute_import, division, print_function
 
 import pytest
 
 from cryptography.hazmat.backends import _available_backends
-from cryptography.hazmat.backends.interfaces import (
-    CMACBackend, CipherBackend, DSABackend, EllipticCurveBackend, HMACBackend,
-    HashBackend, PBKDF2HMACBackend, PEMSerializationBackend,
-    PKCS8SerializationBackend, RSABackend,
-    TraditionalOpenSSLSerializationBackend
-)
-from .utils import check_backend_support, check_for_iface, select_backends
+from cryptography.hazmat.backends.openssl import backend as openssl_backend
+
+from .utils import check_backend_support, select_backends, skip_if_empty
+
+
+def pytest_report_header(config):
+    return "OpenSSL: {0}".format(openssl_backend.openssl_version_text())
 
 
 def pytest_generate_tests(metafunc):
-    names = metafunc.config.getoption("--backend")
-    selected_backends = select_backends(names, _available_backends())
-
     if "backend" in metafunc.fixturenames:
-        metafunc.parametrize("backend", selected_backends)
+        names = metafunc.config.getoption("--backend")
+        selected_backends = select_backends(names, _available_backends())
+
+        filtered_backends = []
+        required = metafunc.function.requires_backend_interface
+        required_interfaces = [
+            mark.kwargs["interface"] for mark in required
+        ]
+        for backend in selected_backends:
+            if all(
+                isinstance(backend, iface) for iface in required_interfaces
+            ):
+                filtered_backends.append(backend)
+
+        # If you pass an empty list to parametrize Bad Things(tm) happen
+        # as of pytest 2.6.4 when the test also has a parametrize decorator
+        skip_if_empty(filtered_backends, required_interfaces)
+
+        metafunc.parametrize("backend", filtered_backends)
 
 
 @pytest.mark.trylast
 def pytest_runtest_setup(item):
-    check_for_iface("hmac", HMACBackend, item)
-    check_for_iface("cipher", CipherBackend, item)
-    check_for_iface("cmac", CMACBackend, item)
-    check_for_iface("hash", HashBackend, item)
-    check_for_iface("pbkdf2hmac", PBKDF2HMACBackend, item)
-    check_for_iface("dsa", DSABackend, item)
-    check_for_iface("rsa", RSABackend, item)
-    check_for_iface(
-        "traditional_openssl_serialization",
-        TraditionalOpenSSLSerializationBackend,
-        item
-    )
-    check_for_iface("pkcs8_serialization", PKCS8SerializationBackend, item)
-    check_for_iface("elliptic", EllipticCurveBackend, item)
-    check_for_iface("pem_serialization", PEMSerializationBackend, item)
     check_backend_support(item)
 
 
