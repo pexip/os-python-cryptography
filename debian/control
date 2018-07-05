@@ -47,7 +47,7 @@ Vcs-Browser: https://anonscm.debian.org/cgit/python-modules/packages/python-cryp
 X-Python-Version: >= 2.6
 X-Python3-Version: >= 3.4
 Testsuite: autopkgtest
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie-backports
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ stretch
 
 Package: python-cryptography
 Architecture: any
