@@ -1,6 +1,7 @@
 python-cryptography (1.7.1-3pexip1) pexip; urgency=low
 
   * Migrate to Stretch
+  * Build-Depend on libssl 1.0.x
 
  -- John-Mark Bell <jmb@pexip.com>  Fri, 13 Jul 2018 14:21:35 +0100
 
