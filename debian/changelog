@@ -1,3 +1,11 @@
+python-cryptography (1.7.1-3+deb9u1) stretch; urgency=medium
+
+  * Remove BIO_callback_ctrl: The prototype differs with the OpenSSL's
+    definition of it after it was changed (fixed) within OpenSSL. It has no
+    users.
+
+ -- Sebastian Andrzej Siewior <sebastian@breakpoint.cc>  Sun, 02 Sep 2018 15:17:35 +0200
+
 python-cryptography (1.7.1-3) unstable; urgency=medium
 
   * Apply patch 6e7ea2e7 from upstream to fix compilation against OpenSSL
