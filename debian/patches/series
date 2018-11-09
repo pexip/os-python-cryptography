@@ -2,3 +2,4 @@
 0002-fix-compilation-on-1.1.0f-3603.patch
 ecpkparameters.patch
 getrandom-tolerance.patch
+fips-mode.patch
