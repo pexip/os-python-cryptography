@@ -1,3 +1,9 @@
+python-cryptography (1.7.1-3pexip3) pexip; urgency=low
+
+  * Use FIPS-approved DRBG in FIPS mode
+
+ -- John-Mark Bell <jmb@pexip.com>  Fri, 09 Nov 2018 16:38:50 +0000
+
 python-cryptography (1.7.1-3pexip2) pexip; urgency=low
 
   * Improve tolerance to getrandom() returning EAGAIN.
