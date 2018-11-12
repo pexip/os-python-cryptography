@@ -1,3 +1,9 @@
+python-cryptography (1.7.1-3pexip4) pexip; urgency=low
+
+  * Backport X509_up_ref
+
+ -- John-Mark Bell <jmb@pexip.com>  Mon, 12 Nov 2018 23:22:08 +0000
+
 python-cryptography (1.7.1-3pexip3) pexip; urgency=low
 
   * Use FIPS-approved DRBG in FIPS mode

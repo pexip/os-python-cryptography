@@ -3,3 +3,4 @@
 ecpkparameters.patch
 getrandom-tolerance.patch
 fips-mode.patch
+X509_up_ref.patch
