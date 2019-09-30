@@ -1,3 +1,4 @@
 0001-add-memory-limit-check-for-scrypt.patch
 0002-fix-compilation-on-1.1.0f-3603.patch
 Remove-BIO_callback_ctrl.patch
+tests-Skip-test_load_ecdsa_no_named_curve.patch
