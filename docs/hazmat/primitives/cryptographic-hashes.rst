@@ -1,7 +1,7 @@
 .. hazmat::
 
-Message digests
-===============
+Message digests (Hashing)
+=========================
 
 .. module:: cryptography.hazmat.primitives.hashes
 
@@ -26,7 +26,7 @@ Message digests
         >>> digest.update(b"abc")
         >>> digest.update(b"123")
         >>> digest.finalize()
-        'l\xa1=R\xcap\xc8\x83\xe0\xf0\xbb\x10\x1eBZ\x89\xe8bM\xe5\x1d\xb2\xd29%\x93\xafj\x84\x11\x80\x90'
+        b'l\xa1=R\xcap\xc8\x83\xe0\xf0\xbb\x10\x1eBZ\x89\xe8bM\xe5\x1d\xb2\xd29%\x93\xafj\x84\x11\x80\x90'
 
     If the backend doesn't support the requested ``algorithm`` an
     :class:`~cryptography.exceptions.UnsupportedAlgorithm` exception will be
@@ -79,21 +79,6 @@ Message digests
 
 .. _cryptographic-hash-algorithms:
 
-SHA-1
-~~~~~
-
-.. attention::
-
-    NIST has deprecated SHA-1 in favor of the SHA-2 variants. New applications
-    are strongly suggested to use SHA-2 over SHA-1.
-
-.. class:: SHA1()
-
-    SHA-1 is a cryptographic hash function standardized by NIST. It produces an
-    160-bit message digest. Cryptanalysis of SHA-1 has demonstrated that it is
-    vulnerable to practical collision attacks, though no actual collisions are
-    publicly known.
-
 SHA-2 family
 ~~~~~~~~~~~~
 
@@ -116,6 +101,20 @@ SHA-2 family
 
     SHA-512 is a cryptographic hash function from the SHA-2 family and is
     standardized by NIST. It produces a 512-bit message digest.
+
+.. class:: SHA512_224()
+
+    .. versionadded:: 2.5
+
+    SHA-512/224 is a cryptographic hash function from the SHA-2 family and is
+    standardized by NIST. It produces a 224-bit message digest.
+
+.. class:: SHA512_256()
+
+    .. versionadded:: 2.5
+
+    SHA-512/256 is a cryptographic hash function from the SHA-2 family and is
+    standardized by NIST. It produces a 256-bit message digest.
 
 BLAKE2
 ~~~~~~
@@ -149,21 +148,88 @@ SHA-family of hashes.
 
     :raises ValueError: If the ``digest_size`` is invalid.
 
-RIPEMD160
-~~~~~~~~~
+SHA-3 family
+~~~~~~~~~~~~
 
-.. class:: RIPEMD160()
+SHA-3 is the most recent NIST secure hash algorithm standard. Despite the
+larger number SHA-3 is not considered to be better than SHA-2. Instead, it uses
+a significantly different internal structure so that **if** an attack appears
+against SHA-2 it is unlikely to apply to SHA-3. SHA-3 is significantly slower
+than SHA-2 so at this time most users should choose SHA-2.
 
-    RIPEMD160 is a cryptographic hash function that is part of ISO/IEC
-    10118-3:2004. It produces a 160-bit message digest.
+.. class:: SHA3_224()
 
-Whirlpool
-~~~~~~~~~
+    .. versionadded:: 2.5
 
-.. class:: Whirlpool()
+    SHA3/224 is a cryptographic hash function from the SHA-3 family and is
+    standardized by NIST. It produces a 224-bit message digest.
 
-    Whirlpool is a cryptographic hash function that is part of ISO/IEC
-    10118-3:2004. It produces a 512-bit message digest.
+.. class:: SHA3_256()
+
+    .. versionadded:: 2.5
+
+    SHA3/256 is a cryptographic hash function from the SHA-3 family and is
+    standardized by NIST. It produces a 256-bit message digest.
+
+.. class:: SHA3_384()
+
+    .. versionadded:: 2.5
+
+    SHA3/384 is a cryptographic hash function from the SHA-3 family and is
+    standardized by NIST. It produces a 384-bit message digest.
+
+.. class:: SHA3_512()
+
+    .. versionadded:: 2.5
+
+    SHA3/512 is a cryptographic hash function from the SHA-3 family and is
+    standardized by NIST. It produces a 512-bit message digest.
+
+.. class:: SHAKE128(digest_size)
+
+    .. versionadded:: 2.5
+
+    SHAKE128 is an extendable output function (XOF) based on the same core
+    permutations as SHA3. It allows the caller to obtain an arbitrarily long
+    digest length. Longer lengths, however, do not increase security or
+    collision resistance and lengths shorter than 128 bit (16 bytes) will
+    decrease it.
+
+    :param int digest_size: The length of output desired. Must be greater than
+        zero.
+
+    :raises ValueError: If the ``digest_size`` is invalid.
+
+.. class:: SHAKE256(digest_size)
+
+    .. versionadded:: 2.5
+
+    SHAKE256 is an extendable output function (XOF) based on the same core
+    permutations as SHA3. It allows the caller to obtain an arbitrarily long
+    digest length. Longer lengths, however, do not increase security or
+    collision resistance and lengths shorter than 256 bit (32 bytes) will
+    decrease it.
+
+    :param int digest_size: The length of output desired. Must be greater than
+        zero.
+
+    :raises ValueError: If the ``digest_size`` is invalid.
+
+SHA-1
+~~~~~
+
+.. warning::
+
+    SHA-1 is a deprecated hash algorithm that has practical known collision
+    attacks. You are strongly discouraged from using it. Existing applications
+    should strongly consider moving away.
+
+.. class:: SHA1()
+
+    SHA-1 is a cryptographic hash function standardized by NIST. It produces an
+    160-bit message digest. Cryptanalysis of SHA-1 has demonstrated that it is
+    vulnerable to practical collision attacks, and collisions have been
+    demonstrated.
 
 MD5
 ~~~
@@ -190,19 +256,13 @@ Interfaces
         :type: str
 
         The standard name for the hash algorithm, for example: ``"sha256"`` or
-        ``"whirlpool"``.
+        ``"blake2b"``.
 
     .. attribute:: digest_size
 
         :type: int
 
         The size of the resulting digest in bytes.
-
-    .. attribute:: block_size
-
-        :type: int
-
-        The internal block size of the hash algorithm in bytes.
 
 
 .. class:: HashContext
@@ -224,6 +284,6 @@ Interfaces
         :return: A :class:`HashContext` that is a copy of the current context.
 
 
-.. _`Lifetimes of cryptographic hash functions`: http://valerieaurora.org/hash.html
+.. _`Lifetimes of cryptographic hash functions`: https://valerieaurora.org/hash.html
 .. _`BLAKE2`: https://blake2.net
 .. _`length-extension attacks`: https://en.wikipedia.org/wiki/Length_extension_attack

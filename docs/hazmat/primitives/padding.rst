@@ -1,7 +1,7 @@
 .. hazmat::
 
-Padding
-=======
+Symmetric Padding
+=================
 
 .. module:: cryptography.hazmat.primitives.padding
 
@@ -25,19 +25,19 @@ multiple of the block size.
         >>> padder = padding.PKCS7(128).padder()
         >>> padded_data = padder.update(b"11111111111111112222222222")
         >>> padded_data
-        '1111111111111111'
+        b'1111111111111111'
         >>> padded_data += padder.finalize()
         >>> padded_data
-        '11111111111111112222222222\x06\x06\x06\x06\x06\x06'
+        b'11111111111111112222222222\x06\x06\x06\x06\x06\x06'
         >>> unpadder = padding.PKCS7(128).unpadder()
         >>> data = unpadder.update(padded_data)
         >>> data
-        '1111111111111111'
+        b'1111111111111111'
         >>> data + unpadder.finalize()
-        '11111111111111112222222222'
+        b'11111111111111112222222222'
 
-    :param block_size: The size of the block in bits that the data is being
-                       padded to.
+    :param block_size: The size of the block in :term:`bits` that the data is
+        being padded to.
     :raises ValueError: Raised if block size is not a multiple of 8 or is not
         between 0 and 2040 inclusive.
 
@@ -68,19 +68,19 @@ multiple of the block size.
         >>> padder = padding.ANSIX923(128).padder()
         >>> padded_data = padder.update(b"11111111111111112222222222")
         >>> padded_data
-        '1111111111111111'
+        b'1111111111111111'
         >>> padded_data += padder.finalize()
         >>> padded_data
-        '11111111111111112222222222\x00\x00\x00\x00\x00\x06'
+        b'11111111111111112222222222\x00\x00\x00\x00\x00\x06'
         >>> unpadder = padding.ANSIX923(128).unpadder()
         >>> data = unpadder.update(padded_data)
         >>> data
-        '1111111111111111'
+        b'1111111111111111'
         >>> data + unpadder.finalize()
-        '11111111111111112222222222'
+        b'11111111111111112222222222'
 
-    :param block_size: The size of the block in bits that the data is being
-        padded to.
+    :param block_size: The size of the block in :term:`bits` that the data is
+        being padded to.
     :raises ValueError: Raised if block size is not a multiple of 8 or is not
         between 0 and 2040 inclusive.
 
@@ -126,4 +126,4 @@ multiple of the block size.
         :raises ValueError: When trying to remove padding from incorrectly
                             padded data.
 
-.. _`ANSI X.923`: https://en.wikipedia.org/wiki/Padding_%28cryptography%29#ANSI_X.923
+.. _`ANSI X.923`: https://en.wikipedia.org/wiki/Padding_%28cryptography%29#ANSI_X9.23

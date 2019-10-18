@@ -11,16 +11,21 @@ Upstream is aware of the issue and it is tracked at
 
 Signed-off-by: Sebastian Andrzej Siewior <sebastian@breakpoint.cc>
 ---
- tests/test_x509.py |    1 +
+ tests/x509/test_x509.py | 1 +
  1 file changed, 1 insertion(+)
 
---- a/tests/test_x509.py
-+++ b/tests/test_x509.py
-@@ -3512,6 +3512,7 @@ from .utils import load_vectors_from_fil
-         verifier.update(cert.tbs_certificate_bytes)
-         verifier.verify()
+diff --git a/tests/x509/test_x509.py b/tests/x509/test_x509.py
+index 07a6019bd1394..c553636f27efe 100644
+--- a/tests/x509/test_x509.py
++++ b/tests/x509/test_x509.py
+@@ -4122,6 +4122,7 @@ ParsedCertificate = collections.namedtuple(
+             ec.ECDSA(cert.signature_hash_algorithm)
+         )
  
-+    @pytest.mark.skip(reason="Breaks with openssl 1.1.0l, https://github.com/pyca/cryptography/issues/4998")
++    @pytest.mark.skip(reason="Breaks with openssl 1.1.1d, https://github.com/pyca/cryptography/issues/4998")
      def test_load_ecdsa_no_named_curve(self, backend):
          _skip_curve_unsupported(backend, ec.SECP256R1())
          cert = _load_cert(
+-- 
+2.23.0
+
