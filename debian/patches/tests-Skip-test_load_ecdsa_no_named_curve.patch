@@ -1,0 +1,26 @@
+From: Sebastian Andrzej Siewior <sebastian@breakpoint.cc>
+Date: Tue, 24 Sep 2019 11:18:27 +0200
+Subject: [PATCH] tests: Skip test_load_ecdsa_no_named_curve
+
+The test_load_ecdsa_no_named_curve breaks with OpenSSL 1.1.1d which is
+due to to commit 9a43a733801bd ("[ec] Match built-in curves on
+EC_GROUP_new_from_ecparameters").
+
+Upstream is aware of the issue and it is tracked at
+	https://github.com/pyca/cryptography/issues/4998
+
+Signed-off-by: Sebastian Andrzej Siewior <sebastian@breakpoint.cc>
+---
+ tests/test_x509.py |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/tests/test_x509.py
++++ b/tests/test_x509.py
+@@ -3512,6 +3512,7 @@ from .utils import load_vectors_from_fil
+         verifier.update(cert.tbs_certificate_bytes)
+         verifier.verify()
+ 
++    @pytest.mark.skip(reason="Breaks with openssl 1.1.0l, https://github.com/pyca/cryptography/issues/4998")
+     def test_load_ecdsa_no_named_curve(self, backend):
+         _skip_curve_unsupported(backend, ec.SECP256R1())
+         cert = _load_cert(
