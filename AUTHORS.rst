@@ -36,3 +36,9 @@ PGP key fingerprints are enclosed in parentheses.
 * Fraser Tweedale <ftweedal@redhat.com>
 * Ofek Lev <ofekmeister@gmail.com> (FFB6 B92B 30B1 7848 546E 9912 972F E913 DAD5 A46E)
 * Erik Daguerre <fallenwolf@wolfthefallen.com>
+* Aviv Palivoda <palaviv@gmail.com>
+* Chris Wolfe <chriswwolfe@gmail.com>
+* Jeremy Lainé <jeremy.laine@m4x.org>
+* Denis Gladkikh <denis@gladkikh.email>
+* John Pacific <me@johnpacific.com> (2CF6 0381 B5EF 29B7 D48C 2020 7BB9 71A0 E891 44D9)
+* Marti Raudsepp <marti@juffo.org>

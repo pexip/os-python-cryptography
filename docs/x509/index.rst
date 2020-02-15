@@ -9,6 +9,8 @@ certificates are commonly used in protocols like `TLS`_.
     :maxdepth: 2
 
     tutorial
+    certificate-transparency
+    ocsp
     reference
 
 .. _`public key infrastructure`: https://en.wikipedia.org/wiki/Public_key_infrastructure

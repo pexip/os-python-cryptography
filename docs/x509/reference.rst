@@ -101,6 +101,53 @@ X.509 Reference
     -----END CERTIFICATE-----
     """.strip()
 
+    pem_issuer_public_key = b"""
+    -----BEGIN RSA PUBLIC KEY-----
+    MIICCgKCAgEAyYcqyuT6oQxpvg/VSn2Zc68wZ823D0VAJ2woramFx+2KPWB7B7Ot
+    tVSNRfm0OxJOU3TFAoep54Z2wgOoz0zRmeW6/7gvIuBKp2TW0qZAt3l9sgpE29iw
+    CsoZQlMrLKiDPzCC6Fptk+YPSST9sqwhWDKK1QvOg68DKRxTpEek1hBpC0XRsnuX
+    fvJJQqP39vxzpA0PsicI/wrvWX3vO8z+j9+botPerbeamoeHCsc0xgTLyIygWysB
+    rNskxlzC2U4Kw6mQhGghlLReo1rFsO2/hLTnvLs+Y1lQhnFeOKCx1WVXhzBIyO9B
+    dVVH5Cinb5wBNKvxbevRf4icdWcwtknmgKf69xj7yvFjt/vft74BB1Y5ltLYFmEb
+    0JBxm5MAJfW4YnMQr0AxdjOhjHq4MN7X4ZzwEpJaYJdRmvMsMGN88cyjYPxsaOG+
+    dZ/E9MmTjh0gnTjyD4gmsvR/gtTR/XFJ2wkbnnL1RyxNi6j2UW8C7tpNv0TIuArx
+    3SHGPZN0WsaKTxZPb0L/ob1WBT0mhiq1GzB431cXgbxyh8EdKk+xSptA3V+ca2V2
+    NuXlJIJaOoPMj/qjDW4I/peKGnk9tLknJ0hpRzz11j77pJsV0dGoGKVHIR2oZqT5
+    0ZJJb5DXNbiTnspKLNmBt0YlNiXtlCIPxVUkhL141FuCLc8h6FjD6E0CAwEAAQ==
+    -----END RSA PUBLIC KEY-----
+    """.strip()
+
+    pem_data_to_check = b"""
+    -----BEGIN CERTIFICATE-----
+    MIIErjCCApagAwIBAgIUUrUZsZrrBmRD2hvRuspp+lPsZXcwDQYJKoZIhvcNAQEN
+    BQAwETEPMA0GA1UEAwwGSXNzdWVyMB4XDTE4MTAwODEzNDg1NFoXDTE4MTAxODEz
+    NDg1NFowETEPMA0GA1UEAwwGSXNzdWVyMIICIjANBgkqhkiG9w0BAQEFAAOCAg8A
+    MIICCgKCAgEAyYcqyuT6oQxpvg/VSn2Zc68wZ823D0VAJ2woramFx+2KPWB7B7Ot
+    tVSNRfm0OxJOU3TFAoep54Z2wgOoz0zRmeW6/7gvIuBKp2TW0qZAt3l9sgpE29iw
+    CsoZQlMrLKiDPzCC6Fptk+YPSST9sqwhWDKK1QvOg68DKRxTpEek1hBpC0XRsnuX
+    fvJJQqP39vxzpA0PsicI/wrvWX3vO8z+j9+botPerbeamoeHCsc0xgTLyIygWysB
+    rNskxlzC2U4Kw6mQhGghlLReo1rFsO2/hLTnvLs+Y1lQhnFeOKCx1WVXhzBIyO9B
+    dVVH5Cinb5wBNKvxbevRf4icdWcwtknmgKf69xj7yvFjt/vft74BB1Y5ltLYFmEb
+    0JBxm5MAJfW4YnMQr0AxdjOhjHq4MN7X4ZzwEpJaYJdRmvMsMGN88cyjYPxsaOG+
+    dZ/E9MmTjh0gnTjyD4gmsvR/gtTR/XFJ2wkbnnL1RyxNi6j2UW8C7tpNv0TIuArx
+    3SHGPZN0WsaKTxZPb0L/ob1WBT0mhiq1GzB431cXgbxyh8EdKk+xSptA3V+ca2V2
+    NuXlJIJaOoPMj/qjDW4I/peKGnk9tLknJ0hpRzz11j77pJsV0dGoGKVHIR2oZqT5
+    0ZJJb5DXNbiTnspKLNmBt0YlNiXtlCIPxVUkhL141FuCLc8h6FjD6E0CAwEAATAN
+    BgkqhkiG9w0BAQ0FAAOCAgEAVFzNKhEpkH8V8l0NEBAZHNi1e+lcg35fZZ9plqcw
+    Pvk+6M7LW0KD0QWYQWm/dJme4DFsM7lh5u4/m+H4yS7/RP9pads9YwBudchvGR1c
+    S4CCrRAmO8/A0vpQJcEwdS7fdYShBsqMrZ2TvzceVn2dvQbxB6pLkK7KIbDPVJA2
+    HXFFXe2npHmdc80iTz2ShbdVSvyPvk6vc6NFFCg6lSQFuif3vV0+aYqi6DXv4h92
+    9qAdES8ZLDfDulxyajyPbtF35f2Of99CumP5UzG4RQbvtI8gShuK1YFYe2sWJFE0
+    MgSsqGCbl5mcrWxm9YxysRKMZ+Hc4tnkvfmG6GsKtp8u/5pG11XgxXaQl4fZ7JNa
+    QFuD5gEXkEC1mCnhWlnguJgjQlpKadMOORmVTqG9dNQ6GEsha+XWpinm5L9fEZuA
+    F88nNyubKLwEl68N7WWWKQlIl4q8Pe5FEp1pd9rLjOW4gzgYBccIfBK3oMC7uFJg
+    a/9GeOKPiq90UMrCI+CAsIbzuPOaAp3g69JonuDwcs4cu8ui1udxs9q7ox3qSWGZ
+    G1U/hmwvZH9kfIv5BKIzNLy4oxXPDJ7MZIBsxVxaNv8KUQ/JLtpVJa3oYqEx18+V
+    JNr8Pr3y61X8pLmJnaCu+ixshiy2gjxXxDFBVEEt1G9JHrSs3R+yvcHxCrM3+ian
+    Nh4=
+    -----END CERTIFICATE-----
+    """.strip()
+
 Loading Certificates
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -271,7 +318,7 @@ X.509 Certificate Object
 
             >>> from cryptography.hazmat.primitives import hashes
             >>> cert.fingerprint(hashes.SHA256())
-            '\x86\xd2\x187Gc\xfc\xe7}[+E9\x8d\xb4\x8f\x10\xe5S\xda\x18u\xbe}a\x03\x08[\xac\xa04?'
+            b'\x86\xd2\x187Gc\xfc\xe7}[+E9\x8d\xb4\x8f\x10\xe5S\xda\x18u\xbe}a\x03\x08[\xac\xa04?'
 
     .. attribute:: serial_number
 
@@ -379,9 +426,6 @@ X.509 Certificate Object
         :raises cryptography.x509.DuplicateExtension: If more than one
             extension of the same type is found within the certificate.
 
-        :raises cryptography.x509.UnsupportedExtension: If the certificate
-            contains an extension that is not supported.
-
         :raises cryptography.x509.UnsupportedGeneralNameType: If an extension
             contains a general name that is not supported.
 
@@ -392,8 +436,8 @@ X.509 Certificate Object
 
             >>> for ext in cert.extensions:
             ...     print(ext)
-            <Extension(oid=<ObjectIdentifier(oid=2.5.29.35, name=authorityKeyIdentifier)>, critical=False, value=<AuthorityKeyIdentifier(key_identifier='\xe4}_\xd1\\\x95\x86\x08,\x05\xae\xbeu\xb6e\xa7\xd9]\xa8f', authority_cert_issuer=None, authority_cert_serial_number=None)>)>
-            <Extension(oid=<ObjectIdentifier(oid=2.5.29.14, name=subjectKeyIdentifier)>, critical=False, value=<SubjectKeyIdentifier(digest='X\x01\x84$\x1b\xbc+R\x94J=\xa5\x10r\x14Q\xf5\xaf:\xc9')>)>
+            <Extension(oid=<ObjectIdentifier(oid=2.5.29.35, name=authorityKeyIdentifier)>, critical=False, value=<AuthorityKeyIdentifier(key_identifier=b'\xe4}_\xd1\\\x95\x86\x08,\x05\xae\xbeu\xb6e\xa7\xd9]\xa8f', authority_cert_issuer=None, authority_cert_serial_number=None)>)>
+            <Extension(oid=<ObjectIdentifier(oid=2.5.29.14, name=subjectKeyIdentifier)>, critical=False, value=<SubjectKeyIdentifier(digest=b'X\x01\x84$\x1b\xbc+R\x94J=\xa5\x10r\x14Q\xf5\xaf:\xc9')>)>
             <Extension(oid=<ObjectIdentifier(oid=2.5.29.15, name=keyUsage)>, critical=True, value=<KeyUsage(digital_signature=False, content_commitment=False, key_encipherment=False, data_encipherment=False, key_agreement=False, key_cert_sign=True, crl_sign=True, encipher_only=None, decipher_only=None)>)>
             <Extension(oid=<ObjectIdentifier(oid=2.5.29.32, name=certificatePolicies)>, critical=False, value=<CertificatePolicies([<PolicyInformation(policy_identifier=<ObjectIdentifier(oid=2.16.840.1.101.3.2.1.48.1, name=Unknown OID)>, policy_qualifiers=None)>])>)>
             <Extension(oid=<ObjectIdentifier(oid=2.5.29.19, name=basicConstraints)>, critical=True, value=<BasicConstraints(ca=True, path_length=None)>)>
@@ -417,6 +461,32 @@ X.509 Certificate Object
         data may be used to validate a signature, but use extreme caution as
         certificate validation is a complex problem that involves much more
         than just signature checks.
+
+        To validate the signature on a certificate you can do the following.
+        Note: This only verifies that the certificate was signed with the
+        private key associated with the public key provided and does not
+        perform any of the other checks needed for secure certificate
+        validation. Additionally, this example will only work for RSA public
+        keys with ``PKCS1v15`` signatures, and so it can't be used for general
+        purpose signature verification.
+
+        .. doctest::
+
+           >>> from cryptography.hazmat.primitives.serialization import load_pem_public_key
+           >>> from cryptography.hazmat.primitives.asymmetric import padding
+           >>> issuer_public_key = load_pem_public_key(pem_issuer_public_key, default_backend())
+           >>> cert_to_check = x509.load_pem_x509_certificate(pem_data_to_check, default_backend())
+           >>> issuer_public_key.verify(
+           ...     cert_to_check.signature,
+           ...     cert_to_check.tbs_certificate_bytes,
+           ...     # Depends on the algorithm used to create the certificate
+           ...     padding.PKCS1v15(),
+           ...     cert_to_check.signature_hash_algorithm,
+           ... )
+
+           An
+           :class:`~cryptography.exceptions.InvalidSignature`
+           exception will be raised if the signature fails to verify.
 
     .. method:: public_bytes(encoding)
 
@@ -464,7 +534,16 @@ X.509 CRL (Certificate Revocation List) Object
 
             >>> from cryptography.hazmat.primitives import hashes
             >>> crl.fingerprint(hashes.SHA256())
-            'e\xcf.\xc4:\x83?1\xdc\xf3\xfc\x95\xd7\xb3\x87\xb3\x8e\xf8\xb93!\x87\x07\x9d\x1b\xb4!\xb9\xe4W\xf4\x1f'
+            b'e\xcf.\xc4:\x83?1\xdc\xf3\xfc\x95\xd7\xb3\x87\xb3\x8e\xf8\xb93!\x87\x07\x9d\x1b\xb4!\xb9\xe4W\xf4\x1f'
+
+    .. method:: get_revoked_certificate_by_serial_number(serial_number)
+
+        .. versionadded:: 2.3
+
+        :param serial_number: The serial as a Python integer.
+        :returns: :class:`~cryptography.x509.RevokedCertificate` if the
+            ``serial_number`` is present in the CRL or ``None`` if it
+            is not.
 
     .. attribute:: signature_hash_algorithm
 
@@ -504,7 +583,7 @@ X.509 CRL (Certificate Revocation List) Object
         .. doctest::
 
             >>> crl.issuer
-            <Name([<NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.6, name=countryName)>, value=u'US')>, <NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.3, name=commonName)>, value=u'cryptography.io')>])>
+            <Name(C=US,CN=cryptography.io)>
 
     .. attribute:: next_update
 
@@ -566,6 +645,18 @@ X.509 CRL (Certificate Revocation List) Object
             over the network and used as part of a certificate verification
             process.
 
+    .. method:: is_signature_valid(public_key)
+
+        .. versionadded:: 2.1
+
+        .. warning::
+
+            Checking the validity of the signature on the CRL is insufficient
+            to know if the CRL should be trusted. More details are available
+            in :rfc:`5280`.
+
+        Returns True if the CRL signature is correct for given public key,
+        False otherwise.
 
 X.509 Certificate Builder
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -597,9 +688,15 @@ X.509 Certificate Builder
         ...     x509.NameAttribute(NameOID.COMMON_NAME, u'cryptography.io'),
         ... ]))
         >>> builder = builder.not_valid_before(datetime.datetime.today() - one_day)
-        >>> builder = builder.not_valid_after(datetime.datetime(2018, 8, 2))
+        >>> builder = builder.not_valid_after(datetime.datetime.today() + (one_day * 30))
         >>> builder = builder.serial_number(x509.random_serial_number())
         >>> builder = builder.public_key(public_key)
+        >>> builder = builder.add_extension(
+        ...     x509.SubjectAlternativeName(
+        ...         [x509.DNSName(u'cryptography.io')]
+        ...     ),
+        ...     critical=False
+        ... )
         >>> builder = builder.add_extension(
         ...     x509.BasicConstraints(ca=False, path_length=None), critical=True,
         ... )
@@ -766,9 +863,6 @@ X.509 CSR (Certificate Signing Request) Object
 
         :raises cryptography.x509.DuplicateExtension: If more than one
             extension of the same type is found within the certificate signing request.
-
-        :raises cryptography.x509.UnsupportedExtension: If the certificate signing request
-            contains an extension that is not supported.
 
         :raises cryptography.x509.UnsupportedGeneralNameType: If an extension
             contains a general name that is not supported.
@@ -1100,12 +1194,12 @@ X.509 CSR (Certificate Signing Request) Builder Object
     get every attribute or you can use :meth:`Name.get_attributes_for_oid` to
     obtain the specific type you want. Names are sometimes represented as a
     slash or comma delimited string (e.g. ``/CN=mydomain.com/O=My Org/C=US`` or
-    ``CN=mydomain.com, O=My Org, C=US``).
+    ``CN=mydomain.com,O=My Org,C=US``).
 
     Technically, a Name is a list of *sets* of attributes, called *Relative
     Distinguished Names* or *RDNs*, although multi-valued RDNs are rarely
     encountered.  The iteration order of values within a multi-valued RDN is
-    undefined.  If you need to handle multi-valued RDNs, the ``rdns`` property
+    preserved.  If you need to handle multi-valued RDNs, the ``rdns`` property
     gives access to an ordered list of :class:`RelativeDistinguishedName`
     objects.
 
@@ -1120,9 +1214,9 @@ X.509 CSR (Certificate Signing Request) Builder Object
         3
         >>> for attribute in cert.subject:
         ...     print(attribute)
-        <NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.6, name=countryName)>, value=u'US')>
-        <NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.10, name=organizationName)>, value=u'Test Certificates 2011')>
-        <NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.3, name=commonName)>, value=u'Good CA')>
+        <NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.6, name=countryName)>, value='US')>
+        <NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.10, name=organizationName)>, value='Test Certificates 2011')>
+        <NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.3, name=commonName)>, value='Good CA')>
 
     .. attribute:: rdns
 
@@ -1140,7 +1234,7 @@ X.509 CSR (Certificate Signing Request) Builder Object
         .. doctest::
 
             >>> cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
-            [<NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.3, name=commonName)>, value=u'Good CA')>]
+            [<NameAttribute(oid=<ObjectIdentifier(oid=2.5.4.3, name=commonName)>, value='Good CA')>]
 
     .. method:: public_bytes(backend)
 
@@ -1151,6 +1245,14 @@ X.509 CSR (Certificate Signing Request) Builder Object
             interface.
 
         :return bytes: The DER encoded name.
+
+    .. method:: rfc4514_string()
+
+        .. versionadded:: 2.5
+
+        :return str: Format the given name as a :rfc:`4514` Distinguished Name
+            string, for example ``CN=mydomain.com,O=My Org,C=US``.
+
 
 .. class:: Version
 
@@ -1185,13 +1287,21 @@ X.509 CSR (Certificate Signing Request) Builder Object
 
         The value of the attribute.
 
+    .. method:: rfc4514_string()
+
+        .. versionadded:: 2.5
+
+        :return str: Format the given attribute as a :rfc:`4514` Distinguished
+            Name string.
+
 
 .. class:: RelativeDistinguishedName(attributes)
 
     .. versionadded:: 1.6
 
     A relative distinguished name is a non-empty set of name attributes.  The
-    object is iterable to get every attribute.
+    object is iterable to get every attribute, preserving the original order.
+    Passing duplicate attributes to the constructor raises ``ValueError``.
 
     .. method:: get_attributes_for_oid(oid)
 
@@ -1199,6 +1309,13 @@ X.509 CSR (Certificate Signing Request) Builder Object
 
         :returns: A list of :class:`NameAttribute` instances that match the OID
             provided.  The list should contain zero or one values.
+
+    .. method:: rfc4514_string()
+
+        .. versionadded:: 2.5
+
+        :return str: Format the given RDN set as a :rfc:`4514` Distinguished
+            Name string.
 
 
 .. class:: ObjectIdentifier
@@ -1213,6 +1330,7 @@ X.509 CSR (Certificate Signing Request) Builder Object
         :type: :class:`str`
 
         The dotted string value of the OID (e.g. ``"2.5.4.3"``)
+
 
 .. _general_name_classes:
 
@@ -1230,7 +1348,23 @@ General Name Classes
 
     .. versionadded:: 0.9
 
+    .. versionchanged:: 2.1
+
+    .. warning::
+
+        Starting with version 2.1 :term:`U-label` input is deprecated. If
+        passing an internationalized domain name (IDN) you should first IDNA
+        encode the value and then pass the result as a string. Accessing
+        ``value`` will return the :term:`A-label` encoded form even if you pass
+        a U-label. This breaks backwards compatibility, but only for
+        internationalized domain names.
+
+
     This corresponds to an email address. For example, ``user@example.com``.
+
+    :param value: The email address. If the address contains an
+        internationalized domain name then it must be encoded to an
+        :term:`A-label` string before being passed.
 
     .. attribute:: value
 
@@ -1240,7 +1374,24 @@ General Name Classes
 
     .. versionadded:: 0.9
 
+    .. versionchanged:: 2.1
+
+    .. warning::
+
+        Starting with version 2.1 :term:`U-label` input is deprecated. If
+        passing an internationalized domain name (IDN) you should first IDNA
+        encode the value and then pass the result as a string. Accessing
+        ``value`` will return the :term:`A-label` encoded form even if you pass
+        a U-label. This breaks backwards compatibility, but only for
+        internationalized domain names.
+
     This corresponds to a domain name. For example, ``cryptography.io``.
+
+    :param value: The domain name. If it is an internationalized domain
+        name then it must be encoded to an :term:`A-label` string before being
+        passed.
+
+        :type: :term:`text`
 
     .. attribute:: value
 
@@ -1260,13 +1411,23 @@ General Name Classes
 
     .. versionadded:: 0.9
 
+    .. versionchanged:: 2.1
+
+    .. warning::
+
+        Starting with version 2.1 :term:`U-label` input is deprecated. If
+        passing an internationalized domain name (IDN) you should first IDNA
+        encode the value and then pass the result as a string. Accessing
+        ``value`` will return the :term:`A-label` encoded form even if you pass
+        a U-label. This breaks backwards compatibility, but only for
+        internationalized domain names.
+
     This corresponds to a uniform resource identifier.  For example,
-    ``https://cryptography.io``. The URI is parsed and IDNA decoded (see
-    :rfc:`5895`).
+    ``https://cryptography.io``.
 
-    .. note::
-
-        URIs that do not contain ``://`` in them will not be decoded.
+    :param value: The URI. If it contains an internationalized domain
+        name then it must be encoded to an :term:`A-label` string before
+        being passed.
 
     .. attribute:: value
 
@@ -1306,7 +1467,7 @@ General Name Classes
 
     .. attribute:: value
 
-        :type: `bytes`
+        :type: bytes
 
 X.509 Extensions
 ~~~~~~~~~~~~~~~~
@@ -1557,6 +1718,45 @@ X.509 Extensions
 
         Returns :attr:`~cryptography.x509.oid.ExtensionOID.OCSP_NO_CHECK`.
 
+
+.. class:: TLSFeature(features)
+
+    .. versionadded:: 2.1
+
+    The TLS Feature extension is defined in :rfc:`7633` and is used in
+    certificates for OCSP Must-Staple. The object is iterable to get every
+    element.
+
+    :param list features: A list of features to enable from the
+        :class:`~cryptography.x509.TLSFeatureType` enum. At this time only
+        ``status_request`` or ``status_request_v2`` are allowed.
+
+    .. attribute:: oid
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns :attr:`~cryptography.x509.oid.ExtensionOID.TLS_FEATURE`.
+
+.. class:: TLSFeatureType
+
+    .. versionadded:: 2.1
+
+    An enumeration of TLS Feature types.
+
+    .. attribute:: status_request
+
+        This feature type is defined in :rfc:`6066` and, when embedded in
+        an X.509 certificate, signals to the client that it should require
+        a stapled OCSP response in the TLS handshake. Commonly known as OCSP
+        Must-Staple in certificates.
+
+    .. attribute:: status_request_v2
+
+        This feature type is defined in :rfc:`6961`. This value is not
+        commonly used and if you want to enable OCSP Must-Staple you should
+        use ``status_request``.
+
+
 .. class:: NameConstraints(permitted_subtrees, excluded_subtrees)
 
     .. versionadded:: 1.0
@@ -1619,7 +1819,7 @@ X.509 Extensions
 
     .. attribute:: authority_cert_issuer
 
-        :type: :class:`Name` or None
+        :type: A list of :class:`GeneralName` instances or None
 
         The :class:`Name` of the issuer's issuer.
 
@@ -1665,7 +1865,7 @@ X.509 Extensions
             >>> from cryptography.hazmat.backends import default_backend
             >>> issuer_cert = x509.load_pem_x509_certificate(pem_data, default_backend())
             >>> x509.AuthorityKeyIdentifier.from_issuer_public_key(issuer_cert.public_key())
-            <AuthorityKeyIdentifier(key_identifier='X\x01\x84$\x1b\xbc+R\x94J=\xa5\x10r\x14Q\xf5\xaf:\xc9', authority_cert_issuer=None, authority_cert_serial_number=None)>
+            <AuthorityKeyIdentifier(key_identifier=b'X\x01\x84$\x1b\xbc+R\x94J=\xa5\x10r\x14Q\xf5\xaf:\xc9', authority_cert_issuer=None, authority_cert_serial_number=None)>
 
     .. classmethod:: from_issuer_subject_key_identifier(ski)
 
@@ -1696,7 +1896,7 @@ X.509 Extensions
             >>> issuer_cert = x509.load_pem_x509_certificate(pem_data, default_backend())
             >>> ski = issuer_cert.extensions.get_extension_for_class(x509.SubjectKeyIdentifier)
             >>> x509.AuthorityKeyIdentifier.from_issuer_subject_key_identifier(ski)
-            <AuthorityKeyIdentifier(key_identifier='X\x01\x84$\x1b\xbc+R\x94J=\xa5\x10r\x14Q\xf5\xaf:\xc9', authority_cert_issuer=None, authority_cert_serial_number=None)>
+            <AuthorityKeyIdentifier(key_identifier=b'X\x01\x84$\x1b\xbc+R\x94J=\xa5\x10r\x14Q\xf5\xaf:\xc9', authority_cert_issuer=None, authority_cert_serial_number=None)>
 
 .. class:: SubjectKeyIdentifier(digest)
 
@@ -1743,7 +1943,7 @@ X.509 Extensions
             >>> from cryptography.hazmat.backends import default_backend
             >>> csr = x509.load_pem_x509_csr(pem_req_data, default_backend())
             >>> x509.SubjectKeyIdentifier.from_public_key(csr.public_key())
-            <SubjectKeyIdentifier(digest='\xdb\xaa\xf0\x06\x11\xdbD\xfe\xbf\x93\x03\x8av\x88WP7\xa6\x91\xf7')>
+            <SubjectKeyIdentifier(digest=b'\xdb\xaa\xf0\x06\x11\xdbD\xfe\xbf\x93\x03\x8av\x88WP7\xa6\x91\xf7')>
 
 .. class:: SubjectAlternativeName(general_names)
 
@@ -1783,7 +1983,7 @@ X.509 Extensions
             >>> ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
             >>> # Get the dNSName entries from the SAN extension
             >>> ext.value.get_values_for_type(x509.DNSName)
-            [u'www.cryptography.io', u'cryptography.io']
+            ['www.cryptography.io', 'cryptography.io']
 
 
 .. class:: IssuerAlternativeName(general_names)
@@ -1812,6 +2012,73 @@ X.509 Extensions
             :ref:`general name classes <general_name_classes>`.
 
         :returns: A list of values extracted from the matched general names.
+
+
+.. class:: PrecertificateSignedCertificateTimestamps(scts)
+
+    .. versionadded:: 2.0
+
+    This extension contains
+    :class:`~cryptography.x509.certificate_transparency.SignedCertificateTimestamp`
+    instances which were issued for the pre-certificate corresponding to this
+    certificate. These can be used to verify that the certificate is included
+    in a public Certificate Transparency log.
+
+    It is an iterable containing one or more
+    :class:`~cryptography.x509.certificate_transparency.SignedCertificateTimestamp`
+    objects.
+
+    :param list scts: A ``list`` of
+        :class:`~cryptography.x509.certificate_transparency.SignedCertificateTimestamp`
+        objects.
+
+    .. attribute:: oid
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns
+        :attr:`~cryptography.x509.oid.ExtensionOID.PRECERT_SIGNED_CERTIFICATE_TIMESTAMPS`.
+
+
+.. class:: PrecertPoison()
+
+    .. versionadded:: 2.4
+
+    This extension indicates that the certificate should not be treated as a
+    certificate for the purposes of validation, but is instead for submission
+    to a certificate transparency log in order to obtain SCTs which will be
+    embedded in a :class:`PrecertificateSignedCertificateTimestamps` extension
+    on the final certificate.
+
+    .. attribute:: oid
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns :attr:`~cryptography.x509.oid.ExtensionOID.PRECERT_POISON`.
+
+
+.. class:: DeltaCRLIndicator(crl_number)
+
+    .. versionadded:: 2.1
+
+    The delta CRL indicator is a CRL extension that identifies a CRL as being
+    a delta CRL. Delta CRLs contain updates to revocation information
+    previously distributed, rather than all the information that would appear
+    in a complete CRL.
+
+    :param int crl_number: The CRL number of the complete CRL that the
+        delta CRL is updating.
+
+    .. attribute:: oid
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns
+        :attr:`~cryptography.x509.oid.ExtensionOID.DELTA_CRL_INDICATOR`.
+
+    .. attribute:: crl_number
+
+        :type: int
 
 
 .. class:: AuthorityInformationAccess(descriptions)
@@ -1862,6 +2129,24 @@ X.509 Extensions
         :type: :class:`GeneralName`
 
         Where to access the information defined by the access method.
+
+.. class:: FreshestCRL(distribution_points)
+
+    .. versionadded:: 2.1
+
+    The freshest CRL extension (also known as Delta CRL Distribution Point)
+    identifies how delta CRL information is obtained. It is an iterable,
+    containing one or more :class:`DistributionPoint` instances.
+
+    :param list distribution_points: A list of :class:`DistributionPoint`
+        instances.
+
+    .. attribute:: oid
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns
+        :attr:`~cryptography.x509.oid.ExtensionOID.FRESHEST_CRL`.
 
 .. class:: CRLDistributionPoints(distribution_points)
 
@@ -2057,14 +2342,83 @@ X.509 Extensions
 
         :type: int
 
+.. class:: IssuingDistributionPoint(full_name, relative_name,\
+           only_contains_user_certs, only_contains_ca_certs, only_some_reasons,\
+           indirect_crl, only_contains_attribute_certs)
+
+    .. versionadded:: 2.5
+
+    Issuing distribution point is a CRL extension that identifies the CRL
+    distribution point and scope for a particular CRL. It indicates whether
+    the CRL covers revocation for end entity certificates only, CA certificates
+    only, attribute certificates only, or a limited set of reason codes. For
+    specific details on the way this extension should be processed see
+    :rfc:`5280`.
+
+    .. attribute:: oid
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns
+        :attr:`~cryptography.x509.oid.ExtensionOID.ISSUING_DISTRIBUTION_POINT`.
+
+    .. attribute:: only_contains_user_certs
+
+        :type: bool
+
+        Set to ``True`` if the CRL this extension is embedded within only
+        contains information about user certificates.
+
+    .. attribute:: only_contains_ca_certs
+
+        :type: bool
+
+        Set to ``True`` if the CRL this extension is embedded within only
+        contains information about CA certificates.
+
+    .. attribute:: indirect_crl
+
+        :type: bool
+
+        Set to ``True`` if the CRL this extension is embedded within includes
+        certificates issued by one or more authorities other than the CRL
+        issuer.
+
+    .. attribute:: only_contains_attribute_certs
+
+        :type: bool
+
+        Set to ``True`` if the CRL this extension is embedded within only
+        contains information about attribute certificates.
+
+    .. attribute:: only_some_reasons
+
+        :type: frozenset of :class:`ReasonFlags` or None
+
+        The reasons for which the issuing distribution point is valid. None
+        indicates that it is valid for all reasons.
+
+    .. attribute:: full_name
+
+        :type: list of :class:`GeneralName` instances or None
+
+        This field describes methods to retrieve the CRL. At most one of
+        ``full_name`` or ``relative_name`` will be non-None.
+
+    .. attribute:: relative_name
+
+        :type: :class:`RelativeDistinguishedName` or None
+
+        This field describes methods to retrieve the CRL relative to the CRL
+        issuer. At most one of ``full_name`` or ``relative_name`` will be
+        non-None.
+
 .. class:: UnrecognizedExtension
 
     .. versionadded:: 1.2
 
-    A generic extension class used to hold the raw value of **non-critical**
-    extensions that ``cryptography`` does not know how to parse. Extensions
-    marked critical will raise
-    :class:`~cryptography.x509.UnsupportedExtension`.
+    A generic extension class used to hold the raw value of extensions that
+    ``cryptography`` does not know how to parse.
 
     .. attribute:: oid
 
@@ -2074,7 +2428,7 @@ X.509 Extensions
 
     .. attribute:: value
 
-        :type: byte
+        :type: bytes
 
         Returns the DER encoded bytes payload of the extension.
 
@@ -2207,8 +2561,7 @@ These extensions are only valid within a :class:`RevokedCertificate` object.
     valid inside :class:`~cryptography.x509.RevokedCertificate` objects. It
     identifies a reason for the certificate revocation.
 
-    :param reason: A value from the
-        :class:`~cryptography.x509.oid.CRLEntryExtensionOID` enum.
+    :param reason: An element from :class:`~cryptography.x509.ReasonFlags`.
 
     .. attribute:: oid
 
@@ -2246,6 +2599,30 @@ These extensions are only valid within a :class:`RevokedCertificate` object.
 
         :type: :class:`datetime.datetime`
 
+OCSP Extensions
+~~~~~~~~~~~~~~~
+
+.. class:: OCSPNonce(nonce)
+
+    .. versionadded:: 2.4
+
+    OCSP nonce is an extension that is only valid inside
+    :class:`~cryptography.x509.ocsp.OCSPRequest` and
+    :class:`~cryptography.x509.ocsp.OCSPResponse` objects. The nonce
+    cryptographically binds a request and a response to prevent replay attacks.
+    In practice nonces are rarely used in OCSP due to the desire to precompute
+    OCSP responses at large scale.
+
+    .. attribute:: oid
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns
+        :attr:`~cryptography.x509.oid.OCSPExtensionOID.NONCE`.
+
+    .. attribute:: nonce
+
+        :type: bytes
 
 Object Identifiers
 ~~~~~~~~~~~~~~~~~~
@@ -2410,6 +2787,15 @@ instances. The following common OIDs are available as constants.
         Corresponds to the dotted string ``"1.2.840.113549.1.1.13"``. This is
         a SHA512 digest signed by an RSA key.
 
+    .. attribute:: RSASSA_PSS
+
+        .. versionadded:: 2.3
+
+        Corresponds to the dotted string ``"1.2.840.113549.1.1.10"``. This is
+        signed by an RSA key using the Probabilistic Signature Scheme (PSS)
+        padding from :rfc:`4055`. The hash function and padding are defined by
+        signature algorithm parameters.
+
     .. attribute:: ECDSA_WITH_SHA1
 
         Corresponds to the dotted string ``"1.2.840.10045.4.1"``. This is a SHA1
@@ -2486,6 +2872,13 @@ instances. The following common OIDs are available as constants.
 
         Corresponds to the dotted string ``"1.3.6.1.5.5.7.3.9"``. This is used
         to denote that a certificate may be used for signing OCSP responses.
+
+    .. attribute:: ANY_EXTENDED_KEY_USAGE
+
+        .. versionadded:: 2.0
+
+        Corresponds to the dotted string ``"2.5.29.37.0"``. This is used to
+        denote that a certificate may be used for _any_ purposes.
 
 
 .. class:: AuthorityInformationAccessOID
@@ -2593,16 +2986,53 @@ instances. The following common OIDs are available as constants.
         identifier for the :class:`~cryptography.x509.OCSPNoCheck` extension
         type.
 
+    .. attribute:: TLS_FEATURE
+
+        Corresponds to the dotted string ``"1.3.6.1.5.5.7.1.24"``. The
+        identifier for the :class:`~cryptography.x509.TLSFeature` extension
+        type.
+
     .. attribute:: CRL_NUMBER
 
         Corresponds to the dotted string ``"2.5.29.20"``. The identifier for
         the ``CRLNumber`` extension type. This extension only has meaning
         for certificate revocation lists.
 
+    .. attribute:: DELTA_CRL_INDICATOR
+
+        .. versionadded:: 2.1
+
+        Corresponds to the dotted string ``"2.5.29.27"``. The identifier for
+        the ``DeltaCRLIndicator`` extension type. This extension only has
+        meaning for certificate revocation lists.
+
+    .. attribute:: PRECERT_SIGNED_CERTIFICATE_TIMESTAMPS
+
+        .. versionadded:: 1.9
+
+        Corresponds to the dotted string ``"1.3.6.1.4.1.11129.2.4.2"``.
+
+    .. attribute:: PRECERT_POISON
+
+        .. versionadded:: 2.4
+
+        Corresponds to the dotted string ``"1.3.6.1.4.1.11129.2.4.3"``.
+
     .. attribute:: POLICY_CONSTRAINTS
 
         Corresponds to the dotted string ``"2.5.29.36"``. The identifier for the
         :class:`~cryptography.x509.PolicyConstraints` extension type.
+
+    .. attribute:: FRESHEST_CRL
+
+        Corresponds to the dotted string ``"2.5.29.46"``. The identifier for the
+        :class:`~cryptography.x509.FreshestCRL` extension type.
+
+    .. attribute:: ISSUING_DISTRIBUTION_POINT
+
+        .. versionadded:: 2.4
+
+        Corresponds to the dotted string ``"2.5.29.28"``.
 
 
 .. class:: CRLEntryExtensionOID
@@ -2620,6 +3050,15 @@ instances. The following common OIDs are available as constants.
     .. attribute:: INVALIDITY_DATE
 
         Corresponds to the dotted string ``"2.5.29.24"``.
+
+
+.. class:: OCSPExtensionOID
+
+    .. versionadded:: 2.4
+
+    .. attribute:: NONCE
+
+        Corresponds to the dotted string ``"1.3.6.1.5.5.7.48.1.2"``.
 
 Helper Functions
 ~~~~~~~~~~~~~~~~
@@ -2650,17 +3089,6 @@ Exceptions
 
     This is raised when more than one X.509 extension of the same type is
     found within a certificate.
-
-    .. attribute:: oid
-
-        :type: :class:`ObjectIdentifier`
-
-        Returns the OID.
-
-.. class:: UnsupportedExtension
-
-    This is raised when a certificate contains an unsupported extension type
-    that is marked ``critical``.
 
     .. attribute:: oid
 

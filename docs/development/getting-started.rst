@@ -19,6 +19,10 @@ mode. For example:
     $ pip install --requirement dev-requirements.txt
     $ pip install --editable .
 
+Make sure that ``pip install --requirement ...`` has installed the Python
+package ``vectors/`` and packages on ``tests/`` . If it didn't, you may
+install them manually by using ``pip`` on each directory.
+
 You will also need to install ``enchant`` using your system's package manager
 to check spelling in the documentation.
 
@@ -30,8 +34,8 @@ to check spelling in the documentation.
 
 You are now ready to run the tests and build the documentation.
 
-OpenSSL on OS X
-~~~~~~~~~~~~~~~
+OpenSSL on macOS
+~~~~~~~~~~~~~~~~
 
 You must have installed `OpenSSL`_ via `Homebrew`_ or `MacPorts`_ and must set
 ``CFLAGS`` and ``LDFLAGS`` environment variables before installing the
@@ -41,12 +45,12 @@ For example, with `Homebrew`_:
 
 .. code-block:: console
 
-    $ env LDFLAGS="-L$(brew --prefix openssl)/lib" \
-        CFLAGS="-I$(brew --prefix openssl)/include" \
+    $ env LDFLAGS="-L$(brew --prefix openssl@1.1)/lib" \
+        CFLAGS="-I$(brew --prefix openssl@1.1)/include" \
         pip install --requirement ./dev-requirements.txt
 
 Alternatively for a static build you can specify
-``CRYPTOGRAPHY_OSX_NO_LINK_FLAGS=1`` and ensure ``LDFLAGS`` points to the
+``CRYPTOGRAPHY_SUPPRESS_LINK_FLAGS=1`` and ensure ``LDFLAGS`` points to the
 absolute path for the `OpenSSL`_ libraries before calling pip.
 
 .. tip::
@@ -61,7 +65,7 @@ automatically, so all you have to do is:
 
 .. code-block:: console
 
-    $ py.test
+    $ pytest
     ...
     62746 passed in 220.43 seconds
 
@@ -75,30 +79,15 @@ each supported Python version and run the tests. For example:
 
     $ tox
     ...
-    ERROR:   py26: InterpreterNotFound: python2.6
      py27: commands succeeded
     ERROR:   pypy: InterpreterNotFound: pypy
-     py33: commands succeeded
+     py34: commands succeeded
      docs: commands succeeded
      pep8: commands succeeded
 
 You may not have all the required Python versions installed, in which case you
 will see one or more ``InterpreterNotFound`` errors.
 
-
-Explicit backend selection
---------------------------
-
-While testing you may want to run tests against a subset of the backends that
-cryptography supports. Explicit backend selection can be done via the
-``--backend`` flag. This flag should be passed to ``py.test`` with a comma
-delimited list of backend names.
-
-
-.. code-block:: console
-
-    $ tox -- --backend=openssl
-    $ py.test --backend=openssl,commoncrypto
 
 Building documentation
 ----------------------
@@ -118,13 +107,13 @@ Use `tox`_ to build the documentation. For example:
 The HTML documentation index can now be found at
 ``docs/_build/html/index.html``.
 
-.. _`Homebrew`: http://brew.sh
+.. _`Homebrew`: https://brew.sh
 .. _`MacPorts`: https://www.macports.org
 .. _`OpenSSL`: https://www.openssl.org
-.. _`pytest`: https://pypi.python.org/pypi/pytest
-.. _`tox`: https://pypi.python.org/pypi/tox
-.. _`virtualenv`: https://pypi.python.org/pypi/virtualenv
-.. _`pip`: https://pypi.python.org/pypi/pip
-.. _`sphinx`: https://pypi.python.org/pypi/Sphinx
-.. _`reStructured Text`: http://sphinx-doc.org/rest.html
+.. _`pytest`: https://pypi.org/project/pytest/
+.. _`tox`: https://pypi.org/project/tox/
+.. _`virtualenv`: https://pypi.org/project/virtualenv/
+.. _`pip`: https://pypi.org/project/pip/
+.. _`sphinx`: https://pypi.org/project/Sphinx/
+.. _`reStructured Text`: https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html
 .. _`this Github issue`: https://github.com/rfk/pyenchant/issues/42

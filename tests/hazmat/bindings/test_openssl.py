@@ -8,7 +8,7 @@ import pytest
 
 from cryptography.exceptions import InternalError
 from cryptography.hazmat.bindings.openssl.binding import (
-    Binding, _OpenSSLErrorWithText, _openssl_assert, _verify_openssl_version
+    Binding, _consume_errors, _openssl_assert, _verify_package_version
 )
 
 
@@ -21,15 +21,15 @@ class TestOpenSSL(object):
 
     def test_crypto_lock_init(self):
         b = Binding()
-        if (
-            b.lib.CRYPTOGRAPHY_OPENSSL_110_OR_GREATER and
-            not b.lib.CRYPTOGRAPHY_IS_LIBRESSL
-        ):
-            pytest.skip("Requires an older OpenSSL. Must be < 1.1.0")
 
         b.init_static_locks()
         lock_cb = b.lib.CRYPTO_get_locking_callback()
-        assert lock_cb != b.ffi.NULL
+        if b.lib.CRYPTOGRAPHY_OPENSSL_110_OR_GREATER:
+            assert lock_cb == b.ffi.NULL
+            assert b.lib.Cryptography_HAS_LOCKING_CALLBACKS == 0
+        else:
+            assert lock_cb != b.ffi.NULL
+            assert b.lib.Cryptography_HAS_LOCKING_CALLBACKS == 1
 
     def test_add_engine_more_than_once(self):
         b = Binding()
@@ -40,7 +40,8 @@ class TestOpenSSL(object):
         # Test that we're properly handling 32-bit unsigned on all platforms.
         b = Binding()
         assert b.lib.SSL_OP_ALL > 0
-        ctx = b.lib.SSL_CTX_new(b.lib.TLSv1_method())
+        ctx = b.lib.SSL_CTX_new(b.lib.SSLv23_method())
+        assert ctx != b.ffi.NULL
         ctx = b.ffi.gc(ctx, b.lib.SSL_CTX_free)
         current_options = b.lib.SSL_CTX_get_options(ctx)
         resp = b.lib.SSL_CTX_set_options(ctx, b.lib.SSL_OP_ALL)
@@ -52,7 +53,8 @@ class TestOpenSSL(object):
         # Test that we're properly handling 32-bit unsigned on all platforms.
         b = Binding()
         assert b.lib.SSL_OP_ALL > 0
-        ctx = b.lib.SSL_CTX_new(b.lib.TLSv1_method())
+        ctx = b.lib.SSL_CTX_new(b.lib.SSLv23_method())
+        assert ctx != b.ffi.NULL
         ctx = b.ffi.gc(ctx, b.lib.SSL_CTX_free)
         ssl = b.lib.SSL_new(ctx)
         ssl = b.ffi.gc(ssl, b.lib.SSL_free)
@@ -66,7 +68,8 @@ class TestOpenSSL(object):
         # Test that we're properly handling 32-bit unsigned on all platforms.
         b = Binding()
         assert b.lib.SSL_OP_ALL > 0
-        ctx = b.lib.SSL_CTX_new(b.lib.TLSv1_method())
+        ctx = b.lib.SSL_CTX_new(b.lib.SSLv23_method())
+        assert ctx != b.ffi.NULL
         ctx = b.ffi.gc(ctx, b.lib.SSL_CTX_free)
         ssl = b.lib.SSL_new(ctx)
         ssl = b.ffi.gc(ssl, b.lib.SSL_free)
@@ -79,11 +82,11 @@ class TestOpenSSL(object):
     def test_conditional_removal(self):
         b = Binding()
 
-        if b.lib.CRYPTOGRAPHY_OPENSSL_101_OR_GREATER:
-            assert b.lib.CMAC_Init
+        if b.lib.CRYPTOGRAPHY_OPENSSL_110_OR_GREATER:
+            assert b.lib.TLS_ST_OK
         else:
             with pytest.raises(AttributeError):
-                b.lib.CMAC_Init
+                b.lib.TLS_ST_OK
 
     def test_openssl_assert_error_on_stack(self):
         b = Binding()
@@ -97,19 +100,25 @@ class TestOpenSSL(object):
         with pytest.raises(InternalError) as exc_info:
             _openssl_assert(b.lib, False)
 
-        assert exc_info.value.err_code == [_OpenSSLErrorWithText(
-            code=101183626,
-            lib=b.lib.ERR_LIB_EVP,
-            func=b.lib.EVP_F_EVP_ENCRYPTFINAL_EX,
-            reason=b.lib.EVP_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH,
-            reason_text=(
-                b'error:0607F08A:digital envelope routines:EVP_EncryptFinal_'
-                b'ex:data not multiple of block length'
-            )
-        )]
+        error = exc_info.value.err_code[0]
+        assert error.code == 101183626
+        assert error.lib == b.lib.ERR_LIB_EVP
+        assert error.func == b.lib.EVP_F_EVP_ENCRYPTFINAL_EX
+        assert error.reason == b.lib.EVP_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH
+        assert b"data not multiple of block length" in error.reason_text
 
-    def test_verify_openssl_version(self, monkeypatch):
-        monkeypatch.delenv("CRYPTOGRAPHY_ALLOW_OPENSSL_100", raising=False)
-        with pytest.raises(RuntimeError):
-            # OpenSSL 1.0.0
-            _verify_openssl_version(0x100000F)
+    def test_check_startup_errors_are_allowed(self):
+        b = Binding()
+        b.lib.ERR_put_error(
+            b.lib.ERR_LIB_EVP,
+            b.lib.EVP_F_EVP_ENCRYPTFINAL_EX,
+            b.lib.EVP_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH,
+            b"",
+            -1
+        )
+        b._register_osrandom_engine()
+        assert _consume_errors(b.lib) == []
+
+    def test_version_mismatch(self):
+        with pytest.raises(ImportError):
+            _verify_package_version("nottherightversion")

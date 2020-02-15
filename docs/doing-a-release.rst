@@ -3,27 +3,33 @@ Doing a release
 
 Doing a release of ``cryptography`` requires a few steps.
 
-Verifying and upgrading OpenSSL version
----------------------------------------
+Security Releases
+-----------------
 
-The release process uses a static build for Windows and OS X wheels. Check that
-the Windows and OS X Jenkins builders have the latest version of OpenSSL
-installed before performing the release. If they do not:
+In addition to the other steps described below, for a release which fixes a
+security vulnerability, you should also include the following steps:
 
-Upgrading Windows
-~~~~~~~~~~~~~~~~~
+* Request a `CVE from MITRE`_. Once you have received the CVE, it should be
+  included in the :doc:`changelog`. Ideally you should request the CVE before
+  starting the release process so that the CVE is available at the time of the
+  release.
+* Ensure that the :doc:`changelog` entry credits whoever reported the issue.
+* The release should be announced on the `oss-security`_ mailing list, in
+  addition to the regular announcement lists.
 
-Run the ``openssl-release`` Jenkins job, then copy the resulting artifacts to
-the Windows builders and unzip them in the root of the file system.
+Verifying OpenSSL version
+-------------------------
 
-Upgrading OS X
-~~~~~~~~~~~~~~
+The release process creates wheels bundling OpenSSL for Windows, macOS, and
+Linux. Check that the Windows and macOS Jenkins builders have the latest
+version of OpenSSL installed and verify that the latest version is present in
+the ``pyca/cryptography-manylinux1`` docker containers. If anything is out
+of date follow the instructions for upgrading OpenSSL.
 
-``brew update`` and then ``brew upgrade openssl --universal --build-bottle`` to
-build a universal library (32-bit and 64-bit) compatible with all Intel Macs.
-This can be confirmed by using
-``lipo -info /usr/local/opt/openssl/lib/libssl.dylib`` to see the available
-architectures.
+Upgrading OpenSSL
+-----------------
+
+Use the `upgrading OpenSSL issue template`_.
 
 Bumping the version number
 --------------------------
@@ -45,7 +51,7 @@ The commit that merged the version number bump is now the official release
 commit for this release. You will need to have ``gpg`` installed and a ``gpg``
 key in order to do a release. Once this has happened:
 
-* Run ``invoke release {version}``.
+* Run ``python release.py {version}``.
 
 The release should now be available on PyPI and a tag should be available in
 the repository.
@@ -74,7 +80,7 @@ Post-release tasks
 ------------------
 
 * Update the version number to the next major (e.g. ``0.5.dev1``) in
-  ``cryptography/__about__.py`` and
+  ``src/cryptography/__about__.py`` and
   ``vectors/cryptography_vectors/__about__.py``.
 * Close the `milestone`_ for the previous release on GitHub.
 * Add new :doc:`/changelog` entry with next version and note that it is under
@@ -86,6 +92,9 @@ Post-release tasks
 * Send an email to the `mailing list`_ and `python-announce`_ announcing the
   release.
 
+.. _`CVE from MITRE`: https://cveform.mitre.org/
+.. _`oss-security`: https://www.openwall.com/lists/oss-security/
+.. _`upgrading OpenSSL issue template`: https://github.com/pyca/cryptography/issues/new?template=openssl-release.md
 .. _`milestone`: https://github.com/pyca/cryptography/milestones
 .. _`mailing list`: https://mail.python.org/mailman/listinfo/cryptography-dev
 .. _`python-announce`: https://mail.python.org/mailman/listinfo/python-announce-list

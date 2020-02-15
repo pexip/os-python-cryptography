@@ -4,7 +4,7 @@
 
 from __future__ import absolute_import, division, print_function
 
-import pretend
+import binascii
 
 import pytest
 
@@ -15,7 +15,6 @@ from cryptography.hazmat.backends.interfaces import HMACBackend
 from cryptography.hazmat.primitives import hashes, hmac
 
 from .utils import generate_base_hmac_test
-from ..backends.test_multibackend import DummyHMACBackend
 from ...doubles import DummyHashAlgorithm
 from ...utils import raises_unsupported_algorithm
 
@@ -37,14 +36,6 @@ class TestHMAC(object):
         h = hmac.HMAC(b"mykey", hashes.SHA1(), backend=backend)
         with pytest.raises(TypeError):
             h.update(u"\u00FC")
-
-    def test_copy_backend_object(self):
-        backend = DummyHMACBackend([hashes.SHA1])
-        copied_ctx = pretend.stub()
-        pretend_ctx = pretend.stub(copy=lambda: copied_ctx)
-        h = hmac.HMAC(b"key", hashes.SHA1(), backend=backend, ctx=pretend_ctx)
-        assert h._backend is backend
-        assert h.copy()._backend is backend
 
     def test_hmac_algorithm_instance(self, backend):
         with pytest.raises(TypeError):
@@ -89,6 +80,14 @@ class TestHMAC(object):
     def test_unsupported_hash(self, backend):
         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_HASH):
             hmac.HMAC(b"key", DummyHashAlgorithm(), backend)
+
+    def test_buffer_protocol(self, backend):
+        key = bytearray(b"2b7e151628aed2a6abf7158809cf4f3c")
+        h = hmac.HMAC(key, hashes.SHA256(), backend)
+        h.update(bytearray(b"6bc1bee22e409f96e93d7e117393172a"))
+        assert h.finalize() == binascii.unhexlify(
+            b"a1bf7169c56a501c6585190ff4f07cad6e492a3ee187c0372614fb444b9fc3f0"
+        )
 
 
 def test_invalid_backend():

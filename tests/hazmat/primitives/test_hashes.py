@@ -4,7 +4,7 @@
 
 from __future__ import absolute_import, division, print_function
 
-import pretend
+import binascii
 
 import pytest
 
@@ -13,7 +13,6 @@ from cryptography.hazmat.backends.interfaces import HashBackend
 from cryptography.hazmat.primitives import hashes
 
 from .utils import generate_base_hash_test
-from ..backends.test_multibackend import DummyHashBackend
 from ...doubles import DummyHashAlgorithm
 from ...utils import raises_unsupported_algorithm
 
@@ -24,14 +23,6 @@ class TestHashContext(object):
         m = hashes.Hash(hashes.SHA1(), backend=backend)
         with pytest.raises(TypeError):
             m.update(u"\u00FC")
-
-    def test_copy_backend_object(self):
-        backend = DummyHashBackend([hashes.SHA1])
-        copied_ctx = pretend.stub()
-        pretend_ctx = pretend.stub(copy=lambda: copied_ctx)
-        h = hashes.Hash(hashes.SHA1(), backend=backend, ctx=pretend_ctx)
-        assert h._backend is backend
-        assert h.copy()._backend is h._backend
 
     def test_hash_algorithm_instance(self, backend):
         with pytest.raises(TypeError):
@@ -61,10 +52,9 @@ class TestHashContext(object):
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA1(object):
-    test_SHA1 = generate_base_hash_test(
+    test_sha1 = generate_base_hash_test(
         hashes.SHA1(),
         digest_size=20,
-        block_size=64,
     )
 
 
@@ -74,10 +64,9 @@ class TestSHA1(object):
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA224(object):
-    test_SHA224 = generate_base_hash_test(
+    test_sha224 = generate_base_hash_test(
         hashes.SHA224(),
         digest_size=28,
-        block_size=64,
     )
 
 
@@ -87,10 +76,9 @@ class TestSHA224(object):
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA256(object):
-    test_SHA256 = generate_base_hash_test(
+    test_sha256 = generate_base_hash_test(
         hashes.SHA256(),
         digest_size=32,
-        block_size=64,
     )
 
 
@@ -100,10 +88,9 @@ class TestSHA256(object):
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA384(object):
-    test_SHA384 = generate_base_hash_test(
+    test_sha384 = generate_base_hash_test(
         hashes.SHA384(),
         digest_size=48,
-        block_size=128,
     )
 
 
@@ -113,36 +100,9 @@ class TestSHA384(object):
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestSHA512(object):
-    test_SHA512 = generate_base_hash_test(
+    test_sha512 = generate_base_hash_test(
         hashes.SHA512(),
         digest_size=64,
-        block_size=128,
-    )
-
-
-@pytest.mark.supported(
-    only_if=lambda backend: backend.hash_supported(hashes.RIPEMD160()),
-    skip_message="Does not support RIPEMD160",
-)
-@pytest.mark.requires_backend_interface(interface=HashBackend)
-class TestRIPEMD160(object):
-    test_RIPEMD160 = generate_base_hash_test(
-        hashes.RIPEMD160(),
-        digest_size=20,
-        block_size=64,
-    )
-
-
-@pytest.mark.supported(
-    only_if=lambda backend: backend.hash_supported(hashes.Whirlpool()),
-    skip_message="Does not support Whirlpool",
-)
-@pytest.mark.requires_backend_interface(interface=HashBackend)
-class TestWhirlpool(object):
-    test_Whirlpool = generate_base_hash_test(
-        hashes.Whirlpool(),
-        digest_size=64,
-        block_size=64,
     )
 
 
@@ -152,10 +112,9 @@ class TestWhirlpool(object):
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestMD5(object):
-    test_MD5 = generate_base_hash_test(
+    test_md5 = generate_base_hash_test(
         hashes.MD5(),
         digest_size=16,
-        block_size=64,
     )
 
 
@@ -166,10 +125,9 @@ class TestMD5(object):
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestBLAKE2b(object):
-    test_BLAKE2b = generate_base_hash_test(
+    test_blake2b = generate_base_hash_test(
         hashes.BLAKE2b(digest_size=64),
         digest_size=64,
-        block_size=128,
     )
 
     def test_invalid_digest_size(self, backend):
@@ -190,10 +148,9 @@ class TestBLAKE2b(object):
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestBLAKE2s(object):
-    test_BLAKE2s = generate_base_hash_test(
+    test_blake2s = generate_base_hash_test(
         hashes.BLAKE2s(digest_size=32),
         digest_size=32,
-        block_size=64,
     )
 
     def test_invalid_digest_size(self, backend):
@@ -212,3 +169,34 @@ def test_invalid_backend():
 
     with raises_unsupported_algorithm(_Reasons.BACKEND_MISSING_INTERFACE):
         hashes.Hash(hashes.SHA1(), pretend_backend)
+
+
+@pytest.mark.requires_backend_interface(interface=HashBackend)
+def test_buffer_protocol_hash(backend):
+    data = binascii.unhexlify(b"b4190e")
+    h = hashes.Hash(hashes.SHA256(), backend)
+    h.update(bytearray(data))
+    assert h.finalize() == binascii.unhexlify(
+        b"dff2e73091f6c05e528896c4c831b9448653dc2ff043528f6769437bc7b975c2"
+    )
+
+
+class TestSHAKE(object):
+    @pytest.mark.parametrize(
+        "xof",
+        [hashes.SHAKE128, hashes.SHAKE256]
+    )
+    def test_invalid_digest_type(self, xof):
+        with pytest.raises(TypeError):
+            xof(digest_size=object())
+
+    @pytest.mark.parametrize(
+        "xof",
+        [hashes.SHAKE128, hashes.SHAKE256]
+    )
+    def test_invalid_digest_size(self, xof):
+        with pytest.raises(ValueError):
+            xof(digest_size=-5)
+
+        with pytest.raises(ValueError):
+            xof(digest_size=0)
