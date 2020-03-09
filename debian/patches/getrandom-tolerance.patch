@@ -1,17 +1,15 @@
-diff --git a/src/_cffi_src/openssl/src/osrandom_engine.c b/src/_cffi_src/openssl/src/osrandom_engine.c
-index 52f55af..6492e36 100644
 --- a/src/_cffi_src/openssl/src/osrandom_engine.c
 +++ b/src/_cffi_src/openssl/src/osrandom_engine.c
-@@ -271,7 +271,7 @@ static int osrandom_init(ENGINE *e) {
-                     CRYPTOGRAPHY_OSRANDOM_R_GETRANDOM_INIT_FAILED_EAGAIN,
-                     __FILE__, __LINE__
+@@ -349,7 +349,7 @@
+                     CRYPTOGRAPHY_OSRANDOM_R_GETRANDOM_INIT_FAILED_UNEXPECTED,
+                     "errno", e
                  );
 -                getrandom_works = CRYPTOGRAPHY_OSRANDOM_GETRANDOM_INIT_FAILED;
 +                getrandom_works = CRYPTOGRAPHY_OSRANDOM_GETRANDOM_INIT_FAILED_EAGAIN;
                  break;
-             default:
-                 /* EINTR cannot occur for buflen < 256. */
-@@ -299,7 +299,14 @@ static int osrandom_init(ENGINE *e) {
+             }
+         }
+@@ -368,7 +368,14 @@
  static int osrandom_rand_bytes(unsigned char *buffer, int size) {
      long n;
  
@@ -26,7 +24,7 @@ index 52f55af..6492e36 100644
      case CRYPTOGRAPHY_OSRANDOM_GETRANDOM_INIT_FAILED:
          ERR_Cryptography_OSRandom_error(
              CRYPTOGRAPHY_OSRANDOM_F_RAND_BYTES,
-@@ -345,6 +352,8 @@ static int osrandom_finish(ENGINE *e) {
+@@ -414,6 +421,8 @@
  
  static int osrandom_rand_status(void) {
      switch(getrandom_works) {
@@ -35,7 +33,7 @@ index 52f55af..6492e36 100644
      case CRYPTOGRAPHY_OSRANDOM_GETRANDOM_INIT_FAILED:
          return 0;
      case CRYPTOGRAPHY_OSRANDOM_GETRANDOM_NOT_INIT:
-@@ -359,6 +368,8 @@ static int osrandom_rand_status(void) {
+@@ -428,6 +437,8 @@
  
  static const char *osurandom_get_implementation(void) {
      switch(getrandom_works) {
@@ -44,11 +42,9 @@ index 52f55af..6492e36 100644
      case CRYPTOGRAPHY_OSRANDOM_GETRANDOM_INIT_FAILED:
          return "<failed>";
      case CRYPTOGRAPHY_OSRANDOM_GETRANDOM_NOT_INIT:
-diff --git a/src/_cffi_src/openssl/src/osrandom_engine.h b/src/_cffi_src/openssl/src/osrandom_engine.h
-index d28ebf3..581287e 100644
 --- a/src/_cffi_src/openssl/src/osrandom_engine.h
 +++ b/src/_cffi_src/openssl/src/osrandom_engine.h
-@@ -52,7 +52,8 @@
+@@ -60,7 +60,8 @@
  #endif
  
  enum {

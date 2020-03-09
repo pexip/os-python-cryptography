@@ -7,4 +7,3 @@ aia-memleak-2.patch
 ecpkparameters.patch
 getrandom-tolerance.patch
 fips-mode.patch
-X509_up_ref.patch

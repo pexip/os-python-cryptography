@@ -1,12 +1,10 @@
-diff --git a/src/_cffi_src/openssl/pem.py b/src/_cffi_src/openssl/pem.py
-index 752f198..ef83359 100644
 --- a/src/_cffi_src/openssl/pem.py
 +++ b/src/_cffi_src/openssl/pem.py
-@@ -55,6 +55,7 @@ int PEM_write_bio_X509_CRL(BIO *, X509_CRL *);
+@@ -50,6 +50,7 @@
  int PEM_write_bio_PKCS7(BIO *, PKCS7 *);
  
  DH *PEM_read_bio_DHparams(BIO *, DH **, pem_password_cb *, void *);
 +EC_GROUP *PEM_read_bio_ECPKParameters(BIO *, EC_GROUP **, pem_password_cb *, void *);
  
- DSA *PEM_read_bio_DSAPrivateKey(BIO *, DSA **, pem_password_cb *, void *);
- 
+ int PEM_write_bio_DSAPrivateKey(BIO *, DSA *, const EVP_CIPHER *,
+                                 unsigned char *, int,
