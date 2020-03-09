@@ -154,8 +154,8 @@ So, specifically:
 * Use Sphinx parameter/attribute documentation `syntax`_.
 
 
-.. _`Write comments as complete sentences.`: http://nedbatchelder.com/blog/201401/comments_should_be_sentences.html
-.. _`syntax`: http://sphinx-doc.org/domains.html#info-field-lists
+.. _`Write comments as complete sentences.`: https://nedbatchelder.com/blog/201401/comments_should_be_sentences.html
+.. _`syntax`: https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html#info-field-lists
 .. _`Studies have shown`: https://smartbear.com/SmartBear/media/pdfs/11_Best_Practices_for_Peer_Code_Review.pdf
 .. _`our mailing list`: https://mail.python.org/mailman/listinfo/cryptography-dev
 .. _`doc8`: https://github.com/openstack/doc8

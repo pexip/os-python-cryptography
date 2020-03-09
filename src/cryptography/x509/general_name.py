@@ -6,12 +6,10 @@ from __future__ import absolute_import, division, print_function
 
 import abc
 import ipaddress
+import warnings
 from email.utils import parseaddr
 
-import idna
-
 import six
-
 from six.moves import urllib_parse
 
 from cryptography import utils
@@ -32,6 +30,20 @@ _GENERAL_NAMES = {
 }
 
 
+def _lazy_import_idna():
+    # Import idna lazily becase it allocates a decent amount of memory, and
+    # we're only using it in deprecated paths.
+    try:
+        import idna
+        return idna
+    except ImportError:
+        raise ImportError(
+            "idna is not installed, but a deprecated feature that requires it"
+            " was used. See: https://cryptography.io/en/latest/faq/#importe"
+            "rror-idna-is-not-installed"
+        )
+
+
 class UnsupportedGeneralNameType(Exception):
     def __init__(self, msg, type):
         super(UnsupportedGeneralNameType, self).__init__(msg)
@@ -50,31 +62,46 @@ class GeneralName(object):
 @utils.register_interface(GeneralName)
 class RFC822Name(object):
     def __init__(self, value):
-        if not isinstance(value, six.text_type):
-            raise TypeError("value must be a unicode string")
+        if isinstance(value, six.text_type):
+            try:
+                value.encode("ascii")
+            except UnicodeEncodeError:
+                value = self._idna_encode(value)
+                warnings.warn(
+                    "RFC822Name values should be passed as an A-label string. "
+                    "This means unicode characters should be encoded via "
+                    "idna. Support for passing unicode strings (aka U-label) "
+                    "will be removed in a future version.",
+                    utils.PersistentlyDeprecated2017,
+                    stacklevel=2,
+                )
+        else:
+            raise TypeError("value must be string")
 
         name, address = parseaddr(value)
-        parts = address.split(u"@")
         if name or not address:
             # parseaddr has found a name (e.g. Name <email>) or the entire
             # value is an empty string.
             raise ValueError("Invalid rfc822name value")
-        elif len(parts) == 1:
-            # Single label email name. This is valid for local delivery.
-            # No IDNA encoding needed since there is no domain component.
-            encoded = address.encode("ascii")
-        else:
-            # A normal email of the form user@domain.com. Let's attempt to
-            # encode the domain component and reconstruct the address.
-            encoded = parts[0].encode("ascii") + b"@" + idna.encode(parts[1])
 
         self._value = value
-        self._encoded = encoded
 
     value = utils.read_only_property("_value")
 
+    @classmethod
+    def _init_without_validation(cls, value):
+        instance = cls.__new__(cls)
+        instance._value = value
+        return instance
+
+    def _idna_encode(self, value):
+        idna = _lazy_import_idna()
+        _, address = parseaddr(value)
+        parts = address.split(u"@")
+        return parts[0] + "@" + idna.encode(parts[1]).decode("ascii")
+
     def __repr__(self):
-        return "<RFC822Name(value={0})>".format(self.value)
+        return "<RFC822Name(value={0!r})>".format(self.value)
 
     def __eq__(self, other):
         if not isinstance(other, RFC822Name):
@@ -89,18 +116,47 @@ class RFC822Name(object):
         return hash(self.value)
 
 
+def _idna_encode(value):
+    idna = _lazy_import_idna()
+    # Retain prefixes '*.' for common/alt names and '.' for name constraints
+    for prefix in ['*.', '.']:
+        if value.startswith(prefix):
+            value = value[len(prefix):]
+            return prefix + idna.encode(value).decode("ascii")
+    return idna.encode(value).decode("ascii")
+
+
 @utils.register_interface(GeneralName)
 class DNSName(object):
     def __init__(self, value):
-        if not isinstance(value, six.text_type):
-            raise TypeError("value must be a unicode string")
+        if isinstance(value, six.text_type):
+            try:
+                value.encode("ascii")
+            except UnicodeEncodeError:
+                value = _idna_encode(value)
+                warnings.warn(
+                    "DNSName values should be passed as an A-label string. "
+                    "This means unicode characters should be encoded via "
+                    "idna. Support for passing unicode strings (aka U-label) "
+                    "will be removed in a future version.",
+                    utils.PersistentlyDeprecated2017,
+                    stacklevel=2,
+                )
+        else:
+            raise TypeError("value must be string")
 
         self._value = value
 
     value = utils.read_only_property("_value")
 
+    @classmethod
+    def _init_without_validation(cls, value):
+        instance = cls.__new__(cls)
+        instance._value = value
+        return instance
+
     def __repr__(self):
-        return "<DNSName(value={0})>".format(self.value)
+        return "<DNSName(value={0!r})>".format(self.value)
 
     def __eq__(self, other):
         if not isinstance(other, DNSName):
@@ -111,20 +167,46 @@ class DNSName(object):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash(self.value)
+
 
 @utils.register_interface(GeneralName)
 class UniformResourceIdentifier(object):
     def __init__(self, value):
-        if not isinstance(value, six.text_type):
-            raise TypeError("value must be a unicode string")
+        if isinstance(value, six.text_type):
+            try:
+                value.encode("ascii")
+            except UnicodeEncodeError:
+                value = self._idna_encode(value)
+                warnings.warn(
+                    "URI values should be passed as an A-label string. "
+                    "This means unicode characters should be encoded via "
+                    "idna. Support for passing unicode strings (aka U-label) "
+                    " will be removed in a future version.",
+                    utils.PersistentlyDeprecated2017,
+                    stacklevel=2,
+                )
+        else:
+            raise TypeError("value must be string")
 
+        self._value = value
+
+    value = utils.read_only_property("_value")
+
+    @classmethod
+    def _init_without_validation(cls, value):
+        instance = cls.__new__(cls)
+        instance._value = value
+        return instance
+
+    def _idna_encode(self, value):
+        idna = _lazy_import_idna()
         parsed = urllib_parse.urlparse(value)
-        if not parsed.hostname:
-            netloc = ""
-        elif parsed.port:
+        if parsed.port:
             netloc = (
                 idna.encode(parsed.hostname) +
-                ":{0}".format(parsed.port).encode("ascii")
+                ":{}".format(parsed.port).encode("ascii")
             ).decode("ascii")
         else:
             netloc = idna.encode(parsed.hostname).decode("ascii")
@@ -132,22 +214,17 @@ class UniformResourceIdentifier(object):
         # Note that building a URL in this fashion means it should be
         # semantically indistinguishable from the original but is not
         # guaranteed to be exactly the same.
-        uri = urllib_parse.urlunparse((
+        return urllib_parse.urlunparse((
             parsed.scheme,
             netloc,
             parsed.path,
             parsed.params,
             parsed.query,
             parsed.fragment
-        )).encode("ascii")
-
-        self._value = value
-        self._encoded = uri
-
-    value = utils.read_only_property("_value")
+        ))
 
     def __repr__(self):
-        return "<UniformResourceIdentifier(value={0})>".format(self.value)
+        return "<UniformResourceIdentifier(value={0!r})>".format(self.value)
 
     def __eq__(self, other):
         if not isinstance(other, UniformResourceIdentifier):
@@ -173,7 +250,7 @@ class DirectoryName(object):
     value = utils.read_only_property("_value")
 
     def __repr__(self):
-        return "<DirectoryName(value={0})>".format(self.value)
+        return "<DirectoryName(value={})>".format(self.value)
 
     def __eq__(self, other):
         if not isinstance(other, DirectoryName):
@@ -183,6 +260,9 @@ class DirectoryName(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash(self.value)
 
 
 @utils.register_interface(GeneralName)
@@ -196,7 +276,7 @@ class RegisteredID(object):
     value = utils.read_only_property("_value")
 
     def __repr__(self):
-        return "<RegisteredID(value={0})>".format(self.value)
+        return "<RegisteredID(value={})>".format(self.value)
 
     def __eq__(self, other):
         if not isinstance(other, RegisteredID):
@@ -206,6 +286,9 @@ class RegisteredID(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash(self.value)
 
 
 @utils.register_interface(GeneralName)
@@ -231,7 +314,7 @@ class IPAddress(object):
     value = utils.read_only_property("_value")
 
     def __repr__(self):
-        return "<IPAddress(value={0})>".format(self.value)
+        return "<IPAddress(value={})>".format(self.value)
 
     def __eq__(self, other):
         if not isinstance(other, IPAddress):
@@ -241,6 +324,9 @@ class IPAddress(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash(self.value)
 
 
 @utils.register_interface(GeneralName)
@@ -258,7 +344,7 @@ class OtherName(object):
     value = utils.read_only_property("_value")
 
     def __repr__(self):
-        return "<OtherName(type_id={0}, value={1!r})>".format(
+        return "<OtherName(type_id={}, value={!r})>".format(
             self.type_id, self.value)
 
     def __eq__(self, other):
@@ -269,3 +355,6 @@ class OtherName(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash((self.type_id, self.value))

@@ -6,8 +6,6 @@ from __future__ import absolute_import, division, print_function
 
 import binascii
 
-import pretend
-
 import pytest
 
 from cryptography.exceptions import (
@@ -19,10 +17,10 @@ from cryptography.hazmat.primitives.ciphers.algorithms import (
 )
 from cryptography.hazmat.primitives.cmac import CMAC
 
-from ..backends.test_multibackend import DummyCMACBackend
 from ...utils import (
     load_nist_vectors, load_vectors_from_file, raises_unsupported_algorithm
 )
+
 
 vectors_aes128 = load_vectors_from_file(
     "CMAC/nist-800-38b-aes128.txt", load_nist_vectors)
@@ -185,16 +183,18 @@ class TestCMAC(object):
         copy_cmac = cmac.copy()
         assert cmac.finalize() == copy_cmac.finalize()
 
-
-def test_copy():
-    backend = DummyCMACBackend([AES])
-    copied_ctx = pretend.stub()
-    pretend_ctx = pretend.stub(copy=lambda: copied_ctx)
-    key = b"2b7e151628aed2a6abf7158809cf4f3c"
-    cmac = CMAC(AES(key), backend=backend, ctx=pretend_ctx)
-
-    assert cmac._backend is backend
-    assert cmac.copy()._backend is backend
+    @pytest.mark.supported(
+        only_if=lambda backend: backend.cmac_algorithm_supported(
+            AES(fake_key)),
+        skip_message="Does not support CMAC."
+    )
+    def test_buffer_protocol(self, backend):
+        key = bytearray(b"2b7e151628aed2a6abf7158809cf4f3c")
+        cmac = CMAC(AES(key), backend)
+        cmac.update(b"6bc1bee22e409f96e93d7e117393172a")
+        assert cmac.finalize() == binascii.unhexlify(
+            b"a21e6e647bfeaf5ca0a5e1bcd957dfad"
+        )
 
 
 def test_invalid_backend():

@@ -63,7 +63,7 @@ a few details:
     >>> csr = x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
     ...     # Provide various details about who we are.
     ...     x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-    ...     x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"CA"),
+    ...     x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
     ...     x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
     ...     x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"My Company"),
     ...     x509.NameAttribute(NameOID.COMMON_NAME, u"mysite.com"),
@@ -123,7 +123,7 @@ Then we generate the certificate itself:
     >>> # subject and issuer are always the same.
     >>> subject = issuer = x509.Name([
     ...     x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-    ...     x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"CA"),
+    ...     x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
     ...     x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
     ...     x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"My Company"),
     ...     x509.NameAttribute(NameOID.COMMON_NAME, u"mysite.com"),
@@ -133,7 +133,7 @@ Then we generate the certificate itself:
     ... ).issuer_name(
     ...     issuer
     ... ).public_key(
-    ...     private_key.public_key()
+    ...     key.public_key()
     ... ).serial_number(
     ...     x509.random_serial_number()
     ... ).not_valid_before(
@@ -145,10 +145,27 @@ Then we generate the certificate itself:
     ...     x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
     ...     critical=False,
     ... # Sign our certificate with our private key
-    ... ).sign(private_key, hashes.SHA256(), default_backend())
+    ... ).sign(key, hashes.SHA256(), default_backend())
     >>> # Write our certificate out to disk.
     >>> with open("path/to/certificate.pem", "wb") as f:
     ...     f.write(cert.public_bytes(serialization.Encoding.PEM))
 
 And now we have a private key and certificate that can be used for local
 testing.
+
+Determining Certificate or Certificate Signing Request Key Type
+---------------------------------------------------------------
+
+Certificates and certificate signing requests can be issued with multiple
+key types. You can determine what the key type is by using ``isinstance``
+checks:
+
+.. code-block:: pycon
+
+    >>> public_key = cert.public_key()
+    >>> if isinstance(public_key, rsa.RSAPublicKey):
+    ...     # Do something RSA specific
+    ... elif isinstance(public_key, ec.EllipticCurvePublicKey):
+    ...     # Do something EC specific
+    ... else:
+    ...     # Remember to handle this case

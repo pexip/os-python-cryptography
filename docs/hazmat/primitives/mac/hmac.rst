@@ -1,7 +1,7 @@
 .. hazmat::
 
-Hash-based message authentication codes
-=======================================
+Hash-based message authentication codes (HMAC)
+==============================================
 
 .. currentmodule:: cryptography.hazmat.primitives.hmac
 
@@ -32,7 +32,7 @@ of a message.
         >>> h = hmac.HMAC(key, hashes.SHA256(), backend=default_backend())
         >>> h.update(b"message to hash")
         >>> h.finalize()
-        '#F\xdaI\x8b"e\xc4\xf1\xbb\x9a\x8fc\xff\xf5\xdex.\xbc\xcd/+\x8a\x86\x1d\x84\'\xc3\xa6\x1d\xd8J'
+        b'#F\xdaI\x8b"e\xc4\xf1\xbb\x9a\x8fc\xff\xf5\xdex.\xbc\xcd/+\x8a\x86\x1d\x84\'\xc3\xa6\x1d\xd8J'
 
     If the backend doesn't support the requested ``algorithm`` an
     :class:`~cryptography.exceptions.UnsupportedAlgorithm` exception will be
@@ -54,7 +54,8 @@ of a message.
         ...
         cryptography.exceptions.InvalidSignature: Signature did not match digest.
 
-    :param bytes key: Secret key as ``bytes``.
+    :param key: Secret key as ``bytes``.
+    :type key: :term:`bytes-like`
     :param algorithm: An
         :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
         instance such as those described in
@@ -69,7 +70,8 @@ of a message.
 
     .. method:: update(msg)
 
-        :param bytes msg: The bytes to hash and authenticate.
+        :param msg: The bytes to hash and authenticate.
+        :type msg: :term:`bytes-like`
         :raises cryptography.exceptions.AlreadyFinalized: See :meth:`finalize`
         :raises TypeError: This exception is raised if ``msg`` is not ``bytes``.
 

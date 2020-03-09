@@ -58,15 +58,6 @@ Elliptic Curve Signature Algorithms
         >>> private_key = ec.generate_private_key(
         ...     ec.SECP384R1(), default_backend()
         ... )
-        >>> signer = private_key.signer(ec.ECDSA(hashes.SHA256()))
-        >>> signer.update(b"this is some data I'd like")
-        >>> signer.update(b" to sign")
-        >>> signature = signer.finalize()
-
-    There is a shortcut to sign sufficiently short messages directly:
-
-    .. doctest::
-
         >>> data = b"this is some data I'd like to sign"
         >>> signature = private_key.sign(
         ...     data,
@@ -77,21 +68,56 @@ Elliptic Curve Signature Algorithms
     described in :rfc:`3279`. This can be decoded using
     :func:`~cryptography.hazmat.primitives.asymmetric.utils.decode_dss_signature`.
 
+    If your data is too large to be passed in a single call, you can hash it
+    separately and pass that value using
+    :class:`~cryptography.hazmat.primitives.asymmetric.utils.Prehashed`.
 
-    Verification requires the public key, the signature itself, the signed data, and knowledge of the hashing algorithm that was used when producing the signature:
+    .. doctest::
+
+        >>> from cryptography.hazmat.primitives.asymmetric import utils
+        >>> chosen_hash = hashes.SHA256()
+        >>> hasher = hashes.Hash(chosen_hash, default_backend())
+        >>> hasher.update(b"data & ")
+        >>> hasher.update(b"more data")
+        >>> digest = hasher.finalize()
+        >>> sig = private_key.sign(
+        ...     digest,
+        ...     ec.ECDSA(utils.Prehashed(chosen_hash))
+        ... )
+
+
+    Verification requires the public key, the signature itself, the signed
+    data, and knowledge of the hashing algorithm that was used when producing
+    the signature:
 
     >>> public_key = private_key.public_key()
-    >>> verifier = public_key.verifier(signature, ec.ECDSA(hashes.SHA256()))
-    >>> verifier.update(b"this is some data I'd like")
-    >>> verifier.update(b" to sign")
-    >>> verifier.verify()
-    True
+    >>> public_key.verify(signature, data, ec.ECDSA(hashes.SHA256()))
 
-    The last call will either return ``True`` or raise an :class:`~cryptography.exceptions.InvalidSignature` exception.
+    If the signature is not valid, an
+    :class:`~cryptography.exceptions.InvalidSignature` exception will be raised.
+
+    If your data is too large to be passed in a single call, you can hash it
+    separately and pass that value using
+    :class:`~cryptography.hazmat.primitives.asymmetric.utils.Prehashed`.
+
+    .. doctest::
+
+        >>> chosen_hash = hashes.SHA256()
+        >>> hasher = hashes.Hash(chosen_hash, default_backend())
+        >>> hasher.update(b"data & ")
+        >>> hasher.update(b"more data")
+        >>> digest = hasher.finalize()
+        >>> public_key.verify(
+        ...     sig,
+        ...     digest,
+        ...     ec.ECDSA(utils.Prehashed(chosen_hash))
+        ... )
 
     .. note::
-        Although in this case the public key was derived from the private one, in a typical setting you will not possess the private key. The `Key loading`_ section explains how to load the public key from other sources.
-
+        Although in this case the public key was derived from the private one,
+        in a typical setting you will not possess the private key. The
+        `Key loading`_ section explains how to load the public key from other
+        sources.
 
 
 .. class:: EllipticCurvePrivateNumbers(private_value, public_numbers)
@@ -126,6 +152,13 @@ Elliptic Curve Signature Algorithms
 
 .. class:: EllipticCurvePublicNumbers(x, y, curve)
 
+    .. warning::
+        The point represented by this object is not validated in any way until
+        :meth:`EllipticCurvePublicNumbers.public_key` is called and may not
+        represent a valid point on the curve. You should not attempt to perform
+        any computations using the values from this class until you have either
+        validated it yourself or called ``public_key()`` successfully.
+
     .. versionadded:: 0.5
 
     The collection of integers that make up an EC public key.
@@ -156,9 +189,16 @@ Elliptic Curve Signature Algorithms
         :param backend: An instance of
             :class:`~cryptography.hazmat.backends.interfaces.EllipticCurveBackend`.
 
+        :raises ValueError: Raised if the point is invalid for the curve.
         :returns: A new instance of :class:`EllipticCurvePublicKey`.
 
     .. method:: encode_point()
+
+        .. warning::
+
+            This method is deprecated as of version 2.5. Callers should migrate
+            to using
+            :meth:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey.public_bytes`.
 
         .. versionadded:: 1.1
 
@@ -171,6 +211,11 @@ Elliptic Curve Signature Algorithms
     .. classmethod:: from_encoded_point(curve, data)
 
         .. versionadded:: 1.1
+
+        .. note::
+
+            This has been deprecated in favor of
+            :meth:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey.from_encoded_point`
 
         Decodes a byte string as described in `SEC 1 v2.0`_ section 2.3.3 and
         returns an :class:`EllipticCurvePublicNumbers`. This method only
@@ -200,25 +245,102 @@ Elliptic Curve Key Exchange algorithm
     in NIST publication `800-56A`_, and later in `800-56Ar2`_.
 
     For most applications the ``shared_key`` should be passed to a key
-    derivation function.
+    derivation function. This allows mixing of additional information into the
+    key, derivation of multiple keys, and destroys any structure that may be
+    present.
+
+    .. warning::
+
+        This example does not give `forward secrecy`_ and is only provided as a
+        demonstration of the basic Diffie-Hellman construction. For real world
+        applications always use the ephemeral form described after this example.
 
     .. doctest::
 
         >>> from cryptography.hazmat.backends import default_backend
+        >>> from cryptography.hazmat.primitives import hashes
         >>> from cryptography.hazmat.primitives.asymmetric import ec
-        >>> private_key = ec.generate_private_key(
+        >>> from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+        >>> # Generate a private key for use in the exchange.
+        >>> server_private_key = ec.generate_private_key(
         ...     ec.SECP384R1(), default_backend()
         ... )
-        >>> peer_public_key = ec.generate_private_key(
+        >>> # In a real handshake the peer is a remote client. For this
+        >>> # example we'll generate another local private key though.
+        >>> peer_private_key = ec.generate_private_key(
         ...     ec.SECP384R1(), default_backend()
-        ... ).public_key()
-        >>> shared_key = private_key.exchange(ec.ECDH(), peer_public_key)
+        ... )
+        >>> shared_key = server_private_key.exchange(
+        ...     ec.ECDH(), peer_private_key.public_key())
+        >>> # Perform key derivation.
+        >>> derived_key = HKDF(
+        ...     algorithm=hashes.SHA256(),
+        ...     length=32,
+        ...     salt=None,
+        ...     info=b'handshake data',
+        ...     backend=default_backend()
+        ... ).derive(shared_key)
+        >>> # And now we can demonstrate that the handshake performed in the
+        >>> # opposite direction gives the same final value
+        >>> same_shared_key = peer_private_key.exchange(
+        ...     ec.ECDH(), server_private_key.public_key())
+        >>> # Perform key derivation.
+        >>> same_derived_key = HKDF(
+        ...     algorithm=hashes.SHA256(),
+        ...     length=32,
+        ...     salt=None,
+        ...     info=b'handshake data',
+        ...     backend=default_backend()
+        ... ).derive(same_shared_key)
+        >>> derived_key == same_derived_key
+        True
 
     ECDHE (or EECDH), the ephemeral form of this exchange, is **strongly
     preferred** over simple ECDH and provides `forward secrecy`_ when used.
     You must generate a new private key using :func:`generate_private_key` for
     each :meth:`~EllipticCurvePrivateKey.exchange` when performing an ECDHE key
-    exchange.
+    exchange. An example of the ephemeral form:
+
+    .. doctest::
+
+        >>> from cryptography.hazmat.backends import default_backend
+        >>> from cryptography.hazmat.primitives import hashes
+        >>> from cryptography.hazmat.primitives.asymmetric import ec
+        >>> from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+        >>> # Generate a private key for use in the exchange.
+        >>> private_key = ec.generate_private_key(
+        ...     ec.SECP384R1(), default_backend()
+        ... )
+        >>> # In a real handshake the peer_public_key will be received from the
+        >>> # other party. For this example we'll generate another private key
+        >>> # and get a public key from that.
+        >>> peer_public_key = ec.generate_private_key(
+        ...     ec.SECP384R1(), default_backend()
+        ... ).public_key()
+        >>> shared_key = private_key.exchange(ec.ECDH(), peer_public_key)
+        >>> # Perform key derivation.
+        >>> derived_key = HKDF(
+        ...     algorithm=hashes.SHA256(),
+        ...     length=32,
+        ...     salt=None,
+        ...     info=b'handshake data',
+        ...     backend=default_backend()
+        ... ).derive(shared_key)
+        >>> # For the next handshake we MUST generate another private key.
+        >>> private_key_2 = ec.generate_private_key(
+        ...     ec.SECP384R1(), default_backend()
+        ... )
+        >>> peer_public_key_2 = ec.generate_private_key(
+        ...     ec.SECP384R1(), default_backend()
+        ... ).public_key()
+        >>> shared_key_2 = private_key_2.exchange(ec.ECDH(), peer_public_key_2)
+        >>> derived_key_2 = HKDF(
+        ...     algorithm=hashes.SHA256(),
+        ...     length=32,
+        ...     salt=None,
+        ...     info=b'handshake data',
+        ...     backend=default_backend()
+        ... ).derive(shared_key_2)
 
 Elliptic Curves
 ---------------
@@ -230,7 +352,7 @@ is faster than diffie-hellman`_.
 
 .. note::
     Curves with a size of `less than 224 bits`_ should not be used. You should
-    strongly consider using curves of at least 224 bits.
+    strongly consider using curves of at least 224 :term:`bits`.
 
 Generally the NIST prime field ("P") curves are significantly faster than the
 other types suggested by NIST at both signing and verifying with ECDSA.
@@ -245,81 +367,11 @@ Tanja Lange.
 
 All named curves are instances of :class:`EllipticCurve`.
 
-.. class:: SECT571K1
+.. class:: SECP256R1
 
     .. versionadded:: 0.5
 
-    SECG curve ``sect571k1``. Also called NIST K-571.
-
-
-.. class:: SECT409K1
-
-    .. versionadded:: 0.5
-
-    SECG curve ``sect409k1``. Also called NIST K-409.
-
-
-.. class:: SECT283K1
-
-    .. versionadded:: 0.5
-
-    SECG curve ``sect283k1``. Also called NIST K-283.
-
-
-.. class:: SECT233K1
-
-    .. versionadded:: 0.5
-
-    SECG curve ``sect233k1``. Also called NIST K-233.
-
-
-.. class:: SECT163K1
-
-    .. versionadded:: 0.5
-
-    SECG curve ``sect163k1``. Also called NIST K-163.
-
-
-.. class:: SECT571R1
-
-    .. versionadded:: 0.5
-
-    SECG curve ``sect571r1``. Also called NIST B-571.
-
-
-.. class:: SECT409R1
-
-    .. versionadded:: 0.5
-
-    SECG curve ``sect409r1``. Also called NIST B-409.
-
-
-.. class:: SECT283R1
-
-    .. versionadded:: 0.5
-
-    SECG curve ``sect283r1``. Also called NIST B-283.
-
-
-.. class:: SECT233R1
-
-    .. versionadded:: 0.5
-
-    SECG curve ``sect233r1``. Also called NIST B-233.
-
-
-.. class:: SECT163R2
-
-    .. versionadded:: 0.5
-
-    SECG curve ``sect163r2``. Also called NIST B-163.
-
-
-.. class:: SECP521R1
-
-    .. versionadded:: 0.5
-
-    SECG curve ``secp521r1``. Also called NIST P-521.
+    SECG curve ``secp256r1``. Also called NIST P-256.
 
 
 .. class:: SECP384R1
@@ -329,14 +381,14 @@ All named curves are instances of :class:`EllipticCurve`.
     SECG curve ``secp384r1``. Also called NIST P-384.
 
 
-.. class:: SECP256R1
+.. class:: SECP521R1
 
     .. versionadded:: 0.5
 
-    SECG curve ``secp256r1``. Also called NIST P-256.
+    SECG curve ``secp521r1``. Also called NIST P-521.
 
 
-.. class:: SECT224R1
+.. class:: SECP224R1
 
     .. versionadded:: 0.5
 
@@ -357,6 +409,109 @@ All named curves are instances of :class:`EllipticCurve`.
     SECG curve ``secp256k1``.
 
 
+.. class:: BrainpoolP256R1
+
+    .. versionadded:: 2.2
+
+    Brainpool curve specified in :rfc:`5639`. These curves are discouraged
+    for new systems.
+
+.. class:: BrainpoolP384R1
+
+    .. versionadded:: 2.2
+
+    Brainpool curve specified in :rfc:`5639`. These curves are discouraged
+    for new systems.
+
+.. class:: BrainpoolP512R1
+
+    .. versionadded:: 2.2
+
+    Brainpool curve specified in :rfc:`5639`. These curves are discouraged
+    for new systems.
+
+.. class:: SECT571K1
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect571k1``. Also called NIST K-571. These binary curves are
+    discouraged for new systems.
+
+
+.. class:: SECT409K1
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect409k1``. Also called NIST K-409. These binary curves are
+    discouraged for new systems.
+
+
+.. class:: SECT283K1
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect283k1``. Also called NIST K-283. These binary curves are
+    discouraged for new systems.
+
+
+.. class:: SECT233K1
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect233k1``. Also called NIST K-233. These binary curves are
+    discouraged for new systems.
+
+
+.. class:: SECT163K1
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect163k1``. Also called NIST K-163. These binary curves are
+    discouraged for new systems.
+
+
+.. class:: SECT571R1
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect571r1``. Also called NIST B-571. These binary curves are
+    discouraged for new systems.
+
+
+.. class:: SECT409R1
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect409r1``. Also called NIST B-409. These binary curves are
+    discouraged for new systems.
+
+
+.. class:: SECT283R1
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect283r1``. Also called NIST B-283. These binary curves are
+    discouraged for new systems.
+
+
+.. class:: SECT233R1
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect233r1``. Also called NIST B-233. These binary curves are
+    discouraged for new systems.
+
+
+.. class:: SECT163R2
+
+    .. versionadded:: 0.5
+
+    SECG curve ``sect163r2``. Also called NIST B-163. These binary curves are
+    discouraged for new systems.
+
+
+
+
 Key Interfaces
 ~~~~~~~~~~~~~~
 
@@ -368,7 +523,7 @@ Key Interfaces
 
     .. attribute:: name
 
-        :type: string
+        :type: str
 
         The name of the curve. Usually the name used for the ASN.1 OID such as
         ``secp256k1``.
@@ -377,8 +532,8 @@ Key Interfaces
 
         :type: int
 
-        Size (in bits) of a secret scalar for the curve (as generated by
-        :func:`generate_private_key`).
+        Size (in :term:`bits`) of a secret scalar for the curve (as generated
+        by :func:`generate_private_key`).
 
 
 .. class:: EllipticCurveSignatureAlgorithm
@@ -403,29 +558,22 @@ Key Interfaces
     .. versionadded:: 0.5
 
     An elliptic curve private key for use with an algorithm such as `ECDSA`_ or
-    `EdDSA`_.
-
-    .. method:: signer(signature_algorithm)
-
-        Sign data which can be verified later by others using the public key.
-        The signature is formatted as DER-encoded bytes, as specified in
-        :rfc:`3279`.
-
-        :param signature_algorithm: An instance of
-            :class:`EllipticCurveSignatureAlgorithm`.
-
-        :returns:
-            :class:`~cryptography.hazmat.primitives.asymmetric.AsymmetricSignatureContext`
+    `EdDSA`_. An elliptic curve private key that is not an
+    :term:`opaque key` also implements
+    :class:`EllipticCurvePrivateKeyWithSerialization` to provide serialization
+    methods.
 
     .. method:: exchange(algorithm, peer_public_key)
 
         .. versionadded:: 1.1
 
-        Perform's a key exchange operation using the provided algorithm with
+        Performs a key exchange operation using the provided algorithm with
         the peer's public key.
 
-        For most applications the result should be passed to a key derivation
-        function.
+        For most applications the ``shared_key`` should be passed to a key
+        derivation function. This allows mixing of additional information into the
+        key, derivation of multiple keys, and destroys any structure that may be
+        present.
 
         :param algorithm: The key exchange algorithm, currently only
             :class:`~cryptography.hazmat.primitives.asymmetric.ec.ECDH` is
@@ -455,12 +603,23 @@ Key Interfaces
 
         :return bytes: Signature.
 
+    .. attribute:: key_size
+
+        .. versionadded:: 1.9
+
+        :type: int
+
+        Size (in :term:`bits`) of a secret scalar for the curve (as generated
+        by :func:`generate_private_key`).
+
 
 .. class:: EllipticCurvePrivateKeyWithSerialization
 
     .. versionadded:: 0.8
 
-    Extends :class:`EllipticCurvePrivateKey`.
+    This interface contains additional methods relating to serialization.
+    Any object with this interface also has all the methods from
+    :class:`EllipticCurvePrivateKey`.
 
     .. method:: private_numbers()
 
@@ -501,20 +660,6 @@ Key Interfaces
 
     An elliptic curve public key.
 
-    .. method:: verifier(signature, signature_algorithm)
-
-        Verify data was signed by the private key associated with this public
-        key.
-
-        :param bytes signature: The signature to verify. DER encoded as
-            specified in :rfc:`3279`.
-
-        :param signature_algorithm: An instance of
-            :class:`EllipticCurveSignatureAlgorithm`.
-
-        :returns:
-            :class:`~cryptography.hazmat.primitives.asymmetric.AsymmetricVerificationContext`
-
      .. attribute:: curve
 
         :type: :class:`EllipticCurve`
@@ -529,12 +674,20 @@ Key Interfaces
 
     .. method:: public_bytes(encoding, format)
 
-        Allows serialization of the key to bytes. Encoding (
-        :attr:`~cryptography.hazmat.primitives.serialization.Encoding.PEM` or
+        Allows serialization of the key data to bytes. When encoding the public
+        key the encodings (
+        :attr:`~cryptography.hazmat.primitives.serialization.Encoding.PEM`,
         :attr:`~cryptography.hazmat.primitives.serialization.Encoding.DER`) and
         format (
         :attr:`~cryptography.hazmat.primitives.serialization.PublicFormat.SubjectPublicKeyInfo`)
-        are chosen to define the exact serialization.
+        are chosen to define the exact serialization. When encoding the point
+        the encoding
+        :attr:`~cryptography.hazmat.primitives.serialization.Encoding.X962`
+        should be used with the formats (
+        :attr:`~cryptography.hazmat.primitives.serialization.PublicFormat.UncompressedPoint`
+        or
+        :attr:`~cryptography.hazmat.primitives.serialization.PublicFormat.CompressedPoint`
+        ).
 
         :param encoding: A value from the
             :class:`~cryptography.hazmat.primitives.serialization.Encoding` enum.
@@ -542,7 +695,7 @@ Key Interfaces
         :param format: A value from the
             :class:`~cryptography.hazmat.primitives.serialization.PublicFormat` enum.
 
-        :return bytes: Serialized key.
+        :return bytes: Serialized data.
 
     .. method:: verify(signature, data, signature_algorithm)
 
@@ -560,6 +713,36 @@ Key Interfaces
 
         :raises cryptography.exceptions.InvalidSignature: If the signature does
             not validate.
+
+    .. attribute:: key_size
+
+        .. versionadded:: 1.9
+
+        :type: int
+
+        Size (in :term:`bits`) of a secret scalar for the curve (as generated
+        by :func:`generate_private_key`).
+
+    .. classmethod:: from_encoded_point(curve, data)
+
+        .. versionadded:: 2.5
+
+        Decodes a byte string as described in `SEC 1 v2.0`_ section 2.3.3 and
+        returns an :class:`EllipticCurvePublicKey`. This class method supports
+        compressed points.
+
+        :param curve: An
+            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurve`
+            instance.
+
+        :param bytes data: The serialized point byte string.
+
+        :returns: An :class:`EllipticCurvePublicKey` instance.
+
+        :raises ValueError: Raised when an invalid point is supplied.
+
+        :raises TypeError: Raised when curve is not an
+            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurve`.
 
 
 .. class:: EllipticCurvePublicKeyWithSerialization
@@ -589,9 +772,9 @@ This sample demonstrates how to generate a private key and serialize it.
     ...     encoding=serialization.Encoding.PEM,
     ...     format=serialization.PrivateFormat.PKCS8,
     ...     encryption_algorithm=serialization.BestAvailableEncryption(b'testpassword')
-    ...     )
+    ... )
     >>> serialized_private.splitlines()[0]
-    '-----BEGIN ENCRYPTED PRIVATE KEY-----'
+    b'-----BEGIN ENCRYPTED PRIVATE KEY-----'
 
 You can also serialize the key without a password, by relying on
 :class:`~cryptography.hazmat.primitives.serialization.NoEncryption`.
@@ -605,9 +788,9 @@ The public key is serialized as follows:
     >>> serialized_public = public_key.public_bytes(
     ...     encoding=serialization.Encoding.PEM,
     ...     format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ...     )
+    ... )
     >>> serialized_public.splitlines()[0]
-    '-----BEGIN PUBLIC KEY-----'
+    b'-----BEGIN PUBLIC KEY-----'
 
 This is the part that you would normally share with the rest of the world.
 
@@ -622,24 +805,150 @@ in PEM format.
 .. doctest::
 
     >>> loaded_public_key = serialization.load_pem_public_key(
-    ...    serialized_public,
-    ...    backend=default_backend()
-    ...    )
+    ...     serialized_public,
+    ...     backend=default_backend()
+    ... )
 
     >>> loaded_private_key = serialization.load_pem_private_key(
-    ...    serialized_private,
-    ...    password=b'testpassword',  # or password=None, if in plain text
-    ...    backend=default_backend()
-    ...    )
+    ...     serialized_private,
+    ...     # or password=None, if in plain text
+    ...     password=b'testpassword',
+    ...     backend=default_backend()
+    ... )
 
 
-.. _`FIPS 186-3`: http://csrc.nist.gov/publications/fips/fips186-3/fips_186-3.pdf
-.. _`FIPS 186-4`: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf
-.. _`800-56A`: http://csrc.nist.gov/publications/nistpubs/800-56A/SP800-56A_Revision1_Mar08-2007.pdf
-.. _`800-56Ar2`: http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
+Elliptic Curve Object Identifiers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. class:: EllipticCurveOID
+
+    .. versionadded:: 2.4
+
+    .. attribute:: SECP192R1
+
+        Corresponds to the dotted string ``"1.2.840.10045.3.1.1"``.
+
+    .. attribute:: SECP224R1
+
+        Corresponds to the dotted string ``"1.3.132.0.33"``.
+
+    .. attribute:: SECP256K1
+
+        Corresponds to the dotted string ``"1.3.132.0.10"``.
+
+    .. attribute:: SECP256R1
+
+        Corresponds to the dotted string ``"1.2.840.10045.3.1.7"``.
+
+    .. attribute:: SECP384R1
+
+        Corresponds to the dotted string ``"1.3.132.0.34"``.
+
+    .. attribute:: SECP521R1
+
+        Corresponds to the dotted string ``"1.3.132.0.35"``.
+
+    .. attribute:: BRAINPOOLP256R1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.36.3.3.2.8.1.1.7"``.
+
+    .. attribute:: BRAINPOOLP384R1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.36.3.3.2.8.1.1.11"``.
+
+    .. attribute:: BRAINPOOLP512R1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.36.3.3.2.8.1.1.13"``.
+
+    .. attribute:: SECT163K1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.1"``.
+
+    .. attribute:: SECT163R2
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.15"``.
+
+    .. attribute:: SECT233K1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.26"``.
+
+    .. attribute:: SECT233R1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.27"``.
+
+    .. attribute:: SECT283K1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.16"``.
+
+    .. attribute:: SECT283R1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.17"``.
+
+    .. attribute:: SECT409K1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.36"``.
+
+    .. attribute:: SECT409R1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.37"``.
+
+    .. attribute:: SECT571K1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.38"``.
+
+    .. attribute:: SECT571R1
+
+        .. versionadded:: 2.5
+
+        Corresponds to the dotted string ``"1.3.132.0.39"``.
+
+.. function:: get_curve_for_oid(oid)
+
+    .. versionadded:: 2.6
+
+    A function that takes an :class:`~cryptography.x509.ObjectIdentifier`
+    and returns the associated elliptic curve class.
+
+    :param oid: An instance of
+        :class:`~cryptography.x509.ObjectIdentifier`.
+
+    :returns: The matching elliptic curve class. The returned class conforms
+        to the :class:`EllipticCurve` interface.
+
+    :raises LookupError: Raised if no elliptic curve is found that matches
+        the provided object identifier.
+
+.. _`FIPS 186-3`: https://csrc.nist.gov/csrc/media/publications/fips/186/3/archive/2009-06-25/documents/fips_186-3.pdf
+.. _`FIPS 186-4`: https://csrc.nist.gov/publications/detail/fips/186/4/final
+.. _`800-56A`: https://csrc.nist.gov/publications/detail/sp/800-56a/revised/archive/2007-03-14
+.. _`800-56Ar2`: https://csrc.nist.gov/publications/detail/sp/800-56a/rev-2/final
 .. _`some concern`: https://crypto.stackexchange.com/questions/10263/should-we-trust-the-nist-recommended-ecc-parameters
-.. _`less than 224 bits`: http://www.ecrypt.eu.org/ecrypt2/documents/D.SPA.20.pdf
-.. _`elliptic curve diffie-hellman is faster than diffie-hellman`: http://digitalcommons.unl.edu/cgi/viewcontent.cgi?article=1100&context=cseconfwork
+.. _`less than 224 bits`: https://www.cosic.esat.kuleuven.be/ecrypt/ecrypt2/documents/D.SPA.20.pdf
+.. _`elliptic curve diffie-hellman is faster than diffie-hellman`: https://digitalcommons.unl.edu/cgi/viewcontent.cgi?article=1100&context=cseconfwork
 .. _`minimize the number of security concerns for elliptic-curve cryptography`: https://cr.yp.to/ecdh/curve25519-20060209.pdf
 .. _`SafeCurves`: https://safecurves.cr.yp.to/
 .. _`ECDSA`: https://en.wikipedia.org/wiki/ECDSA

@@ -49,6 +49,7 @@ Different KDFs are suitable for different tasks such as:
         >>> from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
         >>> from cryptography.hazmat.backends import default_backend
         >>> backend = default_backend()
+        >>> # Salts should be randomly generated
         >>> salt = os.urandom(16)
         >>> # derive
         >>> kdf = PBKDF2HMAC(
@@ -71,10 +72,10 @@ Different KDFs are suitable for different tasks such as:
 
     :param algorithm: An instance of
         :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`.
-    :param int length: The desired length of the derived key. Maximum is
-        (2\ :sup:`32` - 1) * ``algorithm.digest_size``.
-    :param bytes salt: A salt. `NIST SP 800-132`_ recommends 128-bits or
-        longer.
+    :param int length: The desired length of the derived key in bytes. Maximum
+        is (2\ :sup:`32` - 1) * ``algorithm.digest_size``.
+    :param bytes salt: A salt. Secure values [#nist]_ are 128-bits (16 bytes)
+        or longer and randomly generated.
     :param int iterations: The number of iterations to perform of the hash
         function. This can be used to control the length of time the operation
         takes. Higher numbers help mitigate brute force attacks against derived
@@ -91,8 +92,9 @@ Different KDFs are suitable for different tasks such as:
 
     .. method:: derive(key_material)
 
-        :param bytes key_material: The input key material. For PBKDF2 this
+        :param key_material: The input key material. For PBKDF2 this
             should be a password.
+        :type key_material: :term:`bytes-like`
         :return bytes: the derived key.
         :raises cryptography.exceptions.AlreadyFinalized: This is raised when
                                                           :meth:`derive` or
@@ -170,8 +172,8 @@ Different KDFs are suitable for different tasks such as:
     :param algorithm: An instance of
         :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`.
 
-    :param int length: The desired length of the derived key. Maximum is
-        ``255 * (algorithm.digest_size // 8)``.
+    :param int length: The desired length of the derived key in bytes. Maximum
+        is ``255 * (algorithm.digest_size // 8)``.
 
     :param bytes salt: A salt. Randomizes the KDF's output. Optional, but
         highly recommended. Ideally as many bits of entropy as the security
@@ -198,7 +200,8 @@ Different KDFs are suitable for different tasks such as:
 
     .. method:: derive(key_material)
 
-        :param bytes key_material: The input key material.
+        :param key_material: The input key material.
+        :type key_material: :term:`bytes-like`
         :return bytes: The derived key.
         :raises TypeError: This exception is raised if ``key_material`` is not
                            ``bytes``.
@@ -269,8 +272,8 @@ Different KDFs are suitable for different tasks such as:
     :param algorithm: An instance of
         :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`.
 
-    :param int length: The desired length of the derived key. Maximum is
-        ``255 * (algorithm.digest_size // 8)``.
+    :param int length: The desired length of the derived key in bytes. Maximum
+        is ``255 * (algorithm.digest_size // 8)``.
 
     :param bytes info: Application specific context information.  If ``None``
         is explicitly passed an empty byte string will be used.
@@ -281,7 +284,6 @@ Different KDFs are suitable for different tasks such as:
     :raises cryptography.exceptions.UnsupportedAlgorithm: This is raised if the
         provided ``backend`` does not implement
         :class:`~cryptography.hazmat.backends.interfaces.HMACBackend`
-    :raises TypeError: This is raised if the provided ``info`` is a unicode object
     :raises TypeError: This exception is raised if ``info`` is not ``bytes``.
 
     .. method:: derive(key_material)
@@ -289,8 +291,6 @@ Different KDFs are suitable for different tasks such as:
         :param bytes key_material: The input key material.
         :return bytes: The derived key.
 
-        :raises TypeError: This is raised if the provided ``key_material`` is
-            a unicode object
         :raises TypeError: This exception is raised if ``key_material`` is not
                            ``bytes``.
 
@@ -313,7 +313,7 @@ Different KDFs are suitable for different tasks such as:
                                                           called more than
                                                           once.
         :raises TypeError: This is raised if the provided ``key_material`` is
-            a unicode object
+            a ``unicode`` object
 
         This checks whether deriving a new key from the supplied
         ``key_material`` generates the same key as the ``expected_key``, and
@@ -343,14 +343,14 @@ Different KDFs are suitable for different tasks such as:
         >>> otherinfo = b"concatkdf-example"
         >>> ckdf = ConcatKDFHash(
         ...     algorithm=hashes.SHA256(),
-        ...     length=256,
+        ...     length=32,
         ...     otherinfo=otherinfo,
         ...     backend=backend
         ... )
         >>> key = ckdf.derive(b"input key")
         >>> ckdf = ConcatKDFHash(
         ...     algorithm=hashes.SHA256(),
-        ...     length=256,
+        ...     length=32,
         ...     otherinfo=otherinfo,
         ...     backend=backend
         ... )
@@ -377,7 +377,8 @@ Different KDFs are suitable for different tasks such as:
 
     .. method:: derive(key_material)
 
-        :param bytes key_material: The input key material.
+        :param key_material: The input key material.
+        :type key_material: :term:`bytes-like`
         :return bytes: The derived key.
         :raises TypeError: This exception is raised if ``key_material`` is
                             not ``bytes``.
@@ -426,7 +427,7 @@ Different KDFs are suitable for different tasks such as:
         >>> otherinfo = b"concatkdf-example"
         >>> ckdf = ConcatKDFHMAC(
         ...     algorithm=hashes.SHA256(),
-        ...     length=256,
+        ...     length=32,
         ...     salt=salt,
         ...     otherinfo=otherinfo,
         ...     backend=backend
@@ -434,7 +435,7 @@ Different KDFs are suitable for different tasks such as:
         >>> key = ckdf.derive(b"input key")
         >>> ckdf = ConcatKDFHMAC(
         ...     algorithm=hashes.SHA256(),
-        ...     length=256,
+        ...     length=32,
         ...     salt=salt,
         ...     otherinfo=otherinfo,
         ...     backend=backend
@@ -527,14 +528,14 @@ Different KDFs are suitable for different tasks such as:
         >>> sharedinfo = b"ANSI X9.63 Example"
         >>> xkdf = X963KDF(
         ...     algorithm=hashes.SHA256(),
-        ...     length=256,
+        ...     length=32,
         ...     sharedinfo=sharedinfo,
         ...     backend=backend
         ... )
         >>> key = xkdf.derive(b"input key")
         >>> xkdf = X963KDF(
         ...     algorithm=hashes.SHA256(),
-        ...     length=256,
+        ...     length=32,
         ...     sharedinfo=sharedinfo,
         ...     backend=backend
         ... )
@@ -562,7 +563,8 @@ Different KDFs are suitable for different tasks such as:
 
     .. method:: derive(key_material)
 
-        :param bytes key_material: The input key material.
+        :param key_material: The input key material.
+        :type key_material: :term:`bytes-like`
         :return bytes: The derived key.
         :raises TypeError: This exception is raised if ``key_material`` is
                             not ``bytes``.
@@ -620,7 +622,7 @@ Different KDFs are suitable for different tasks such as:
         >>> kdf = KBKDFHMAC(
         ...     algorithm=hashes.SHA256(),
         ...     mode=Mode.CounterMode,
-        ...     length=256,
+        ...     length=32,
         ...     rlen=4,
         ...     llen=4,
         ...     location=CounterLocation.BeforeFixed,
@@ -633,7 +635,7 @@ Different KDFs are suitable for different tasks such as:
         >>> kdf = KBKDFHMAC(
         ...     algorithm=hashes.SHA256(),
         ...     mode=Mode.CounterMode,
-        ...     length=256,
+        ...     length=32,
         ...     rlen=4,
         ...     llen=4,
         ...     location=CounterLocation.BeforeFixed,
@@ -688,7 +690,8 @@ Different KDFs are suitable for different tasks such as:
 
     .. method:: derive(key_material)
 
-        :param bytes key_material: The input key material.
+        :param key_material: The input key material.
+        :type key_material: :term:`bytes-like`
         :return bytes: The derived key.
         :raises TypeError: This exception is raised if ``key_material`` is
                             not ``bytes``.
@@ -752,7 +755,7 @@ Different KDFs are suitable for different tasks such as:
     :class:`~cryptography.hazmat.primitives.kdf.KeyDerivationFunction`
     interface.
 
-    .. code-block:: python
+    .. doctest::
 
         >>> import os
         >>> from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
@@ -762,7 +765,7 @@ Different KDFs are suitable for different tasks such as:
         >>> # derive
         >>> kdf = Scrypt(
         ...     salt=salt,
-        ...     length=64,
+        ...     length=32,
         ...     n=2**14,
         ...     r=8,
         ...     p=1,
@@ -772,7 +775,7 @@ Different KDFs are suitable for different tasks such as:
         >>> # verify
         >>> kdf = Scrypt(
         ...     salt=salt,
-        ...     length=64,
+        ...     length=32,
         ...     n=2**14,
         ...     r=8,
         ...     p=1,
@@ -781,7 +784,7 @@ Different KDFs are suitable for different tasks such as:
         >>> kdf.verify(b"my great password", key)
 
     :param bytes salt: A salt.
-    :param int length: The desired length of the derived key.
+    :param int length: The desired length of the derived key in bytes.
     :param int n: CPU/Memory cost parameter. It must be larger than 1 and be a
         power of 2.
     :param int r: Block size parameter.
@@ -813,7 +816,8 @@ Different KDFs are suitable for different tasks such as:
 
     .. method:: derive(key_material)
 
-        :param bytes key_material: The input key material.
+        :param key_material: The input key material.
+        :type key_material: :term:`bytes-like`
         :return bytes: the derived key.
         :raises TypeError: This exception is raised if ``key_material`` is not
                            ``bytes``.
@@ -894,9 +898,11 @@ Interface
         stored derived key.
 
 
-.. _`NIST SP 800-132`: http://csrc.nist.gov/publications/nistpubs/800-132/nist-sp800-132.pdf
-.. _`NIST SP 800-108`: http://csrc.nist.gov/publications/nistpubs/800-108/sp800-108.pdf
-.. _`NIST SP 800-56Ar2`: http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
+.. [#nist] See `NIST SP 800-132`_.
+
+.. _`NIST SP 800-132`: https://csrc.nist.gov/publications/detail/sp/800-132/final
+.. _`NIST SP 800-108`: https://csrc.nist.gov/publications/detail/sp/800-108/final
+.. _`NIST SP 800-56Ar2`: https://csrc.nist.gov/publications/detail/sp/800-56a/rev-2/final
 .. _`ANSI X9.63:2001`: https://webstore.ansi.org
 .. _`SEC 1 v2.0`: http://www.secg.org/sec1-v2.pdf
 .. _`Password Storage Cheat Sheet`: https://www.owasp.org/index.php/Password_Storage_Cheat_Sheet
