@@ -1,3 +1,9 @@
+python-cryptography (2.6.1-3+deb10u2pexip2) pexip; urgency=medium
+
+  * Rebuild in buster environment
+
+ -- Steve McIntyre <steve.mcintyre@pexip.com>  Thu, 16 Jul 2020 03:42:44 +0000
+
 python-cryptography (2.6.1-3+deb10u2pexip1) pexip; urgency=medium
 
   * Migrate to Buster
