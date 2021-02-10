@@ -2,8 +2,11 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import pytest
+
+import six
 
 from cryptography.exceptions import AlreadyFinalized
 from cryptography.hazmat.primitives import padding
@@ -35,10 +38,10 @@ class TestPKCS7(object):
     def test_non_bytes(self):
         padder = padding.PKCS7(128).padder()
         with pytest.raises(TypeError):
-            padder.update("abc")
+            padder.update(u"abc")
         unpadder = padding.PKCS7(128).unpadder()
         with pytest.raises(TypeError):
-            unpadder.update("abc")
+            unpadder.update(u"abc")
 
     def test_zany_py2_bytes_subclass(self):
         class mybytes(bytes):  # noqa: N801
@@ -109,7 +112,7 @@ class TestPKCS7(object):
         padded_data = padder.update(b"")
         padded_data += padder.finalize()
 
-        for i in padded_data:
+        for i in six.iterbytes(padded_data):
             assert i == 255
 
         unpadder = padding.PKCS7(2040).unpadder()
@@ -158,10 +161,10 @@ class TestANSIX923(object):
     def test_non_bytes(self):
         padder = padding.ANSIX923(128).padder()
         with pytest.raises(TypeError):
-            padder.update("abc")  # type: ignore[arg-type]
+            padder.update(u"abc")
         unpadder = padding.ANSIX923(128).unpadder()
         with pytest.raises(TypeError):
-            unpadder.update("abc")  # type: ignore[arg-type]
+            unpadder.update(u"abc")
 
     def test_zany_py2_bytes_subclass(self):
         class mybytes(bytes):  # noqa: N801

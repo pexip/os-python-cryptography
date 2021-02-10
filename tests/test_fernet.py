@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import base64
 import calendar
@@ -11,9 +12,9 @@ import time
 
 import iso8601
 
-import pretend
-
 import pytest
+
+import six
 
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from cryptography.hazmat.backends import default_backend
@@ -57,7 +58,7 @@ class TestFernet(object):
         actual_token = f._encrypt_from_parts(
             src.encode("ascii"),
             calendar.timegm(iso8601.parse_date(now).utctimetuple()),
-            bytes(iv),
+            b"".join(map(six.int2byte, iv)),
         )
         assert actual_token == token.encode("ascii")
 
@@ -112,15 +113,17 @@ class TestFernet(object):
     def test_unicode(self, backend):
         f = Fernet(base64.urlsafe_b64encode(b"\x00" * 32), backend=backend)
         with pytest.raises(TypeError):
-            f.encrypt("")  # type: ignore[arg-type]
+            f.encrypt(u"")
         with pytest.raises(TypeError):
-            f.decrypt("")  # type: ignore[arg-type]
+            f.decrypt(u"")
 
     def test_timestamp_ignored_no_ttl(self, monkeypatch, backend):
         f = Fernet(base64.urlsafe_b64encode(b"\x00" * 32), backend=backend)
         pt = b"encrypt me"
         token = f.encrypt(pt)
-        monkeypatch.setattr(time, "time", pretend.raiser(ValueError))
+        ts = "1985-10-26T01:20:01-07:00"
+        current_time = calendar.timegm(iso8601.parse_date(ts).utctimetuple())
+        monkeypatch.setattr(time, "time", lambda: current_time)
         assert f.decrypt(token, ttl=None) == pt
 
     def test_ttl_required_in_decrypt_at_time(self, monkeypatch, backend):
@@ -128,11 +131,7 @@ class TestFernet(object):
         pt = b"encrypt me"
         token = f.encrypt(pt)
         with pytest.raises(ValueError):
-            f.decrypt_at_time(
-                token,
-                ttl=None,  # type: ignore[arg-type]
-                current_time=int(time.time()),
-            )
+            f.decrypt_at_time(token, ttl=None, current_time=int(time.time()))
 
     @pytest.mark.parametrize("message", [b"", b"Abc!", b"\x00\xFF\x00\x80"])
     def test_roundtrips(self, message, backend):
@@ -188,9 +187,7 @@ class TestMultiFernet(object):
         with pytest.raises(InvalidToken):
             f.decrypt_at_time(token, ttl=1, current_time=102)
         with pytest.raises(ValueError):
-            f.decrypt_at_time(
-                token, ttl=None, current_time=100  # type: ignore[arg-type]
-            )
+            f.decrypt_at_time(token, ttl=None, current_time=100)
 
     def test_no_fernets(self, backend):
         with pytest.raises(ValueError):
@@ -198,7 +195,7 @@ class TestMultiFernet(object):
 
     def test_non_iterable_argument(self, backend):
         with pytest.raises(TypeError):
-            MultiFernet(None)  # type: ignore[arg-type]
+            MultiFernet(None)
 
     def test_rotate(self, backend):
         f1 = Fernet(base64.urlsafe_b64encode(b"\x00" * 32), backend=backend)

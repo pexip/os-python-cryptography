@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 
@@ -11,7 +12,6 @@ from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.backends.interfaces import CipherBackend
 from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 
-from .utils import wycheproof_tests
 from ..hazmat.primitives.test_aead import _aead_supported
 
 
@@ -20,8 +20,8 @@ from ..hazmat.primitives.test_aead import _aead_supported
     reason="Requires OpenSSL with ChaCha20Poly1305 support",
 )
 @pytest.mark.requires_backend_interface(interface=CipherBackend)
-@wycheproof_tests("chacha20_poly1305_test.json")
-def test_chacha2poly1305(backend, wycheproof):
+@pytest.mark.wycheproof_tests("chacha20_poly1305_test.json")
+def test_chacha2poly1305(wycheproof):
     key = binascii.unhexlify(wycheproof.testcase["key"])
     iv = binascii.unhexlify(wycheproof.testcase["iv"])
     aad = binascii.unhexlify(wycheproof.testcase["aad"])

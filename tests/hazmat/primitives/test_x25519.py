@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
@@ -97,13 +98,9 @@ class TestX25519Exchange(object):
     def test_public_bytes_bad_args(self, backend):
         key = X25519PrivateKey.generate().public_key()
         with pytest.raises(ValueError):
-            key.public_bytes(
-                None, serialization.PublicFormat.Raw  # type: ignore[arg-type]
-            )
+            key.public_bytes(None, serialization.PublicFormat.Raw)
         with pytest.raises(TypeError):
-            key.public_bytes(
-                serialization.Encoding.Raw  # type: ignore[call-arg]
-            )
+            key.public_bytes(serialization.Encoding.Raw)
 
     # These vectors are also from RFC 7748
     # https://tools.ietf.org/html/rfc7748#section-6.1
@@ -164,7 +161,7 @@ class TestX25519Exchange(object):
     def test_invalid_type_exchange(self, backend):
         key = X25519PrivateKey.generate()
         with pytest.raises(TypeError):
-            key.exchange(object())  # type: ignore[arg-type]
+            key.exchange(object())
 
     def test_invalid_length_from_public_bytes(self, backend):
         with pytest.raises(ValueError):
@@ -186,14 +183,14 @@ class TestX25519Exchange(object):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.Raw,
-                None,  # type: ignore[arg-type]
+                None,
             )
 
         with pytest.raises(ValueError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.PKCS8,
-                None,  # type: ignore[arg-type]
+                None,
             )
 
         with pytest.raises(ValueError):

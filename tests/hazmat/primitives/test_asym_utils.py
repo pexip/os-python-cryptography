@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import pytest
 
@@ -35,19 +36,19 @@ def test_dss_signature():
 
 def test_encode_dss_non_integer():
     with pytest.raises(ValueError):
-        encode_dss_signature("h", 3)  # type: ignore[arg-type]
+        encode_dss_signature("h", 3)
 
     with pytest.raises(ValueError):
-        encode_dss_signature("3", "2")  # type: ignore[arg-type]
+        encode_dss_signature("3", "2")
 
     with pytest.raises(ValueError):
-        encode_dss_signature(3, "h")  # type: ignore[arg-type]
+        encode_dss_signature(3, "h")
 
     with pytest.raises(ValueError):
-        encode_dss_signature(3.3, 1.2)  # type: ignore[arg-type]
+        encode_dss_signature(3.3, 1.2)
 
     with pytest.raises(ValueError):
-        encode_dss_signature("hello", "world")  # type: ignore[arg-type]
+        encode_dss_signature("hello", "world")
 
 
 def test_encode_dss_negative():
@@ -73,4 +74,4 @@ def test_decode_dss_invalid_asn1():
 
 def test_pass_invalid_prehashed_arg():
     with pytest.raises(TypeError):
-        Prehashed(object())  # type: ignore[arg-type]
+        Prehashed(object())

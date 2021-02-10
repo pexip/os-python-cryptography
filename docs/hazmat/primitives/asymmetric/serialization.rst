@@ -924,14 +924,15 @@ Serialization Encryption Types
 
     Objects with this interface are usable as encryption types with methods
     like ``private_bytes`` available on
-    :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey`
+    :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKeyWithSerialization`
     ,
-    :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey`
-    , :class:`~cryptography.hazmat.primitives.asymmetric.dh.DHPrivateKey`
+    :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKeyWithSerialization`
+    , :class:`~cryptography.hazmat.primitives.asymmetric.dh.DHPrivateKeyWithSerialization`
     and
-    :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKey`.
+    :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKeyWithSerialization`.
     All other classes in this section represent the available choices for
-    encryption and have this interface.
+    encryption and have this interface. They are used with
+    :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKeyWithSerialization.private_bytes`.
 
 .. class:: BestAvailableEncryption(password)
 

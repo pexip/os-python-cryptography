@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
@@ -25,7 +26,7 @@ from ...utils import (
 )
 
 
-class FakeData(bytes):
+class FakeData(object):
     def __len__(self):
         return 2 ** 32 + 1
 
@@ -71,7 +72,7 @@ class TestChaCha20Poly1305(object):
 
     def test_bad_key(self, backend):
         with pytest.raises(TypeError):
-            ChaCha20Poly1305(object())  # type:ignore[arg-type]
+            ChaCha20Poly1305(object())
 
         with pytest.raises(ValueError):
             ChaCha20Poly1305(b"0" * 31)
@@ -121,53 +122,55 @@ class TestChaCha20Poly1305(object):
         pt2 = chacha.decrypt(nonce, ct2, b"")
         assert pt1 == pt2
 
-    def test_openssl_vectors(self, subtests, backend):
-        vectors = load_vectors_from_file(
+    @pytest.mark.parametrize(
+        "vector",
+        load_vectors_from_file(
             os.path.join("ciphers", "ChaCha20Poly1305", "openssl.txt"),
             load_nist_vectors,
-        )
-        for vector in vectors:
-            with subtests.test():
-                key = binascii.unhexlify(vector["key"])
-                nonce = binascii.unhexlify(vector["iv"])
-                aad = binascii.unhexlify(vector["aad"])
-                tag = binascii.unhexlify(vector["tag"])
-                pt = binascii.unhexlify(vector["plaintext"])
-                ct = binascii.unhexlify(vector["ciphertext"])
-                chacha = ChaCha20Poly1305(key)
-                if vector.get("result") == b"CIPHERFINAL_ERROR":
-                    with pytest.raises(InvalidTag):
-                        chacha.decrypt(nonce, ct + tag, aad)
-                else:
-                    computed_pt = chacha.decrypt(nonce, ct + tag, aad)
-                    assert computed_pt == pt
-                    computed_ct = chacha.encrypt(nonce, pt, aad)
-                    assert computed_ct == ct + tag
+        ),
+    )
+    def test_openssl_vectors(self, vector, backend):
+        key = binascii.unhexlify(vector["key"])
+        nonce = binascii.unhexlify(vector["iv"])
+        aad = binascii.unhexlify(vector["aad"])
+        tag = binascii.unhexlify(vector["tag"])
+        pt = binascii.unhexlify(vector["plaintext"])
+        ct = binascii.unhexlify(vector["ciphertext"])
+        chacha = ChaCha20Poly1305(key)
+        if vector.get("result") == b"CIPHERFINAL_ERROR":
+            with pytest.raises(InvalidTag):
+                chacha.decrypt(nonce, ct + tag, aad)
+        else:
+            computed_pt = chacha.decrypt(nonce, ct + tag, aad)
+            assert computed_pt == pt
+            computed_ct = chacha.encrypt(nonce, pt, aad)
+            assert computed_ct == ct + tag
 
-    def test_boringssl_vectors(self, subtests, backend):
-        vectors = load_vectors_from_file(
+    @pytest.mark.parametrize(
+        "vector",
+        load_vectors_from_file(
             os.path.join("ciphers", "ChaCha20Poly1305", "boringssl.txt"),
             load_nist_vectors,
-        )
-        for vector in vectors:
-            with subtests.test():
-                key = binascii.unhexlify(vector["key"])
-                nonce = binascii.unhexlify(vector["nonce"])
-                if vector["ad"].startswith(b'"'):
-                    aad = vector["ad"][1:-1]
-                else:
-                    aad = binascii.unhexlify(vector["ad"])
-                tag = binascii.unhexlify(vector["tag"])
-                if vector["in"].startswith(b'"'):
-                    pt = vector["in"][1:-1]
-                else:
-                    pt = binascii.unhexlify(vector["in"])
-                ct = binascii.unhexlify(vector["ct"].strip(b'"'))
-                chacha = ChaCha20Poly1305(key)
-                computed_pt = chacha.decrypt(nonce, ct + tag, aad)
-                assert computed_pt == pt
-                computed_ct = chacha.encrypt(nonce, pt, aad)
-                assert computed_ct == ct + tag
+        ),
+    )
+    def test_boringssl_vectors(self, vector, backend):
+        key = binascii.unhexlify(vector["key"])
+        nonce = binascii.unhexlify(vector["nonce"])
+        if vector["ad"].startswith(b'"'):
+            aad = vector["ad"][1:-1]
+        else:
+            aad = binascii.unhexlify(vector["ad"])
+        tag = binascii.unhexlify(vector["tag"])
+        if vector["in"].startswith(b'"'):
+            pt = vector["in"][1:-1]
+        else:
+            pt = binascii.unhexlify(vector["in"])
+        ct = binascii.unhexlify(vector["ct"].strip(b'"'))
+        chacha = ChaCha20Poly1305(key)
+        computed_pt = chacha.decrypt(nonce, ct + tag, aad)
+        assert computed_pt == pt
+        computed_ct = chacha.encrypt(nonce, pt, aad)
+        assert computed_ct == ct + tag
 
     def test_buffer_protocol(self, backend):
         key = ChaCha20Poly1305.generate_key()
@@ -215,7 +218,7 @@ class TestAESCCM(object):
             AESCCM(key, tag_length=2)
 
         with pytest.raises(TypeError):
-            AESCCM(key, tag_length="notanint")  # type:ignore[arg-type]
+            AESCCM(key, tag_length="notanint")
 
     def test_invalid_nonce_length(self, backend):
         key = AESCCM.generate_key(128)
@@ -228,8 +231,9 @@ class TestAESCCM(object):
         with pytest.raises(ValueError):
             aesccm.encrypt(nonce[:6], pt, None)
 
-    def test_vectors(self, subtests, backend):
-        vectors = _load_all_params(
+    @pytest.mark.parametrize(
+        "vector",
+        _load_all_params(
             os.path.join("ciphers", "AES", "CCM"),
             [
                 "DVPT128.rsp",
@@ -246,22 +250,22 @@ class TestAESCCM(object):
                 "VPT256.rsp",
             ],
             load_nist_ccm_vectors,
-        )
-        for vector in vectors:
-            with subtests.test():
-                key = binascii.unhexlify(vector["key"])
-                nonce = binascii.unhexlify(vector["nonce"])
-                adata = binascii.unhexlify(vector["adata"])[: vector["alen"]]
-                ct = binascii.unhexlify(vector["ct"])
-                pt = binascii.unhexlify(vector["payload"])[: vector["plen"]]
-                aesccm = AESCCM(key, vector["tlen"])
-                if vector.get("fail"):
-                    with pytest.raises(InvalidTag):
-                        aesccm.decrypt(nonce, ct, adata)
-                else:
-                    computed_pt = aesccm.decrypt(nonce, ct, adata)
-                    assert computed_pt == pt
-                    assert aesccm.encrypt(nonce, pt, adata) == ct
+        ),
+    )
+    def test_vectors(self, vector, backend):
+        key = binascii.unhexlify(vector["key"])
+        nonce = binascii.unhexlify(vector["nonce"])
+        adata = binascii.unhexlify(vector["adata"])[: vector["alen"]]
+        ct = binascii.unhexlify(vector["ct"])
+        pt = binascii.unhexlify(vector["payload"])[: vector["plen"]]
+        aesccm = AESCCM(key, vector["tlen"])
+        if vector.get("fail"):
+            with pytest.raises(InvalidTag):
+                aesccm.decrypt(nonce, ct, adata)
+        else:
+            computed_pt = aesccm.decrypt(nonce, ct, adata)
+            assert computed_pt == pt
+            assert aesccm.encrypt(nonce, pt, adata) == ct
 
     def test_roundtrip(self, backend):
         key = AESCCM.generate_key(128)
@@ -298,14 +302,14 @@ class TestAESCCM(object):
 
     def test_bad_key(self, backend):
         with pytest.raises(TypeError):
-            AESCCM(object())  # type:ignore[arg-type]
+            AESCCM(object())
 
         with pytest.raises(ValueError):
             AESCCM(b"0" * 31)
 
     def test_bad_generate_key(self, backend):
         with pytest.raises(TypeError):
-            AESCCM.generate_key(object())  # type:ignore[arg-type]
+            AESCCM.generate_key(object())
 
         with pytest.raises(ValueError):
             AESCCM.generate_key(129)
@@ -356,7 +360,7 @@ def _load_gcm_vectors():
         ],
         load_nist_vectors,
     )
-    return [x for x in vectors if len(x["tag"]) == 32 and len(x["iv"]) >= 16]
+    return [x for x in vectors if len(x["tag"]) == 32]
 
 
 @pytest.mark.requires_backend_interface(interface=CipherBackend)
@@ -372,32 +376,33 @@ class TestAESGCM(object):
         with pytest.raises(OverflowError):
             aesgcm.encrypt(nonce, b"", FakeData())
 
-    def test_vectors(self, backend, subtests):
-        vectors = _load_gcm_vectors()
-        for vector in vectors:
-            with subtests.test():
-                nonce = binascii.unhexlify(vector["iv"])
+    @pytest.mark.parametrize("vector", _load_gcm_vectors())
+    def test_vectors(self, backend, vector):
+        nonce = binascii.unhexlify(vector["iv"])
 
-                if backend._fips_enabled and len(nonce) != 12:
-                    # Red Hat disables non-96-bit IV support as part of its
-                    # FIPS patches.
-                    pytest.skip("Non-96-bit IVs unsupported in FIPS mode.")
+        if len(nonce) < 8:
+            pytest.skip("GCM does not support less than 64-bit IVs")
 
-                key = binascii.unhexlify(vector["key"])
-                aad = binascii.unhexlify(vector["aad"])
-                ct = binascii.unhexlify(vector["ct"])
-                pt = binascii.unhexlify(vector.get("pt", b""))
-                tag = binascii.unhexlify(vector["tag"])
-                aesgcm = AESGCM(key)
-                if vector.get("fail") is True:
-                    with pytest.raises(InvalidTag):
-                        aesgcm.decrypt(nonce, ct + tag, aad)
-                else:
-                    computed_ct = aesgcm.encrypt(nonce, pt, aad)
-                    assert computed_ct[:-16] == ct
-                    assert computed_ct[-16:] == tag
-                    computed_pt = aesgcm.decrypt(nonce, ct + tag, aad)
-                    assert computed_pt == pt
+        if backend._fips_enabled and len(nonce) != 12:
+            # Red Hat disables non-96-bit IV support as part of its FIPS
+            # patches.
+            pytest.skip("Non-96-bit IVs unsupported in FIPS mode.")
+
+        key = binascii.unhexlify(vector["key"])
+        aad = binascii.unhexlify(vector["aad"])
+        ct = binascii.unhexlify(vector["ct"])
+        pt = binascii.unhexlify(vector.get("pt", b""))
+        tag = binascii.unhexlify(vector["tag"])
+        aesgcm = AESGCM(key)
+        if vector.get("fail") is True:
+            with pytest.raises(InvalidTag):
+                aesgcm.decrypt(nonce, ct + tag, aad)
+        else:
+            computed_ct = aesgcm.encrypt(nonce, pt, aad)
+            assert computed_ct[:-16] == ct
+            assert computed_ct[-16:] == tag
+            computed_pt = aesgcm.decrypt(nonce, ct + tag, aad)
+            assert computed_pt == pt
 
     @pytest.mark.parametrize(
         ("nonce", "data", "associated_data"),
@@ -430,14 +435,14 @@ class TestAESGCM(object):
 
     def test_bad_key(self, backend):
         with pytest.raises(TypeError):
-            AESGCM(object())  # type:ignore[arg-type]
+            AESGCM(object())
 
         with pytest.raises(ValueError):
             AESGCM(b"0" * 31)
 
     def test_bad_generate_key(self, backend):
         with pytest.raises(TypeError):
-            AESGCM.generate_key(object())  # type:ignore[arg-type]
+            AESGCM.generate_key(object())
 
         with pytest.raises(ValueError):
             AESGCM.generate_key(129)

@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
@@ -70,10 +71,10 @@ class TestPoly1305(object):
     def test_reject_unicode(self, backend):
         poly = Poly1305(b"0" * 32)
         with pytest.raises(TypeError):
-            poly.update("")  # type:ignore[arg-type]
+            poly.update(u"")
 
         with pytest.raises(TypeError):
-            Poly1305.generate_tag(b"0" * 32, "")  # type:ignore[arg-type]
+            Poly1305.generate_tag(b"0" * 32, u"")
 
     def test_verify(self, backend):
         poly = Poly1305(b"0" * 32)
@@ -106,17 +107,17 @@ class TestPoly1305(object):
     def test_verify_reject_unicode(self, backend):
         poly = Poly1305(b"0" * 32)
         with pytest.raises(TypeError):
-            poly.verify("")  # type:ignore[arg-type]
+            poly.verify(u"")
 
         with pytest.raises(TypeError):
-            Poly1305.verify_tag(b"0" * 32, b"msg", "")  # type:ignore[arg-type]
+            Poly1305.verify_tag(b"0" * 32, b"msg", u"")
 
     def test_invalid_key_type(self, backend):
         with pytest.raises(TypeError):
-            Poly1305(object())  # type:ignore[arg-type]
+            Poly1305(object())
 
         with pytest.raises(TypeError):
-            Poly1305.generate_tag(object(), b"msg")  # type:ignore[arg-type]
+            Poly1305.generate_tag(object(), b"msg")
 
     def test_invalid_key_length(self, backend):
         with pytest.raises(ValueError):

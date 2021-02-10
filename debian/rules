@@ -2,8 +2,6 @@
 
 export DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow
 
-export CRYPTOGRAPHY_DONT_BUILD_RUST=1
-
 export PYBUILD_NAME=cryptography
 export PYBUILD_TEST_PYTEST=1
 export PYBUILD_TEST_ARGS={dir}/tests/
@@ -33,6 +31,6 @@ endif
 override_dh_python3:
 	dh_python3 --depends=cffi
 	sed -Ei -e '/^cffi/d' debian/python3-cryptography/usr/lib/python3*/dist-packages/cryptography*.egg-info/requires.txt
-	-rm debian/python3-cryptography/usr/lib/python3.*/dist-packages/cryptography/hazmat/bindings/_openssl.abi3.so \
-	   debian/python3-cryptography/usr/lib/python3.*/dist-packages/cryptography/hazmat/bindings/_padding.abi3.so
-	-rmdir -p debian/python3-cryptography/usr/lib/python3.*/dist-packages/cryptography/hazmat/bindings
+	-rm debian/python3-cryptography/usr/lib/python?.?/dist-packages/cryptography/hazmat/bindings/_openssl.abi3.so \
+	   debian/python3-cryptography/usr/lib/python?.?/dist-packages/cryptography/hazmat/bindings/_padding.abi3.so
+	-rmdir -p debian/python3-cryptography/usr/lib/python?.?/dist-packages/cryptography/hazmat/bindings

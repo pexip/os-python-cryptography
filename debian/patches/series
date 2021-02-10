@@ -1,8 +1,1 @@
 0001-Use-local-python3-doc-inventory.patch
-no-rust.patch
-openssl3/0001-fix-pkcs12-parse-ordering.-fixes-5872-5879.patch
-openssl3/0002-WIP-3.0.0-support-5250.patch
-openssl3/0003-switch-to-using-EVP_PKEY_derive-instead-of-DH_comput.patch
-openssl3/0004-Use-well-defined-enum-representation.patch
-openssl3/0005-3.0.0-deprecated-func-and-it-isn-t-useful-to-us-in-g.patch
-openssl3/0006-remove-unneeded-binding-6150.patch

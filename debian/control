@@ -14,21 +14,20 @@ Build-Depends:
  python3-all-dev,
  python3-asn1crypto (>= 0.21.0~),
  python3-cffi (>= 1.7~),
- python3-cryptography-vectors (<< 3.4.9~) <!nocheck>,
- python3-cryptography-vectors (>= 3.4.8~) <!nocheck>,
+ python3-cryptography-vectors (<< 3.3.3~) <!nocheck>,
+ python3-cryptography-vectors (>= 3.3.2~) <!nocheck>,
  python3-doc <!nodoc>,
  python3-hypothesis <!nocheck>,
  python3-idna (>= 2.0~),
  python3-iso8601 <!nocheck>,
  python3-pretend <!nocheck>,
  python3-pytest (>= 2.9.0) <!nocheck>,
- python3-pytest-subtests <!nocheck>,
  python3-setuptools (>= 11.3),
  python3-six (>= 1.4.1~),
  python3-sphinx <!nodoc>,
  python3-sphinx-rtd-theme <!nodoc>,
  python3-tz <!nocheck>,
-Standards-Version: 4.6.0
+Standards-Version: 4.5.0
 Homepage: https://cryptography.io/
 Vcs-Git: https://salsa.debian.org/python-team/packages/python-cryptography.git
 Vcs-Browser: https://salsa.debian.org/python-team/packages/python-cryptography

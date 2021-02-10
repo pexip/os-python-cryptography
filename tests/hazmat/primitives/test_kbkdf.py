@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import pytest
 
@@ -144,7 +145,7 @@ class TestKBKDFHMAC(object):
                 hashes.SHA1(),
                 Mode.CounterMode,
                 32,
-                b"r",  # type: ignore[arg-type]
+                b"r",
                 4,
                 CounterLocation.BeforeFixed,
                 b"label",
@@ -160,7 +161,7 @@ class TestKBKDFHMAC(object):
                 Mode.CounterMode,
                 32,
                 4,
-                b"l",  # type: ignore[arg-type]
+                b"l",
                 CounterLocation.BeforeFixed,
                 b"label",
                 b"context",
@@ -187,7 +188,7 @@ class TestKBKDFHMAC(object):
         with pytest.raises(TypeError):
             KBKDFHMAC(
                 hashes.SHA256(),
-                None,  # type: ignore[arg-type]
+                None,
                 32,
                 4,
                 4,
@@ -206,7 +207,7 @@ class TestKBKDFHMAC(object):
                 32,
                 4,
                 4,
-                None,  # type: ignore[arg-type]
+                None,
                 b"label",
                 b"context",
                 None,
@@ -231,7 +232,7 @@ class TestKBKDFHMAC(object):
     def test_unsupported_hash(self, backend):
         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_HASH):
             KBKDFHMAC(
-                object(),  # type: ignore[arg-type]
+                object(),
                 Mode.CounterMode,
                 32,
                 4,
@@ -282,9 +283,8 @@ class TestKBKDFHMAC(object):
                 4,
                 4,
                 CounterLocation.BeforeFixed,
-                "label",  # type: ignore[arg-type]
+                u"label",
                 b"context",
-                None,
                 backend=backend,
             )
 
@@ -298,7 +298,7 @@ class TestKBKDFHMAC(object):
                 4,
                 CounterLocation.BeforeFixed,
                 b"label",
-                "context",  # type: ignore[arg-type]
+                u"context",
                 None,
                 backend=backend,
             )
@@ -317,7 +317,7 @@ class TestKBKDFHMAC(object):
                 None,
                 backend=backend,
             )
-            kdf.derive("material")  # type: ignore[arg-type]
+            kdf.derive(u"material")
 
     def test_buffer_protocol(self, backend):
         kdf = KBKDFHMAC(

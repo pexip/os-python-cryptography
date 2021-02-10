@@ -16,6 +16,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+from __future__ import absolute_import, division, print_function
+
 import os
 import sys
 
@@ -44,7 +46,6 @@ sys.path.insert(0, os.path.abspath("."))
 # extensions  coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.autosectionlabel",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
@@ -80,7 +81,7 @@ copyright = "2013-2021, Individual Contributors"
 base_dir = os.path.join(os.path.dirname(__file__), os.pardir)
 about = {}
 with open(os.path.join(base_dir, "src", "cryptography", "__about__.py")) as f:
-    exec(f.read(), about)
+    exec (f.read(), about)
 
 version = release = about["__version__"]
 
@@ -199,5 +200,3 @@ linkcheck_ignore = [
     # Inconsistent small DH params they seem incapable of fixing
     r"https://www.secg.org/sec1-v2.pdf",
 ]
-
-autosectionlabel_prefix_document = True
