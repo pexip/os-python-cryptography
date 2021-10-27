@@ -7,3 +7,4 @@ aia-memleak-2.patch
 ecpkparameters.patch
 getrandom-tolerance.patch
 fips-mode.patch
+pexip_backport_assert_handling.patch
