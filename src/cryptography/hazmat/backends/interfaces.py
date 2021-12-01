@@ -2,15 +2,11 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import abc
 
-import six
 
-
-@six.add_metaclass(abc.ABCMeta)
-class CipherBackend(object):
+class CipherBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def cipher_supported(self, cipher, mode):
         """
@@ -30,8 +26,7 @@ class CipherBackend(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class HashBackend(object):
+class HashBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def hash_supported(self, algorithm):
         """
@@ -45,8 +40,7 @@ class HashBackend(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class HMACBackend(object):
+class HMACBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def hmac_supported(self, algorithm):
         """
@@ -57,12 +51,11 @@ class HMACBackend(object):
     @abc.abstractmethod
     def create_hmac_ctx(self, key, algorithm):
         """
-        Create a MACContext for calculating a message authentication code.
+        Create a context for calculating a message authentication code.
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class CMACBackend(object):
+class CMACBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def cmac_algorithm_supported(self, algorithm):
         """
@@ -72,12 +65,11 @@ class CMACBackend(object):
     @abc.abstractmethod
     def create_cmac_ctx(self, algorithm):
         """
-        Create a MACContext for calculating a message authentication code.
+        Create a context for calculating a message authentication code.
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class PBKDF2HMACBackend(object):
+class PBKDF2HMACBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def pbkdf2_hmac_supported(self, algorithm):
         """
@@ -86,15 +78,15 @@ class PBKDF2HMACBackend(object):
         """
 
     @abc.abstractmethod
-    def derive_pbkdf2_hmac(self, algorithm, length, salt, iterations,
-                           key_material):
+    def derive_pbkdf2_hmac(
+        self, algorithm, length, salt, iterations, key_material
+    ):
         """
         Return length bytes derived from provided PBKDF2 parameters.
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class RSABackend(object):
+class RSABackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def generate_rsa_private_key(self, public_exponent, key_size):
         """
@@ -128,8 +120,7 @@ class RSABackend(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class DSABackend(object):
+class DSABackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def generate_dsa_parameters(self, key_size):
         """
@@ -180,8 +171,7 @@ class DSABackend(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class EllipticCurveBackend(object):
+class EllipticCurveBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def elliptic_curve_signature_algorithm_supported(
         self, signature_algorithm, curve
@@ -228,8 +218,7 @@ class EllipticCurveBackend(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class PEMSerializationBackend(object):
+class PEMSerializationBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def load_pem_private_key(self, data, password):
         """
@@ -250,8 +239,7 @@ class PEMSerializationBackend(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class DERSerializationBackend(object):
+class DERSerializationBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def load_der_private_key(self, data, password):
         """
@@ -272,8 +260,7 @@ class DERSerializationBackend(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class X509Backend(object):
+class X509Backend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def load_pem_x509_certificate(self, data):
         """
@@ -331,8 +318,7 @@ class X509Backend(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class DHBackend(object):
+class DHBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def generate_dh_parameters(self, generator, key_size):
         """
@@ -386,8 +372,7 @@ class DHBackend(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ScryptBackend(object):
+class ScryptBackend(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def derive_scrypt(self, key_material, salt, length, n, r, p):
         """

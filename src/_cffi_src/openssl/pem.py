@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 INCLUDES = """
 #include <openssl/pem.h>
@@ -24,13 +23,9 @@ EVP_PKEY *PEM_read_bio_PrivateKey(BIO *, EVP_PKEY **, pem_password_cb *,
 
 int PEM_write_bio_PKCS8PrivateKey(BIO *, EVP_PKEY *, const EVP_CIPHER *,
                                   char *, int, pem_password_cb *, void *);
-int PEM_write_bio_PKCS8PrivateKey_nid(BIO *, EVP_PKEY *, int, char *, int,
-                                      pem_password_cb *, void *);
 
 int i2d_PKCS8PrivateKey_bio(BIO *, EVP_PKEY *, const EVP_CIPHER *,
                             char *, int, pem_password_cb *, void *);
-int i2d_PKCS8PrivateKey_nid_bio(BIO *, EVP_PKEY *, int,
-                                char *, int, pem_password_cb *, void *);
 
 int i2d_PKCS7_bio(BIO *, PKCS7 *);
 PKCS7 *d2i_PKCS7_bio(BIO *, PKCS7 **);

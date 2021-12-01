@@ -2,14 +2,12 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 INCLUDES = """
 #include <openssl/crypto.h>
 """
 
 TYPES = """
-static const long Cryptography_HAS_LOCKING_CALLBACKS;
 static const long Cryptography_HAS_MEM_FUNCTIONS;
 static const long Cryptography_HAS_OPENSSL_CLEANUP;
 
@@ -23,20 +21,10 @@ static const int OPENSSL_CFLAGS;
 static const int OPENSSL_BUILT_ON;
 static const int OPENSSL_PLATFORM;
 static const int OPENSSL_DIR;
-static const int CRYPTO_MEM_CHECK_ON;
-static const int CRYPTO_MEM_CHECK_OFF;
-static const int CRYPTO_MEM_CHECK_ENABLE;
-static const int CRYPTO_MEM_CHECK_DISABLE;
 """
 
 FUNCTIONS = """
-int CRYPTO_mem_ctrl(int);
-
 void OPENSSL_cleanup(void);
-
-/* as of 1.1.0 OpenSSL does its own locking *angelic chorus*. This function
-   is now a noop macro. We can delete this once we drop 1.0.2 support. */
-void (*CRYPTO_get_locking_callback(void))(int, int, const char *, int);
 
 /* SSLeay was removed in 1.1.0 */
 unsigned long SSLeay(void);
@@ -85,13 +73,8 @@ CUSTOMIZATIONS = """
 # define OPENSSL_PLATFORM        SSLEAY_PLATFORM
 # define OPENSSL_DIR             SSLEAY_DIR
 #endif
-#if CRYPTOGRAPHY_OPENSSL_LESS_THAN_110
-static const long Cryptography_HAS_LOCKING_CALLBACKS = 1;
-#else
-static const long Cryptography_HAS_LOCKING_CALLBACKS = 0;
-#endif
 
-#if CRYPTOGRAPHY_OPENSSL_LESS_THAN_110
+#if CRYPTOGRAPHY_IS_LIBRESSL
 static const long Cryptography_HAS_OPENSSL_CLEANUP = 0;
 
 void (*OPENSSL_cleanup)(void) = NULL;

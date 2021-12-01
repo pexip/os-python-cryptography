@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 INCLUDES = """
 #include <openssl/bio.h>
@@ -15,6 +14,7 @@ typedef ... BIO_METHOD;
 
 FUNCTIONS = """
 int BIO_free(BIO *);
+void BIO_free_all(BIO *);
 BIO *BIO_new_file(const char *, const char *);
 BIO *BIO_new_dgram(int, int);
 size_t BIO_ctrl_pending(BIO *);
@@ -40,10 +40,4 @@ void BIO_clear_retry_flags(BIO *);
 """
 
 CUSTOMIZATIONS = """
-#if CRYPTOGRAPHY_OPENSSL_LESS_THAN_110 && !CRYPTOGRAPHY_LIBRESSL_27_OR_GREATER
-int BIO_up_ref(BIO *b) {
-    CRYPTO_add(&b->references, 1, CRYPTO_LOCK_BIO);
-    return 1;
-}
-#endif
 """
