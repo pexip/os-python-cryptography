@@ -1,6 +1,8 @@
 python-cryptography (3.4.8-1pexip1) pexip; urgency=medium
 
   * New upstream release
+  * debian/patches/fips_mode.patch,
+    debian/patches/pexip_backport_assert_handling.patch: drop
 
  -- John-Mark Bell <jmb@pexip.com>  Fri, 10 Nov 2022 14:40:59 +0000
 

@@ -9,5 +9,3 @@ openssl3/0006-remove-unneeded-binding-6150.patch
 
 ecpkparameters.patch
 getrandom-tolerance.patch
-fips-mode.patch
-pexip_backport_assert_handling.patch
