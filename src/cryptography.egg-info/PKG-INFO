@@ -1,9 +1,9 @@
 Metadata-Version: 2.1
 Name: cryptography
-Version: 2.6.1
+Version: 3.4.8
 Summary: cryptography is a package which provides cryptographic recipes and primitives to Python developers.
 Home-page: https://github.com/pyca/cryptography
-Author: The cryptography developers
+Author: The Python Cryptographic Authority and individual contributors
 Author-email: cryptography-dev@python.org
 License: BSD or Apache License, Version 2.0
 Description: pyca/cryptography
@@ -17,8 +17,8 @@ Description: pyca/cryptography
             :target: https://cryptography.io
             :alt: Latest Docs
         
-        .. image:: https://travis-ci.org/pyca/cryptography.svg?branch=master
-            :target: https://travis-ci.org/pyca/cryptography
+        .. image:: https://github.com/pyca/cryptography/workflows/CI/badge.svg?branch=master
+            :target: https://github.com/pyca/cryptography/actions?query=workflow%3ACI+branch%3Amaster
         
         .. image:: https://codecov.io/github/pyca/cryptography/coverage.svg?branch=master
             :target: https://codecov.io/github/pyca/cryptography?branch=master
@@ -26,7 +26,7 @@ Description: pyca/cryptography
         
         ``cryptography`` is a package which provides cryptographic recipes and
         primitives to Python developers.  Our goal is for it to be your "cryptographic
-        standard library". It supports Python 2.7, Python 3.4+, and PyPy 5.4+.
+        standard library". It supports Python 3.6+ and PyPy3 7.2+.
         
         ``cryptography`` includes both high level recipes and low level interfaces to
         common cryptographic algorithms such as symmetric ciphers, message digests, and
@@ -73,10 +73,10 @@ Description: pyca/cryptography
         
         
         .. _`documentation`: https://cryptography.io/
-        .. _`the installation documentation`: https://cryptography.io/en/latest/installation/
+        .. _`the installation documentation`: https://cryptography.io/en/latest/installation.html
         .. _`issue tracker`: https://github.com/pyca/cryptography/issues
         .. _`cryptography-dev`: https://mail.python.org/mailman/listinfo/cryptography-dev
-        .. _`security reporting`: https://cryptography.io/en/latest/security/
+        .. _`security reporting`: https://cryptography.io/en/latest/security.html
         
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
@@ -90,19 +90,20 @@ Classifier: Operating System :: POSIX :: BSD
 Classifier: Operating System :: POSIX :: Linux
 Classifier: Operating System :: Microsoft :: Windows
 Classifier: Programming Language :: Python
-Classifier: Programming Language :: Python :: 2
-Classifier: Programming Language :: Python :: 2.7
 Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.4
-Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3 :: Only
 Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: Implementation :: CPython
 Classifier: Programming Language :: Python :: Implementation :: PyPy
 Classifier: Topic :: Security :: Cryptography
-Requires-Python: >=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*
-Provides-Extra: idna
-Provides-Extra: docstest
-Provides-Extra: pep8test
-Provides-Extra: docs
+Requires-Python: >=3.6
+Description-Content-Type: text/x-rst
 Provides-Extra: test
+Provides-Extra: docs
+Provides-Extra: docstest
+Provides-Extra: sdist
+Provides-Extra: pep8test
+Provides-Extra: ssh
