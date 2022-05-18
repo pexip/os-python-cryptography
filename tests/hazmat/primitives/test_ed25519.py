@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
@@ -69,29 +68,29 @@ def test_ed25519_unsupported(backend):
     skip_message="Requires OpenSSL with Ed25519 support",
 )
 class TestEd25519Signing(object):
-    @pytest.mark.parametrize(
-        "vector",
-        load_vectors_from_file(
+    def test_sign_verify_input(self, backend, subtests):
+        vectors = load_vectors_from_file(
             os.path.join("asymmetric", "Ed25519", "sign.input"),
             load_ed25519_vectors,
-        ),
-    )
-    def test_sign_verify_input(self, vector, backend):
-        sk = binascii.unhexlify(vector["secret_key"])
-        pk = binascii.unhexlify(vector["public_key"])
-        message = binascii.unhexlify(vector["message"])
-        signature = binascii.unhexlify(vector["signature"])
-        private_key = Ed25519PrivateKey.from_private_bytes(sk)
-        computed_sig = private_key.sign(message)
-        assert computed_sig == signature
-        public_key = private_key.public_key()
-        assert (
-            public_key.public_bytes(
-                serialization.Encoding.Raw, serialization.PublicFormat.Raw
-            )
-            == pk
         )
-        public_key.verify(signature, message)
+        for vector in vectors:
+            with subtests.test():
+                sk = binascii.unhexlify(vector["secret_key"])
+                pk = binascii.unhexlify(vector["public_key"])
+                message = binascii.unhexlify(vector["message"])
+                signature = binascii.unhexlify(vector["signature"])
+                private_key = Ed25519PrivateKey.from_private_bytes(sk)
+                computed_sig = private_key.sign(message)
+                assert computed_sig == signature
+                public_key = private_key.public_key()
+                assert (
+                    public_key.public_bytes(
+                        serialization.Encoding.Raw,
+                        serialization.PublicFormat.Raw,
+                    )
+                    == pk
+                )
+                public_key.verify(signature, message)
 
     def test_invalid_signature(self, backend):
         key = Ed25519PrivateKey.generate()
@@ -119,11 +118,15 @@ class TestEd25519Signing(object):
 
     def test_invalid_type_public_bytes(self, backend):
         with pytest.raises(TypeError):
-            Ed25519PublicKey.from_public_bytes(object())
+            Ed25519PublicKey.from_public_bytes(
+                object()  # type: ignore[arg-type]
+            )
 
     def test_invalid_type_private_bytes(self, backend):
         with pytest.raises(TypeError):
-            Ed25519PrivateKey.from_private_bytes(object())
+            Ed25519PrivateKey.from_private_bytes(
+                object()  # type: ignore[arg-type]
+            )
 
     def test_invalid_length_from_public_bytes(self, backend):
         with pytest.raises(ValueError):
@@ -143,14 +146,14 @@ class TestEd25519Signing(object):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.Raw,
-                None,
+                None,  # type: ignore[arg-type]
             )
 
         with pytest.raises(ValueError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.PKCS8,
-                None,
+                None,  # type: ignore[arg-type]
             )
 
         with pytest.raises(ValueError):

@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import os
 
@@ -50,7 +49,7 @@ class TestHOTP(object):
         secret = os.urandom(16)
 
         with pytest.raises(TypeError):
-            HOTP(secret, 6, MD5(), backend)
+            HOTP(secret, 6, MD5(), backend)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("params", vectors)
     def test_truncate(self, backend, params):
@@ -79,8 +78,7 @@ class TestHOTP(object):
         hotp_value = params["hotp"]
 
         hotp = HOTP(secret, 6, SHA1(), backend)
-
-        assert hotp.verify(hotp_value, counter) is None
+        hotp.verify(hotp_value, counter)
 
     def test_invalid_verify(self, backend):
         secret = b"12345678901234567890"
@@ -95,7 +93,7 @@ class TestHOTP(object):
         secret = b"12345678901234567890"
 
         with pytest.raises(TypeError):
-            HOTP(secret, b"foo", SHA1(), backend)
+            HOTP(secret, b"foo", SHA1(), backend)  # type: ignore[arg-type]
 
     def test_get_provisioning_uri(self, backend):
         secret = b"12345678901234567890"

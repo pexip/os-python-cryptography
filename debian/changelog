@@ -1,3 +1,28 @@
+python-cryptography (3.4.8-2) unstable; urgency=medium
+
+  * Team upload.
+  * Add support for OpenSSL 3.0.1 (Closes: #1006008)
+
+ -- Stefano Rivera <stefanor@debian.org>  Wed, 18 May 2022 12:22:15 -0400
+
+python-cryptography (3.4.8-1) unstable; urgency=medium
+
+  [ Simon Chopin ]
+  * New upstream release.
+    - Closes: #995431
+  * d/p/no_rust.patch, d/control: Disable the Rust part of the build
+    since it's not yet mandatory
+  * d/control, d/tests/control: new build-dependency on python-pytest-subtests
+    for the testsuite
+  * d/p/openssl3/*: Cherry-pick a patchset for OpenSSL3 compatibility.
+    - LP: #1946189
+
+  [ Tristan Seligmann ]
+  * Update standards version to 4.6.0, no changes needed.
+  * Fix Python dir glob for 3.10.
+
+ -- Tristan Seligmann <mithrandi@debian.org>  Wed, 01 Dec 2021 17:54:50 +0200
+
 python-cryptography (3.3.2-1) unstable; urgency=high
 
   * New upstream release.

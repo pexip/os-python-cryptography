@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import json
 import os
@@ -127,6 +126,14 @@ main(sys.argv)
 def assert_no_memory_leaks(s, argv=[]):
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
+
+    # When using pytest-cov it attempts to instrument subprocesses. This
+    # causes the memleak tests to raise exceptions.
+    # we don't need coverage so we remove the env vars.
+    env.pop("COV_CORE_CONFIG", None)
+    env.pop("COV_CORE_DATAFILE", None)
+    env.pop("COV_CORE_SOURCE", None)
+
     argv = [
         sys.executable,
         "-c",
@@ -140,6 +147,8 @@ def assert_no_memory_leaks(s, argv=[]):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+    assert proc.stdout is not None
+    assert proc.stderr is not None
     try:
         proc.wait()
         if proc.returncode == 255:

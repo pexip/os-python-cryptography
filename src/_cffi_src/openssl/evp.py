@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 INCLUDES = """
 #include <openssl/evp.h>
@@ -48,6 +47,7 @@ int EVP_CipherUpdate(EVP_CIPHER_CTX *, unsigned char *, int *,
                      const unsigned char *, int);
 int EVP_CipherFinal_ex(EVP_CIPHER_CTX *, unsigned char *, int *);
 int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *);
+int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *);
 EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void);
 void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *);
 int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *, int);

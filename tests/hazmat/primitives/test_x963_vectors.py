@@ -2,10 +2,10 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
+import typing
 
 import pytest
 
@@ -28,7 +28,7 @@ def _skip_hashfn_unsupported(backend, hashfn):
 
 @pytest.mark.requires_backend_interface(interface=HashBackend)
 class TestX963(object):
-    _algorithms_dict = {
+    _algorithms_dict: typing.Dict[str, typing.Type[hashes.HashAlgorithm]] = {
         "SHA-1": hashes.SHA1,
         "SHA-224": hashes.SHA224,
         "SHA-256": hashes.SHA256,
@@ -36,30 +36,29 @@ class TestX963(object):
         "SHA-512": hashes.SHA512,
     }
 
-    @pytest.mark.parametrize(
-        ("vector"),
-        load_vectors_from_file(
+    def test_x963(self, backend, subtests):
+        vectors = load_vectors_from_file(
             os.path.join("KDF", "ansx963_2001.txt"), load_x963_vectors
-        ),
-    )
-    def test_x963(self, backend, vector):
-        hashfn = self._algorithms_dict[vector["hash"]]
-        _skip_hashfn_unsupported(backend, hashfn())
-
-        key = binascii.unhexlify(vector["Z"])
-        sharedinfo = None
-        if vector["sharedinfo_length"] != 0:
-            sharedinfo = binascii.unhexlify(vector["sharedinfo"])
-        key_data_len = vector["key_data_length"] // 8
-        key_data = binascii.unhexlify(vector["key_data"])
-
-        xkdf = X963KDF(
-            algorithm=hashfn(),
-            length=key_data_len,
-            sharedinfo=sharedinfo,
-            backend=backend,
         )
-        xkdf.verify(key, key_data)
+        for vector in vectors:
+            with subtests.test():
+                hashfn = self._algorithms_dict[vector["hash"]]
+                _skip_hashfn_unsupported(backend, hashfn())
+
+                key = binascii.unhexlify(vector["Z"])
+                sharedinfo = None
+                if vector["sharedinfo_length"] != 0:
+                    sharedinfo = binascii.unhexlify(vector["sharedinfo"])
+                key_data_len = vector["key_data_length"] // 8
+                key_data = binascii.unhexlify(vector["key_data"])
+
+                xkdf = X963KDF(
+                    algorithm=hashfn(),
+                    length=key_data_len,
+                    sharedinfo=sharedinfo,
+                    backend=backend,
+                )
+                xkdf.verify(key, key_data)
 
     def test_unsupported_hash(self, backend):
         with pytest.raises(pytest.skip.Exception):

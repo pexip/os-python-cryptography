@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 
@@ -11,7 +10,9 @@ import pytest
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends.interfaces import RSABackend
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+
+from .utils import wycheproof_tests
 
 
 _DIGESTS = {
@@ -41,7 +42,7 @@ def should_verify(backend, wycheproof):
 
 
 @pytest.mark.requires_backend_interface(interface=RSABackend)
-@pytest.mark.wycheproof_tests(
+@wycheproof_tests(
     "rsa_signature_test.json",
     "rsa_signature_2048_sha224_test.json",
     "rsa_signature_2048_sha256_test.json",
@@ -68,6 +69,7 @@ def test_rsa_pkcs1v15_signature(backend, wycheproof):
     key = serialization.load_der_public_key(
         binascii.unhexlify(wycheproof.testgroup["keyDer"]), backend
     )
+    assert isinstance(key, rsa.RSAPublicKey)
     digest = _DIGESTS[wycheproof.testgroup["sha"]]
 
     if digest is None or not backend.hash_supported(digest):
@@ -92,14 +94,16 @@ def test_rsa_pkcs1v15_signature(backend, wycheproof):
             )
 
 
-@pytest.mark.wycheproof_tests("rsa_sig_gen_misc_test.json")
+@wycheproof_tests("rsa_sig_gen_misc_test.json")
 def test_rsa_pkcs1v15_signature_generation(backend, wycheproof):
     key = serialization.load_pem_private_key(
         wycheproof.testgroup["privateKeyPem"].encode(),
         password=None,
         backend=backend,
     )
+    assert isinstance(key, rsa.RSAPrivateKey)
     digest = _DIGESTS[wycheproof.testgroup["sha"]]
+    assert digest is not None
 
     sig = key.sign(
         binascii.unhexlify(wycheproof.testcase["msg"]),
@@ -110,7 +114,7 @@ def test_rsa_pkcs1v15_signature_generation(backend, wycheproof):
 
 
 @pytest.mark.requires_backend_interface(interface=RSABackend)
-@pytest.mark.wycheproof_tests(
+@wycheproof_tests(
     "rsa_pss_2048_sha1_mgf1_20_test.json",
     "rsa_pss_2048_sha256_mgf1_0_test.json",
     "rsa_pss_2048_sha256_mgf1_32_test.json",
@@ -125,6 +129,7 @@ def test_rsa_pss_signature(backend, wycheproof):
     key = serialization.load_der_public_key(
         binascii.unhexlify(wycheproof.testgroup["keyDer"]), backend
     )
+    assert isinstance(key, rsa.RSAPublicKey)
     digest = _DIGESTS[wycheproof.testgroup["sha"]]
     mgf_digest = _DIGESTS[wycheproof.testgroup["mgfSha"]]
 
@@ -160,7 +165,7 @@ def test_rsa_pss_signature(backend, wycheproof):
 
 
 @pytest.mark.requires_backend_interface(interface=RSABackend)
-@pytest.mark.wycheproof_tests(
+@wycheproof_tests(
     "rsa_oaep_2048_sha1_mgf1sha1_test.json",
     "rsa_oaep_2048_sha224_mgf1sha1_test.json",
     "rsa_oaep_2048_sha224_mgf1sha224_test.json",
@@ -186,8 +191,11 @@ def test_rsa_oaep_encryption(backend, wycheproof):
         password=None,
         backend=backend,
     )
+    assert isinstance(key, rsa.RSAPrivateKey)
     digest = _DIGESTS[wycheproof.testgroup["sha"]]
     mgf_digest = _DIGESTS[wycheproof.testgroup["mgfSha"]]
+    assert digest is not None
+    assert mgf_digest is not None
 
     padding_algo = padding.OAEP(
         mgf=padding.MGF1(algorithm=mgf_digest),
@@ -215,7 +223,7 @@ def test_rsa_oaep_encryption(backend, wycheproof):
             )
 
 
-@pytest.mark.wycheproof_tests(
+@wycheproof_tests(
     "rsa_pkcs1_2048_test.json",
     "rsa_pkcs1_3072_test.json",
     "rsa_pkcs1_4096_test.json",
@@ -226,6 +234,7 @@ def test_rsa_pkcs1_encryption(backend, wycheproof):
         password=None,
         backend=backend,
     )
+    assert isinstance(key, rsa.RSAPrivateKey)
 
     if wycheproof.valid:
         pt = key.decrypt(

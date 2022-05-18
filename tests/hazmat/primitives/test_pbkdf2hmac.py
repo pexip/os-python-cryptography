@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import pytest
 
@@ -45,12 +44,18 @@ class TestPBKDF2HMAC(object):
 
     def test_unicode_error_with_salt(self, backend):
         with pytest.raises(TypeError):
-            PBKDF2HMAC(hashes.SHA1(), 20, u"salt", 10, backend)
+            PBKDF2HMAC(
+                hashes.SHA1(),
+                20,
+                "salt",  # type: ignore[arg-type]
+                10,
+                backend,
+            )
 
     def test_unicode_error_with_key_material(self, backend):
         kdf = PBKDF2HMAC(hashes.SHA1(), 20, b"salt", 10, backend)
         with pytest.raises(TypeError):
-            kdf.derive(u"unicode here")
+            kdf.derive("unicode here")  # type: ignore[arg-type]
 
     def test_buffer_protocol(self, backend):
         kdf = PBKDF2HMAC(hashes.SHA1(), 10, b"salt", 10, backend)

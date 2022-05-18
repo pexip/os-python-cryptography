@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 
@@ -37,11 +36,13 @@ class TestHMAC(object):
     def test_hmac_reject_unicode(self, backend):
         h = hmac.HMAC(b"mykey", hashes.SHA1(), backend=backend)
         with pytest.raises(TypeError):
-            h.update(u"\u00FC")
+            h.update("\u00FC")  # type: ignore[arg-type]
 
     def test_hmac_algorithm_instance(self, backend):
         with pytest.raises(TypeError):
-            hmac.HMAC(b"key", hashes.SHA1, backend=backend)
+            hmac.HMAC(
+                b"key", hashes.SHA1, backend=backend  # type: ignore[arg-type]
+            )
 
     def test_raises_after_finalize(self, backend):
         h = hmac.HMAC(b"key", hashes.SHA1(), backend=backend)
@@ -77,7 +78,7 @@ class TestHMAC(object):
     def test_verify_reject_unicode(self, backend):
         h = hmac.HMAC(b"", hashes.SHA1(), backend=backend)
         with pytest.raises(TypeError):
-            h.verify(u"")
+            h.verify("")  # type: ignore[arg-type]
 
     def test_unsupported_hash(self, backend):
         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_HASH):
