@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import datetime
 
@@ -34,15 +35,15 @@ class TestCertificateRevocationListBuilder(object):
     def test_issuer_name_invalid(self):
         builder = x509.CertificateRevocationListBuilder()
         with pytest.raises(TypeError):
-            builder.issuer_name("notanx509name")  # type:ignore[arg-type]
+            builder.issuer_name("notanx509name")
 
     def test_set_issuer_name_twice(self):
         builder = x509.CertificateRevocationListBuilder().issuer_name(
-            x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, "US")])
+            x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"US")])
         )
         with pytest.raises(ValueError):
             builder.issuer_name(
-                x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, "US")])
+                x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"US")])
             )
 
     @pytest.mark.requires_backend_interface(interface=RSABackend)
@@ -60,7 +61,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -75,7 +76,7 @@ class TestCertificateRevocationListBuilder(object):
     def test_last_update_invalid(self):
         builder = x509.CertificateRevocationListBuilder()
         with pytest.raises(TypeError):
-            builder.last_update("notadatetime")  # type:ignore[arg-type]
+            builder.last_update("notadatetime")
 
     def test_last_update_before_1950(self):
         builder = x509.CertificateRevocationListBuilder()
@@ -104,7 +105,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -119,7 +120,7 @@ class TestCertificateRevocationListBuilder(object):
     def test_next_update_invalid(self):
         builder = x509.CertificateRevocationListBuilder()
         with pytest.raises(TypeError):
-            builder.next_update("notadatetime")  # type:ignore[arg-type]
+            builder.next_update("notadatetime")
 
     def test_next_update_before_1950(self):
         builder = x509.CertificateRevocationListBuilder()
@@ -159,13 +160,13 @@ class TestCertificateRevocationListBuilder(object):
         builder = x509.CertificateRevocationListBuilder()
 
         with pytest.raises(TypeError):
-            builder.add_extension(object(), False)  # type:ignore[arg-type]
+            builder.add_extension(object(), False)
 
     def test_add_invalid_revoked_certificate(self):
         builder = x509.CertificateRevocationListBuilder()
 
         with pytest.raises(TypeError):
-            builder.add_revoked_certificate(object())  # type:ignore[arg-type]
+            builder.add_revoked_certificate(object())
 
     @pytest.mark.requires_backend_interface(interface=RSABackend)
     @pytest.mark.requires_backend_interface(interface=X509Backend)
@@ -187,7 +188,7 @@ class TestCertificateRevocationListBuilder(object):
         builder = (
             x509.CertificateRevocationListBuilder()
             .issuer_name(
-                x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, "US")])
+                x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"US")])
             )
             .next_update(datetime.datetime(2030, 1, 1, 12, 1))
         )
@@ -202,7 +203,7 @@ class TestCertificateRevocationListBuilder(object):
         builder = (
             x509.CertificateRevocationListBuilder()
             .issuer_name(
-                x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, "US")])
+                x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"US")])
             )
             .last_update(datetime.datetime(2030, 1, 1, 12, 1))
         )
@@ -222,7 +223,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -251,12 +252,12 @@ class TestCertificateRevocationListBuilder(object):
                 [
                     x509.AccessDescription(
                         AuthorityInformationAccessOID.CA_ISSUERS,
-                        x509.DNSName("cryptography.io"),
+                        x509.DNSName(u"cryptography.io"),
                     )
                 ]
             ),
             x509.IssuerAlternativeName(
-                [x509.UniformResourceIdentifier("https://cryptography.io")]
+                [x509.UniformResourceIdentifier(u"https://cryptography.io")]
             ),
         ],
     )
@@ -272,7 +273,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -296,7 +297,7 @@ class TestCertificateRevocationListBuilder(object):
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
         next_update = datetime.datetime(2030, 1, 1, 12, 1)
         ian = x509.IssuerAlternativeName(
-            [x509.UniformResourceIdentifier("https://cryptography.io")]
+            [x509.UniformResourceIdentifier(u"https://cryptography.io")]
         )
         crl_number = x509.CRLNumber(13)
         builder = (
@@ -305,7 +306,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -337,7 +338,7 @@ class TestCertificateRevocationListBuilder(object):
         freshest = x509.FreshestCRL(
             [
                 x509.DistributionPoint(
-                    [x509.UniformResourceIdentifier("http://d.om/delta")],
+                    [x509.UniformResourceIdentifier(u"http://d.om/delta")],
                     None,
                     None,
                     None,
@@ -350,7 +351,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -368,7 +369,7 @@ class TestCertificateRevocationListBuilder(object):
         assert isinstance(ext1.value[0], x509.DistributionPoint)
         uri = ext1.value[0].full_name[0]
         assert isinstance(uri, x509.UniformResourceIdentifier)
-        assert uri.value == "http://d.om/delta"
+        assert uri.value == u"http://d.om/delta"
 
     @pytest.mark.requires_backend_interface(interface=RSABackend)
     @pytest.mark.requires_backend_interface(interface=X509Backend)
@@ -382,7 +383,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -406,7 +407,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -430,7 +431,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -457,7 +458,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -486,7 +487,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -508,7 +509,7 @@ class TestCertificateRevocationListBuilder(object):
             datetime.datetime(2002, 1, 1, 0, 0)
         )
         ian = x509.IssuerAlternativeName(
-            [x509.UniformResourceIdentifier("https://cryptography.io")]
+            [x509.UniformResourceIdentifier(u"https://cryptography.io")]
         )
         revoked_cert0 = (
             x509.RevokedCertificateBuilder()
@@ -525,7 +526,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -559,7 +560,7 @@ class TestCertificateRevocationListBuilder(object):
             datetime.datetime(2002, 1, 1, 0, 0)
         )
         ian = x509.IssuerAlternativeName(
-            [x509.UniformResourceIdentifier("https://cryptography.io")]
+            [x509.UniformResourceIdentifier(u"https://cryptography.io")]
         )
         revoked_cert0 = (
             x509.RevokedCertificateBuilder()
@@ -576,7 +577,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -612,7 +613,7 @@ class TestCertificateRevocationListBuilder(object):
             datetime.datetime(2002, 1, 1, 0, 0)
         )
         ian = x509.IssuerAlternativeName(
-            [x509.UniformResourceIdentifier("https://cryptography.io")]
+            [x509.UniformResourceIdentifier(u"https://cryptography.io")]
         )
         revoked_cert0 = (
             x509.RevokedCertificateBuilder()
@@ -629,7 +630,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -667,7 +668,7 @@ class TestCertificateRevocationListBuilder(object):
             datetime.datetime(2002, 1, 1, 0, 0)
         )
         ian = x509.IssuerAlternativeName(
-            [x509.UniformResourceIdentifier("https://cryptography.io")]
+            [x509.UniformResourceIdentifier(u"https://cryptography.io")]
         )
         revoked_cert0 = (
             x509.RevokedCertificateBuilder()
@@ -684,7 +685,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -723,7 +724,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -748,7 +749,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )
@@ -788,7 +789,7 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name(
                     [
                         x509.NameAttribute(
-                            NameOID.COMMON_NAME, "cryptography.io CA"
+                            NameOID.COMMON_NAME, u"cryptography.io CA"
                         )
                     ]
                 )

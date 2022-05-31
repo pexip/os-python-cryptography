@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
@@ -230,20 +231,21 @@ class TestSHAKE128(object):
         hashes.SHAKE128(digest_size=16),
     )
 
-    def test_shake128_variable(self, backend, subtests):
-        vectors = _load_all_params(
+    @pytest.mark.parametrize(
+        "vector",
+        _load_all_params(
             os.path.join("hashes", "SHAKE"),
             ["SHAKE128VariableOut.rsp"],
             load_nist_vectors,
-        )
-        for vector in vectors:
-            with subtests.test():
-                output_length = int(vector["outputlen"]) // 8
-                msg = binascii.unhexlify(vector["msg"])
-                shake = hashes.SHAKE128(digest_size=output_length)
-                m = hashes.Hash(shake, backend=backend)
-                m.update(msg)
-                assert m.finalize() == binascii.unhexlify(vector["output"])
+        ),
+    )
+    def test_shake128_variable(self, vector, backend):
+        output_length = int(vector["outputlen"]) // 8
+        msg = binascii.unhexlify(vector["msg"])
+        shake = hashes.SHAKE128(digest_size=output_length)
+        m = hashes.Hash(shake, backend=backend)
+        m.update(msg)
+        assert m.finalize() == binascii.unhexlify(vector["output"])
 
 
 @pytest.mark.supported(
@@ -261,17 +263,18 @@ class TestSHAKE256(object):
         hashes.SHAKE256(digest_size=32),
     )
 
-    def test_shake256_variable(self, backend, subtests):
-        vectors = _load_all_params(
+    @pytest.mark.parametrize(
+        "vector",
+        _load_all_params(
             os.path.join("hashes", "SHAKE"),
             ["SHAKE256VariableOut.rsp"],
             load_nist_vectors,
-        )
-        for vector in vectors:
-            with subtests.test():
-                output_length = int(vector["outputlen"]) // 8
-                msg = binascii.unhexlify(vector["msg"])
-                shake = hashes.SHAKE256(digest_size=output_length)
-                m = hashes.Hash(shake, backend=backend)
-                m.update(msg)
-                assert m.finalize() == binascii.unhexlify(vector["output"])
+        ),
+    )
+    def test_shake256_variable(self, vector, backend):
+        output_length = int(vector["outputlen"]) // 8
+        msg = binascii.unhexlify(vector["msg"])
+        shake = hashes.SHAKE256(digest_size=output_length)
+        m = hashes.Hash(shake, backend=backend)
+        m.update(msg)
+        assert m.finalize() == binascii.unhexlify(vector["output"])

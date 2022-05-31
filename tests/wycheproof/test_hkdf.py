@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 
@@ -9,8 +10,6 @@ import pytest
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-
-from .utils import wycheproof_tests
 
 
 _HASH_ALGORITHMS = {
@@ -21,7 +20,7 @@ _HASH_ALGORITHMS = {
 }
 
 
-@wycheproof_tests(
+@pytest.mark.wycheproof_tests(
     "hkdf_sha1_test.json",
     "hkdf_sha256_test.json",
     "hkdf_sha384_test.json",

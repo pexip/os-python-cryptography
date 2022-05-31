@@ -14,7 +14,6 @@ Botan
 Brainpool
 Bullseye
 Capitan
-CentOS
 changelog
 Changelog
 ciphertext
@@ -81,7 +80,6 @@ online
 paddings
 Parallelization
 personalization
-RHEL
 pickleable
 plaintext
 Poly
@@ -108,7 +106,6 @@ testability
 Thawte
 timestamp
 timestamps
-toolchain
 tunable
 Ubuntu
 unencrypted

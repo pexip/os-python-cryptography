@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 
@@ -45,9 +46,7 @@ class TestCipher(object):
     def test_instantiate_with_non_algorithm(self, backend):
         algorithm = object()
         with pytest.raises(TypeError):
-            Cipher(
-                algorithm, mode=None, backend=backend  # type: ignore[arg-type]
-            )
+            Cipher(algorithm, mode=None, backend=backend)
 
 
 @pytest.mark.requires_backend_interface(interface=CipherBackend)
@@ -196,28 +195,28 @@ class TestModeValidation(object):
 class TestModesRequireBytes(object):
     def test_cbc(self):
         with pytest.raises(TypeError):
-            modes.CBC([1] * 16)  # type:ignore[arg-type]
+            modes.CBC([1] * 16)
 
     def test_cfb(self):
         with pytest.raises(TypeError):
-            modes.CFB([1] * 16)  # type:ignore[arg-type]
+            modes.CFB([1] * 16)
 
     def test_cfb8(self):
         with pytest.raises(TypeError):
-            modes.CFB8([1] * 16)  # type:ignore[arg-type]
+            modes.CFB8([1] * 16)
 
     def test_ofb(self):
         with pytest.raises(TypeError):
-            modes.OFB([1] * 16)  # type:ignore[arg-type]
+            modes.OFB([1] * 16)
 
     def test_ctr(self):
         with pytest.raises(TypeError):
-            modes.CTR([1] * 16)  # type:ignore[arg-type]
+            modes.CTR([1] * 16)
 
     def test_gcm_iv(self):
         with pytest.raises(TypeError):
-            modes.GCM([1] * 16)  # type:ignore[arg-type]
+            modes.GCM([1] * 16)
 
     def test_gcm_tag(self):
         with pytest.raises(TypeError):
-            modes.GCM(b"\x00" * 16, [1] * 16)  # type:ignore[arg-type]
+            modes.GCM(b"\x00" * 16, [1] * 16)

@@ -1,95 +1,6 @@
 Changelog
 =========
 
-.. _v3-4-8:
-
-3.4.8 - 2021-08-24
-~~~~~~~~~~~~~~~~~~
-
-* Updated Windows, macOS, and ``manylinux`` wheels to be compiled with
-  OpenSSL 1.1.1l.
-
-.. _v3-4-7:
-
-3.4.7 - 2021-03-25
-~~~~~~~~~~~~~~~~~~
-
-* Updated Windows, macOS, and ``manylinux`` wheels to be compiled with
-  OpenSSL 1.1.1k.
-
-.. _v3-4-6:
-
-3.4.6 - 2021-02-16
-~~~~~~~~~~~~~~~~~~
-
-* Updated Windows, macOS, and ``manylinux`` wheels to be compiled with
-  OpenSSL 1.1.1j.
-
-.. _v3-4-5:
-
-3.4.5 - 2021-02-13
-~~~~~~~~~~~~~~~~~~
-
-* Various improvements to type hints.
-* Lower the minimum supported Rust version (MSRV) to >=1.41.0. This change
-  improves compatibility with system-provided Rust on several Linux
-  distributions.
-* ``cryptography`` will be switching to a new versioning scheme with its next
-  feature release. More information is available in our
-  :doc:`/api-stability` documentation.
-
-.. _v3-4-4:
-
-3.4.4 - 2021-02-09
-~~~~~~~~~~~~~~~~~~
-
-* Added a ``py.typed`` file so that ``mypy`` will know to use our type
-  annotations.
-* Fixed an import cycle that could be triggered by certain import sequences.
-
-.. _v3-4-3:
-
-3.4.3 - 2021-02-08
-~~~~~~~~~~~~~~~~~~
-
-* Specify our supported Rust version (>=1.45.0) in our ``setup.py`` so users
-  on older versions will get a clear error message.
-
-.. _v3-4-2:
-
-3.4.2 - 2021-02-08
-~~~~~~~~~~~~~~~~~~
-
-* Improvements to make the rust transition a bit easier. This includes some
-  better error messages and small dependency fixes. If you experience
-  installation problems **Be sure to update pip** first, then check the
-  :doc:`FAQ </faq>`.
-
-.. _v3-4-1:
-
-3.4.1 - 2021-02-07
-~~~~~~~~~~~~~~~~~~
-
-* Fixed a circular import issue.
-* Added additional debug output to assist users seeing installation errors
-  due to outdated ``pip`` or missing ``rustc``.
-
-.. _v3-4:
-
-3.4 - 2021-02-07
-~~~~~~~~~~~~~~~~
-
-* **BACKWARDS INCOMPATIBLE:** Support for Python 2 has been removed.
-* We now ship ``manylinux2014`` wheels and no longer ship ``manylinux1``
-  wheels. Users should upgrade to the latest ``pip`` to ensure this doesn't
-  cause issues downloading wheels on their platform.
-* ``cryptography`` now incorporates Rust code. Users building ``cryptography``
-  themselves will need to have the Rust toolchain installed. Users who use an
-  officially produced wheel will not need to make any changes. The minimum
-  supported Rust version is 1.45.0.
-* ``cryptography`` now has :pep:`484` type hints on nearly all of of its public
-  APIs. Users can begin using them to type check their code with ``mypy``.
-
 .. _v3-3-2:
 
 3.3.2 - 2021-02-07
@@ -776,9 +687,9 @@ Changelog
   :meth:`~cryptography.hazmat.primitives.ciphers.CipherContext.update_into` on
   :class:`~cryptography.hazmat.primitives.ciphers.CipherContext`.
 * Added
-  :meth:`~cryptography.hazmat.primitives.asymmetric.dh.DHPrivateKey.private_bytes`
+  :meth:`~cryptography.hazmat.primitives.asymmetric.dh.DHPrivateKeyWithSerialization.private_bytes`
   to
-  :class:`~cryptography.hazmat.primitives.asymmetric.dh.DHPrivateKey`.
+  :class:`~cryptography.hazmat.primitives.asymmetric.dh.DHPrivateKeyWithSerialization`.
 * Added
   :meth:`~cryptography.hazmat.primitives.asymmetric.dh.DHPublicKey.public_bytes`
   to
@@ -1366,23 +1277,23 @@ Changelog
   :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKeyWithSerialization`
   and deprecated ``EllipticCurvePrivateKeyWithNumbers``.
 * Added
-  :meth:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey.private_bytes`
+  :meth:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKeyWithSerialization.private_bytes`
   to
-  :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey`.
+  :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKeyWithSerialization`.
 * Added
   :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKeyWithSerialization`
   and deprecated ``RSAPrivateKeyWithNumbers``.
 * Added
-  :meth:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey.private_bytes`
+  :meth:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKeyWithSerialization.private_bytes`
   to
-  :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey`.
+  :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKeyWithSerialization`.
 * Added
   :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKeyWithSerialization`
   and deprecated ``DSAPrivateKeyWithNumbers``.
 * Added
-  :meth:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKey.private_bytes`
+  :meth:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKeyWithSerialization.private_bytes`
   to
-  :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKey`.
+  :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKeyWithSerialization`.
 * Added
   :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKeyWithSerialization`
   and deprecated ``RSAPublicKeyWithNumbers``.
@@ -1426,7 +1337,7 @@ Changelog
   were moved from ``cryptography.hazmat.primitives.interfaces`` to
   ``cryptography.hazmat.primitives.asymmetric``.
 * :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAParameters`,
-  ``DSAParametersWithNumbers``,
+  :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAParametersWithNumbers`,
   :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKey`,
   ``DSAPrivateKeyWithNumbers``,
   :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPublicKey` and

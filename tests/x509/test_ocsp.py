@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import base64
 import datetime
@@ -51,8 +52,8 @@ def _generate_root(private_key=None, algorithm=hashes.SHA256()):
 
     subject = x509.Name(
         [
-            x509.NameAttribute(x509.NameOID.COUNTRY_NAME, "US"),
-            x509.NameAttribute(x509.NameOID.COMMON_NAME, "Cryptography CA"),
+            x509.NameAttribute(x509.NameOID.COUNTRY_NAME, u"US"),
+            x509.NameAttribute(x509.NameOID.COMMON_NAME, u"Cryptography CA"),
         ]
     )
 
@@ -169,27 +170,16 @@ class TestOCSPRequestBuilder(object):
     def test_add_invalid_extension(self):
         builder = ocsp.OCSPRequestBuilder()
         with pytest.raises(TypeError):
-            builder.add_extension(
-                "notanext",  # type:ignore[arg-type]
-                False,
-            )
+            builder.add_extension("notanext", False)
 
     def test_create_ocsp_request_invalid_cert(self):
         cert, issuer = _cert_and_issuer()
         builder = ocsp.OCSPRequestBuilder()
         with pytest.raises(TypeError):
-            builder.add_certificate(
-                b"notacert",  # type:ignore[arg-type]
-                issuer,
-                hashes.SHA1(),
-            )
+            builder.add_certificate(b"notacert", issuer, hashes.SHA1())
 
         with pytest.raises(TypeError):
-            builder.add_certificate(
-                cert,
-                b"notacert",  # type:ignore[arg-type]
-                hashes.SHA1(),
-            )
+            builder.add_certificate(cert, b"notacert", hashes.SHA1())
 
     def test_create_ocsp_request(self):
         cert, issuer = _cert_and_issuer()
@@ -256,7 +246,7 @@ class TestOCSPResponseBuilder(object):
         builder = ocsp.OCSPResponseBuilder()
         with pytest.raises(TypeError):
             builder.add_response(
-                "bad",  # type:ignore[arg-type]
+                "bad",
                 issuer,
                 hashes.SHA256(),
                 ocsp.OCSPCertStatus.GOOD,
@@ -268,7 +258,7 @@ class TestOCSPResponseBuilder(object):
         with pytest.raises(TypeError):
             builder.add_response(
                 cert,
-                "bad",  # type:ignore[arg-type]
+                "bad",
                 hashes.SHA256(),
                 ocsp.OCSPCertStatus.GOOD,
                 time,
@@ -280,7 +270,7 @@ class TestOCSPResponseBuilder(object):
             builder.add_response(
                 cert,
                 issuer,
-                "notahash",  # type:ignore[arg-type]
+                "notahash",
                 ocsp.OCSPCertStatus.GOOD,
                 time,
                 time,
@@ -293,7 +283,7 @@ class TestOCSPResponseBuilder(object):
                 issuer,
                 hashes.SHA256(),
                 ocsp.OCSPCertStatus.GOOD,
-                "bad",  # type:ignore[arg-type]
+                "bad",
                 time,
                 None,
                 None,
@@ -305,21 +295,14 @@ class TestOCSPResponseBuilder(object):
                 hashes.SHA256(),
                 ocsp.OCSPCertStatus.GOOD,
                 time,
-                "bad",  # type:ignore[arg-type]
+                "bad",
                 None,
                 None,
             )
 
         with pytest.raises(TypeError):
             builder.add_response(
-                cert,
-                issuer,
-                hashes.SHA256(),
-                0,  # type:ignore[arg-type]
-                time,
-                time,
-                None,
-                None,
+                cert, issuer, hashes.SHA256(), 0, time, time, None, None
             )
         with pytest.raises(ValueError):
             builder.add_response(
@@ -363,7 +346,7 @@ class TestOCSPResponseBuilder(object):
                 time,
                 time,
                 time,
-                0,  # type:ignore[arg-type]
+                0,
             )
         with pytest.raises(ValueError):
             builder.add_response(
@@ -382,9 +365,9 @@ class TestOCSPResponseBuilder(object):
         with pytest.raises(ValueError):
             builder.certificates([])
         with pytest.raises(TypeError):
-            builder.certificates(["notacert"])  # type: ignore[list-item]
+            builder.certificates(["notacert"])
         with pytest.raises(TypeError):
-            builder.certificates("invalid")  # type: ignore[arg-type]
+            builder.certificates("invalid")
 
         _, issuer = _cert_and_issuer()
         builder = builder.certificates([issuer])
@@ -395,12 +378,9 @@ class TestOCSPResponseBuilder(object):
         builder = ocsp.OCSPResponseBuilder()
         cert, _ = _cert_and_issuer()
         with pytest.raises(TypeError):
-            builder.responder_id(
-                ocsp.OCSPResponderEncoding.HASH,
-                "invalid",  # type: ignore[arg-type]
-            )
+            builder.responder_id(ocsp.OCSPResponderEncoding.HASH, "invalid")
         with pytest.raises(TypeError):
-            builder.responder_id("notanenum", cert)  # type: ignore[arg-type]
+            builder.responder_id("notanenum", cert)
 
         builder = builder.responder_id(ocsp.OCSPResponderEncoding.NAME, cert)
         with pytest.raises(ValueError):
@@ -409,9 +389,7 @@ class TestOCSPResponseBuilder(object):
     def test_invalid_extension(self):
         builder = ocsp.OCSPResponseBuilder()
         with pytest.raises(TypeError):
-            builder.add_extension(
-                "notanextension", True  # type: ignore[arg-type]
-            )
+            builder.add_extension("notanextension", True)
 
     def test_sign_no_response(self):
         builder = ocsp.OCSPResponseBuilder()
@@ -462,7 +440,7 @@ class TestOCSPResponseBuilder(object):
             None,
         )
         with pytest.raises(TypeError):
-            builder.sign(private_key, "notahash")  # type: ignore[arg-type]
+            builder.sign(private_key, "notahash")
 
     def test_sign_good_cert(self):
         builder = ocsp.OCSPResponseBuilder()
@@ -712,9 +690,7 @@ class TestOCSPResponseBuilder(object):
 
     def test_invalid_build_not_a_status(self):
         with pytest.raises(TypeError):
-            ocsp.OCSPResponseBuilder.build_unsuccessful(
-                "notastatus"  # type: ignore[arg-type]
-            )
+            ocsp.OCSPResponseBuilder.build_unsuccessful("notastatus")
 
     def test_invalid_build_successful_status(self):
         with pytest.raises(ValueError):
@@ -726,9 +702,7 @@ class TestOCSPResponseBuilder(object):
 class TestSignedCertificateTimestampsExtension(object):
     def test_init(self):
         with pytest.raises(TypeError):
-            x509.SignedCertificateTimestamps(
-                [object()]  # type: ignore[list-item]
-            )
+            x509.SignedCertificateTimestamps([object()])
 
     def test_repr(self):
         assert repr(x509.SignedCertificateTimestamps([])) == (

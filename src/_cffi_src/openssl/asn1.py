@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 INCLUDES = """
 #include <openssl/asn1.h>
@@ -44,7 +45,6 @@ void ASN1_OBJECT_free(ASN1_OBJECT *);
 
 /*  ASN1 STRING */
 unsigned char *ASN1_STRING_data(ASN1_STRING *);
-const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *);
 int ASN1_STRING_set(ASN1_STRING *, const void *, int);
 
 /*  ASN1 OCTET STRING */

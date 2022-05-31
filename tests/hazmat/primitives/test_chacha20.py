@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
@@ -66,8 +67,8 @@ class TestChaCha20(object):
             algorithms.ChaCha20(b"0" * 32, b"0")
 
         with pytest.raises(TypeError):
-            algorithms.ChaCha20(b"0" * 32, object())  # type:ignore[arg-type]
+            algorithms.ChaCha20(b"0" * 32, object())
 
     def test_invalid_key_type(self):
         with pytest.raises(TypeError, match="key must be bytes"):
-            algorithms.ChaCha20("0" * 32, b"0" * 16)  # type:ignore[arg-type]
+            algorithms.ChaCha20(u"0" * 32, b"0" * 16)

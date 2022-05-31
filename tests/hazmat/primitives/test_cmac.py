@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 
@@ -80,7 +81,7 @@ class TestCMAC(object):
 
         cmac = CMAC(AES(binascii.unhexlify(key)), backend)
         cmac.update(binascii.unhexlify(message))
-        cmac.verify(binascii.unhexlify(output))
+        assert cmac.verify(binascii.unhexlify(output)) is None
 
     @pytest.mark.supported(
         only_if=lambda backend: backend.cmac_algorithm_supported(
@@ -122,7 +123,7 @@ class TestCMAC(object):
 
         cmac = CMAC(TripleDES(binascii.unhexlify(key)), backend)
         cmac.update(binascii.unhexlify(message))
-        cmac.verify(binascii.unhexlify(output))
+        assert cmac.verify(binascii.unhexlify(output)) is None
 
     @pytest.mark.supported(
         only_if=lambda backend: backend.cmac_algorithm_supported(
@@ -145,7 +146,7 @@ class TestCMAC(object):
     def test_invalid_algorithm(self, backend):
         key = b"0102030405"
         with pytest.raises(TypeError):
-            CMAC(ARC4(key), backend)  # type: ignore[arg-type]
+            CMAC(ARC4(key), backend)
 
     @pytest.mark.supported(
         only_if=lambda backend: backend.cmac_algorithm_supported(
@@ -181,10 +182,10 @@ class TestCMAC(object):
         cmac = CMAC(AES(key), backend)
 
         with pytest.raises(TypeError):
-            cmac.update("")  # type: ignore[arg-type]
+            cmac.update(u"")
 
         with pytest.raises(TypeError):
-            cmac.verify("")  # type: ignore[arg-type]
+            cmac.verify(u"")
 
     @pytest.mark.supported(
         only_if=lambda backend: backend.cmac_algorithm_supported(

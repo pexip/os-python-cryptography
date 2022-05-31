@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 
@@ -71,7 +72,7 @@ class TestX963KDF(object):
 
         xkdf = X963KDF(hashes.SHA256(), 128, sharedinfo, backend)
 
-        xkdf.verify(key, derivedkey)
+        assert xkdf.verify(key, derivedkey) is None
 
     def test_invalid_verify(self, backend):
         key = binascii.unhexlify(
@@ -85,33 +86,28 @@ class TestX963KDF(object):
 
     def test_unicode_typeerror(self, backend):
         with pytest.raises(TypeError):
-            X963KDF(
-                hashes.SHA256(),
-                16,
-                sharedinfo="foo",  # type: ignore[arg-type]
-                backend=backend,
-            )
+            X963KDF(hashes.SHA256(), 16, sharedinfo=u"foo", backend=backend)
 
         with pytest.raises(TypeError):
             xkdf = X963KDF(
                 hashes.SHA256(), 16, sharedinfo=None, backend=backend
             )
 
-            xkdf.derive("foo")  # type: ignore[arg-type]
+            xkdf.derive(u"foo")
 
         with pytest.raises(TypeError):
             xkdf = X963KDF(
                 hashes.SHA256(), 16, sharedinfo=None, backend=backend
             )
 
-            xkdf.verify("foo", b"bar")  # type: ignore[arg-type]
+            xkdf.verify(u"foo", b"bar")
 
         with pytest.raises(TypeError):
             xkdf = X963KDF(
                 hashes.SHA256(), 16, sharedinfo=None, backend=backend
             )
 
-            xkdf.verify(b"foo", "bar")  # type: ignore[arg-type]
+            xkdf.verify(b"foo", u"bar")
 
 
 def test_invalid_backend():

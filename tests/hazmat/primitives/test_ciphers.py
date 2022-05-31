@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
@@ -45,7 +46,7 @@ class TestAES(object):
 
     def test_invalid_key_type(self):
         with pytest.raises(TypeError, match="key must be bytes"):
-            AES("0" * 32)  # type: ignore[arg-type]
+            AES(u"0" * 32)
 
 
 class TestAESXTS(object):
@@ -59,7 +60,7 @@ class TestAESXTS(object):
 
     def test_xts_tweak_not_bytes(self):
         with pytest.raises(TypeError):
-            modes.XTS(32)  # type: ignore[arg-type]
+            modes.XTS(32)
 
     def test_xts_tweak_too_small(self):
         with pytest.raises(ValueError):
@@ -93,7 +94,7 @@ class TestCamellia(object):
 
     def test_invalid_key_type(self):
         with pytest.raises(TypeError, match="key must be bytes"):
-            Camellia("0" * 32)  # type: ignore[arg-type]
+            Camellia(u"0" * 32)
 
 
 class TestTripleDES(object):
@@ -108,7 +109,7 @@ class TestTripleDES(object):
 
     def test_invalid_key_type(self):
         with pytest.raises(TypeError, match="key must be bytes"):
-            TripleDES("0" * 16)  # type: ignore[arg-type]
+            TripleDES(u"0" * 16)
 
 
 class TestBlowfish(object):
@@ -126,7 +127,7 @@ class TestBlowfish(object):
 
     def test_invalid_key_type(self):
         with pytest.raises(TypeError, match="key must be bytes"):
-            Blowfish("0" * 8)  # type: ignore[arg-type]
+            Blowfish(u"0" * 8)
 
 
 class TestCAST5(object):
@@ -144,7 +145,7 @@ class TestCAST5(object):
 
     def test_invalid_key_type(self):
         with pytest.raises(TypeError, match="key must be bytes"):
-            CAST5("0" * 10)  # type: ignore[arg-type]
+            CAST5(u"0" * 10)
 
 
 class TestARC4(object):
@@ -170,7 +171,7 @@ class TestARC4(object):
 
     def test_invalid_key_type(self):
         with pytest.raises(TypeError, match="key must be bytes"):
-            ARC4("0" * 10)  # type: ignore[arg-type]
+            ARC4(u"0" * 10)
 
 
 class TestIDEA(object):
@@ -184,7 +185,7 @@ class TestIDEA(object):
 
     def test_invalid_key_type(self):
         with pytest.raises(TypeError, match="key must be bytes"):
-            IDEA("0" * 16)  # type: ignore[arg-type]
+            IDEA(u"0" * 16)
 
 
 class TestSEED(object):
@@ -198,14 +199,14 @@ class TestSEED(object):
 
     def test_invalid_key_type(self):
         with pytest.raises(TypeError, match="key must be bytes"):
-            SEED("0" * 16)  # type: ignore[arg-type]
+            SEED(u"0" * 16)
 
 
 def test_invalid_backend():
     pretend_backend = object()
 
     with raises_unsupported_algorithm(_Reasons.BACKEND_MISSING_INTERFACE):
-        ciphers.Cipher(AES(b"AAAAAAAAAAAAAAAA"), modes.ECB(), pretend_backend)
+        ciphers.Cipher(AES(b"AAAAAAAAAAAAAAAA"), modes.ECB, pretend_backend)
 
 
 @pytest.mark.supported(
