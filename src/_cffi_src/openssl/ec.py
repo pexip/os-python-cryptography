@@ -11,7 +11,6 @@ INCLUDES = """
 
 TYPES = """
 static const int Cryptography_HAS_EC2M;
-static const int Cryptography_HAS_EC_1_0_2;
 
 static const int OPENSSL_EC_NAMED_CURVE;
 
@@ -105,6 +104,8 @@ int EC_POINT_mul(const EC_GROUP *, EC_POINT *, const BIGNUM *,
 int EC_METHOD_get_field_type(const EC_METHOD *);
 
 const char *EC_curve_nid2nist(int);
+
+int EC_GROUP_get_asn1_flag(const EC_GROUP *);
 """
 
 CUSTOMIZATIONS = """
@@ -121,12 +122,5 @@ int (*EC_POINT_set_compressed_coordinates_GF2m)(const EC_GROUP *, EC_POINT *,
     const BIGNUM *, int, BN_CTX *) = NULL;
 #else
 static const long Cryptography_HAS_EC2M = 1;
-#endif
-
-#if (!CRYPTOGRAPHY_IS_LIBRESSL && CRYPTOGRAPHY_OPENSSL_LESS_THAN_102)
-static const long Cryptography_HAS_EC_1_0_2 = 0;
-const char *(*EC_curve_nid2nist)(int) = NULL;
-#else
-static const long Cryptography_HAS_EC_1_0_2 = 1;
 #endif
 """

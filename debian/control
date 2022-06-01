@@ -2,35 +2,22 @@ Source: python-cryptography
 Maintainer: Pexip AS <packaging@pexip.com>
 XSBC-Pexip-Original-Maintainer: Tristan Seligmann <mithrandi@debian.org>
 XSBC-Pexip-Original-Uploaders:
- Debian Python Modules Team <python-modules-team@lists.alioth.debian.org>,
+ Debian Python Team <team+python@tracker.debian.org>,
+ Sandro Tosi <morph@debian.org>,
 Section: python
 Priority: optional
 Build-Depends:
- debhelper (>= 11),
- dh-python (>= 2.20151103),
+ debhelper-compat (= 13),
+ dh-sequence-python3,
+ dh-sequence-sphinxdoc <!nodoc>,
  dpkg-dev (>= 1.17.14),
- libssl1.0-dev | libssl-dev (<< 1.1),
- python-asn1crypto (>= 0.21.0~),
- python-cffi (>= 1.7~),
- python-cryptography-vectors (<< 2.6.2~) <!nocheck>,
- python-cryptography-vectors (>= 2.6.1~) <!nocheck>,
- python-dev,
- python-enum34,
- python-hypothesis <!nocheck>,
- python-idna (>= 2.0~),
- python-ipaddress,
- python-iso8601 <!nocheck>,
- python-pretend <!nocheck>,
- python-pytest (>= 2.9.0) <!nocheck>,
- python-setuptools (>= 11.3),
- python-six (>= 1.4.1~),
- python-sphinx-rtd-theme <!nodoc>,
- python-tz <!nocheck>,
+ libssl1.0-dev,
+ python3-all-dev,
  python3-asn1crypto (>= 0.21.0~),
  python3-cffi (>= 1.7~),
- python3-cryptography-vectors (<< 2.6.2~) <!nocheck>,
- python3-cryptography-vectors (>= 2.6.1~) <!nocheck>,
- python3-dev,
+ python3-cryptography-vectors (<< 3.3.3~) <!nocheck>,
+ python3-cryptography-vectors (>= 3.3.2~) <!nocheck>,
+ python3-doc <!nodoc>,
  python3-hypothesis <!nocheck>,
  python3-idna (>= 2.0~),
  python3-iso8601 <!nocheck>,
@@ -39,34 +26,14 @@ Build-Depends:
  python3-setuptools (>= 11.3),
  python3-six (>= 1.4.1~),
  python3-sphinx <!nodoc>,
+ python3-sphinx-rtd-theme <!nodoc>,
  python3-tz <!nocheck>,
-Standards-Version: 4.1.5
+Standards-Version: 4.5.0
 Homepage: https://cryptography.io/
-Vcs-Git: https://salsa.debian.org/python-team/modules/python-cryptography.git
-Vcs-Browser: https://salsa.debian.org/python-team/modules/python-cryptography
+Vcs-Git: https://salsa.debian.org/python-team/packages/python-cryptography.git
+Vcs-Browser: https://salsa.debian.org/python-team/packages/python-cryptography
+Rules-Requires-Root: no
 XS-Pexip-Upstream: http://deb.debian.org/debian/ bullseye
-
-Package: python-cryptography
-Architecture: any
-Depends: ${misc:Depends}, ${python:Depends}, ${shlibs:Depends}
-Breaks: python-openssl (<< 16.0.0)
-Suggests: python-cryptography-doc, python-cryptography-vectors
-Description: Python library exposing cryptographic recipes and primitives (Python 2)
- The cryptography library is designed to be a "one-stop-shop" for
- all your cryptographic needs in Python.
- .
- As an alternative to the libraries that came before it, cryptography
- tries to address some of the issues with those libraries:
-  - Lack of PyPy and Python 3 support.
-  - Lack of maintenance.
-  - Use of poor implementations of algorithms (i.e. ones with known
-    side-channel attacks).
-  - Lack of high level, "Cryptography for humans", APIs.
-  - Absence of algorithms such as AES-GCM.
-  - Poor introspectability, and thus poor testability.
-  - Extremely error prone APIs, and bad defaults.
- .
- This package contains the Python 2 version of cryptography.
 
 Package: python3-cryptography
 Architecture: any
@@ -94,6 +61,7 @@ Package: python-cryptography-doc
 Architecture: all
 Depends: ${misc:Depends}, ${sphinxdoc:Depends}
 Section: doc
+Built-Using: ${sphinxdoc:Built-Using}
 Build-Profiles: <!nodoc>
 Description: Python library exposing cryptographic recipes and primitives (documentation)
  The cryptography library is designed to be a "one-stop-shop" for

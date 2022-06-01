@@ -120,7 +120,8 @@ class TestMD5(object):
 
 @pytest.mark.supported(
     only_if=lambda backend: backend.hash_supported(
-        hashes.BLAKE2b(digest_size=64)),
+        hashes.BLAKE2b(digest_size=64)
+    ),
     skip_message="Does not support BLAKE2b",
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
@@ -143,7 +144,8 @@ class TestBLAKE2b(object):
 
 @pytest.mark.supported(
     only_if=lambda backend: backend.hash_supported(
-        hashes.BLAKE2s(digest_size=32)),
+        hashes.BLAKE2s(digest_size=32)
+    ),
     skip_message="Does not support BLAKE2s",
 )
 @pytest.mark.requires_backend_interface(interface=HashBackend)
@@ -182,18 +184,12 @@ def test_buffer_protocol_hash(backend):
 
 
 class TestSHAKE(object):
-    @pytest.mark.parametrize(
-        "xof",
-        [hashes.SHAKE128, hashes.SHAKE256]
-    )
+    @pytest.mark.parametrize("xof", [hashes.SHAKE128, hashes.SHAKE256])
     def test_invalid_digest_type(self, xof):
         with pytest.raises(TypeError):
             xof(digest_size=object())
 
-    @pytest.mark.parametrize(
-        "xof",
-        [hashes.SHAKE128, hashes.SHAKE256]
-    )
+    @pytest.mark.parametrize("xof", [hashes.SHAKE128, hashes.SHAKE256])
     def test_invalid_digest_size(self, xof):
         with pytest.raises(ValueError):
             xof(digest_size=-5)
