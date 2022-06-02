@@ -1,3 +1,9 @@
+python-cryptography (3.3.2-1pexip1) pexip; urgency=medium
+
+  * Initial bullseye build
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Thu, 02 Jun 2022 14:42:46 +0100
+
 python-cryptography (3.3.2-1) unstable; urgency=high
 
   * New upstream release.
