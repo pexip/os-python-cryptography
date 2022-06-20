@@ -14,7 +14,7 @@ else
 SPHINXDOC=
 endif
 %:
-	dh $@ --with python2,python3$(SPHINXDOC) --buildsystem=pybuild
+	dh $@ --with python3$(SPHINXDOC) --buildsystem=pybuild
 
 
 override_dh_auto_clean:
@@ -31,11 +31,6 @@ override_dh_auto_build:
 	   https_proxy='127.0.0.1:9' \
 	   python3 -m sphinx -N -b html docs/ $(CURDIR)/.pybuild/docs/html/
 endif
-
-
-override_dh_python2:
-	dh_python2 --depends=cffi --depends=enum34 --depends=ipaddress
-	sed -Ei -e '/^cffi|^enum34|^ipaddress/d' debian/python-cryptography/usr/lib/python*/dist-packages/cryptography*.egg-info/requires.txt
 
 
 override_dh_python3:
