@@ -11,12 +11,14 @@ import pytest
 from cryptography.exceptions import (
     AlreadyFinalized,
     InvalidKey,
-    UnsupportedAlgorithm,
 )
-from cryptography.hazmat.backends.interfaces import ScryptBackend
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt, _MEM_LIMIT
 
-from tests.utils import load_nist_vectors, load_vectors_from_file
+from tests.utils import (
+    load_nist_vectors,
+    load_vectors_from_file,
+    raises_unsupported_algorithm,
+)
 
 vectors = load_vectors_from_file(
     os.path.join("KDF", "scrypt.txt"), load_nist_vectors
@@ -41,11 +43,25 @@ def test_memory_limit_skip():
     with pytest.raises(pytest.skip.Exception):
         _skip_if_memory_limited(1000, {"p": 16, "r": 64, "n": 1024})
 
-    _skip_if_memory_limited(2 ** 31, {"p": 16, "r": 64, "n": 1024})
+    _skip_if_memory_limited(2**31, {"p": 16, "r": 64, "n": 1024})
 
 
-@pytest.mark.requires_backend_interface(interface=ScryptBackend)
-class TestScrypt(object):
+@pytest.mark.supported(
+    only_if=lambda backend: not backend.scrypt_supported(),
+    skip_message="Supports scrypt so can't test unsupported path",
+)
+def test_unsupported_backend(backend):
+    # This test is currently exercised by LibreSSL, which does
+    # not support scrypt
+    with raises_unsupported_algorithm(None):
+        Scrypt(b"NaCl", 64, 1024, 8, 16)
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.scrypt_supported(),
+    skip_message="Does not support Scrypt",
+)
+class TestScrypt:
     @pytest.mark.parametrize("params", vectors)
     def test_derive(self, backend, params):
         _skip_if_memory_limited(_MEM_LIMIT, params)
@@ -67,24 +83,6 @@ class TestScrypt(object):
         )
         assert binascii.hexlify(scrypt.derive(password)) == derived_key
 
-    def test_unsupported_backend(self):
-        work_factor = 1024
-        block_size = 8
-        parallelization_factor = 16
-        length = 64
-        salt = b"NaCl"
-        backend = object()
-
-        with pytest.raises(UnsupportedAlgorithm):
-            Scrypt(
-                salt,
-                length,
-                work_factor,
-                block_size,
-                parallelization_factor,
-                backend,
-            )
-
     def test_salt_not_bytes(self, backend):
         work_factor = 1024
         block_size = 8
@@ -104,7 +102,7 @@ class TestScrypt(object):
 
     def test_scrypt_malloc_failure(self, backend):
         password = b"NaCl"
-        work_factor = 1024 ** 3
+        work_factor = 1024**3
         block_size = 589824
         parallelization_factor = 16
         length = 64

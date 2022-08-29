@@ -10,12 +10,6 @@ import pytest
 import pytz
 
 from cryptography import x509
-from cryptography.hazmat.backends.interfaces import (
-    DSABackend,
-    EllipticCurveBackend,
-    RSABackend,
-    X509Backend,
-)
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, ed448
 from cryptography.x509.oid import (
@@ -24,13 +18,14 @@ from cryptography.x509.oid import (
     SignatureAlgorithmOID,
 )
 
+from .test_x509 import DummyExtension
 from ..hazmat.primitives.fixtures_dsa import DSA_KEY_2048
 from ..hazmat.primitives.fixtures_ec import EC_KEY_SECP256R1
 from ..hazmat.primitives.fixtures_rsa import RSA_KEY_2048, RSA_KEY_512
 from ..hazmat.primitives.test_ec import _skip_curve_unsupported
 
 
-class TestCertificateRevocationListBuilder(object):
+class TestCertificateRevocationListBuilder:
     def test_issuer_name_invalid(self):
         builder = x509.CertificateRevocationListBuilder()
         with pytest.raises(TypeError):
@@ -45,8 +40,6 @@ class TestCertificateRevocationListBuilder(object):
                 x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, "US")])
             )
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_aware_last_update(self, backend):
         last_time = datetime.datetime(2012, 1, 16, 22, 43)
         tz = pytz.timezone("US/Pacific")
@@ -89,8 +82,6 @@ class TestCertificateRevocationListBuilder(object):
         with pytest.raises(ValueError):
             builder.last_update(datetime.datetime(2002, 1, 1, 12, 1))
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_aware_next_update(self, backend):
         next_time = datetime.datetime(2022, 1, 16, 22, 43)
         tz = pytz.timezone("US/Pacific")
@@ -167,8 +158,6 @@ class TestCertificateRevocationListBuilder(object):
         with pytest.raises(TypeError):
             builder.add_revoked_certificate(object())  # type:ignore[arg-type]
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_no_issuer_name(self, backend):
         private_key = RSA_KEY_2048.private_key(backend)
         builder = (
@@ -180,8 +169,6 @@ class TestCertificateRevocationListBuilder(object):
         with pytest.raises(ValueError):
             builder.sign(private_key, hashes.SHA256(), backend)
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_no_last_update(self, backend):
         private_key = RSA_KEY_2048.private_key(backend)
         builder = (
@@ -195,8 +182,6 @@ class TestCertificateRevocationListBuilder(object):
         with pytest.raises(ValueError):
             builder.sign(private_key, hashes.SHA256(), backend)
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_no_next_update(self, backend):
         private_key = RSA_KEY_2048.private_key(backend)
         builder = (
@@ -210,8 +195,6 @@ class TestCertificateRevocationListBuilder(object):
         with pytest.raises(ValueError):
             builder.sign(private_key, hashes.SHA256(), backend)
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_empty_list(self, backend):
         private_key = RSA_KEY_2048.private_key(backend)
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -260,8 +243,6 @@ class TestCertificateRevocationListBuilder(object):
             ),
         ],
     )
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_extensions(self, backend, extension):
         private_key = RSA_KEY_2048.private_key(backend)
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -289,8 +270,6 @@ class TestCertificateRevocationListBuilder(object):
         assert ext.critical is False
         assert ext.value == extension
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_multiple_extensions_critical(self, backend):
         private_key = RSA_KEY_2048.private_key(backend)
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -328,8 +307,6 @@ class TestCertificateRevocationListBuilder(object):
         assert ext2.critical is True
         assert ext2.value == ian
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_freshestcrl_extension(self, backend):
         private_key = RSA_KEY_2048.private_key(backend)
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -365,13 +342,13 @@ class TestCertificateRevocationListBuilder(object):
         assert len(crl.extensions) == 1
         ext1 = crl.extensions.get_extension_for_class(x509.FreshestCRL)
         assert ext1.critical is False
+        assert isinstance(ext1.value, x509.FreshestCRL)
         assert isinstance(ext1.value[0], x509.DistributionPoint)
+        assert ext1.value[0].full_name is not None
         uri = ext1.value[0].full_name[0]
         assert isinstance(uri, x509.UniformResourceIdentifier)
         assert uri.value == "http://d.om/delta"
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_add_unsupported_extension(self, backend):
         private_key = RSA_KEY_2048.private_key(backend)
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -389,13 +366,39 @@ class TestCertificateRevocationListBuilder(object):
             )
             .last_update(last_update)
             .next_update(next_update)
-            .add_extension(x509.OCSPNoCheck(), False)
+            .add_extension(DummyExtension(), False)
         )
         with pytest.raises(NotImplementedError):
             builder.sign(private_key, hashes.SHA256(), backend)
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
+    def test_add_unsupported_entry_extension(self, backend):
+        private_key = RSA_KEY_2048.private_key(backend)
+        last_update = datetime.datetime(2002, 1, 1, 12, 1)
+        next_update = datetime.datetime(2030, 1, 1, 12, 1)
+        builder = (
+            x509.CertificateRevocationListBuilder()
+            .issuer_name(
+                x509.Name(
+                    [
+                        x509.NameAttribute(
+                            NameOID.COMMON_NAME, "cryptography.io CA"
+                        )
+                    ]
+                )
+            )
+            .last_update(last_update)
+            .next_update(next_update)
+            .add_revoked_certificate(
+                x509.RevokedCertificateBuilder()
+                .serial_number(1234)
+                .revocation_date(datetime.datetime.utcnow())
+                .add_extension(DummyExtension(), critical=False)
+                .build()
+            )
+        )
+        with pytest.raises(NotImplementedError):
+            builder.sign(private_key, hashes.SHA256(), backend)
+
     def test_sign_rsa_key_too_small(self, backend):
         private_key = RSA_KEY_512.private_key(backend)
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -418,8 +421,6 @@ class TestCertificateRevocationListBuilder(object):
         with pytest.raises(ValueError):
             builder.sign(private_key, hashes.SHA512(), backend)
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_with_invalid_hash(self, backend):
         private_key = RSA_KEY_2048.private_key(backend)
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -440,13 +441,14 @@ class TestCertificateRevocationListBuilder(object):
         )
 
         with pytest.raises(TypeError):
-            builder.sign(private_key, object(), backend)
+            builder.sign(
+                private_key, object(), backend  # type: ignore[arg-type]
+            )
 
     @pytest.mark.supported(
         only_if=lambda backend: backend.ed25519_supported(),
         skip_message="Requires OpenSSL with Ed25519 support",
     )
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_with_invalid_hash_ed25519(self, backend):
         private_key = ed25519.Ed25519PrivateKey.generate()
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -466,8 +468,12 @@ class TestCertificateRevocationListBuilder(object):
             .next_update(next_update)
         )
 
-        with pytest.raises(ValueError):
-            builder.sign(private_key, object(), backend)
+        with pytest.raises(TypeError):
+            builder.sign(
+                private_key,
+                object(),  # type:ignore[arg-type]
+                backend,
+            )
         with pytest.raises(ValueError):
             builder.sign(private_key, hashes.SHA256(), backend)
 
@@ -475,7 +481,6 @@ class TestCertificateRevocationListBuilder(object):
         only_if=lambda backend: backend.ed448_supported(),
         skip_message="Requires OpenSSL with Ed448 support",
     )
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_with_invalid_hash_ed448(self, backend):
         private_key = ed448.Ed448PrivateKey.generate()
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -495,13 +500,15 @@ class TestCertificateRevocationListBuilder(object):
             .next_update(next_update)
         )
 
-        with pytest.raises(ValueError):
-            builder.sign(private_key, object(), backend)
+        with pytest.raises(TypeError):
+            builder.sign(
+                private_key,
+                object(),  # type:ignore[arg-type]
+                backend,
+            )
         with pytest.raises(ValueError):
             builder.sign(private_key, hashes.SHA256(), backend)
 
-    @pytest.mark.requires_backend_interface(interface=DSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_dsa_key(self, backend):
         private_key = DSA_KEY_2048.private_key(backend)
         invalidity_date = x509.InvalidityDate(
@@ -550,8 +557,6 @@ class TestCertificateRevocationListBuilder(object):
         assert ext.critical is False
         assert ext.value == invalidity_date
 
-    @pytest.mark.requires_backend_interface(interface=EllipticCurveBackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_ec_key(self, backend):
         _skip_curve_unsupported(backend, ec.SECP256R1())
         private_key = ec.generate_private_key(ec.SECP256R1(), backend)
@@ -605,7 +610,6 @@ class TestCertificateRevocationListBuilder(object):
         only_if=lambda backend: backend.ed25519_supported(),
         skip_message="Requires OpenSSL with Ed25519 support",
     )
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_ed25519_key(self, backend):
         private_key = ed25519.Ed25519PrivateKey.generate()
         invalidity_date = x509.InvalidityDate(
@@ -660,7 +664,6 @@ class TestCertificateRevocationListBuilder(object):
         only_if=lambda backend: backend.ed448_supported(),
         skip_message="Requires OpenSSL with Ed448 support",
     )
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_ed448_key(self, backend):
         private_key = ed448.Ed448PrivateKey.generate()
         invalidity_date = x509.InvalidityDate(
@@ -711,8 +714,6 @@ class TestCertificateRevocationListBuilder(object):
         assert ext.critical is False
         assert ext.value == invalidity_date
 
-    @pytest.mark.requires_backend_interface(interface=DSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_dsa_key_sign_md5(self, backend):
         private_key = DSA_KEY_2048.private_key(backend)
         last_time = datetime.datetime(2012, 1, 16, 22, 43)
@@ -735,8 +736,6 @@ class TestCertificateRevocationListBuilder(object):
         with pytest.raises(ValueError):
             builder.sign(private_key, hashes.MD5(), backend)
 
-    @pytest.mark.requires_backend_interface(interface=EllipticCurveBackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_ec_key_sign_md5(self, backend):
         _skip_curve_unsupported(backend, ec.SECP256R1())
         private_key = EC_KEY_SECP256R1.private_key(backend)
@@ -760,8 +759,6 @@ class TestCertificateRevocationListBuilder(object):
         with pytest.raises(ValueError):
             builder.sign(private_key, hashes.MD5(), backend)
 
-    @pytest.mark.requires_backend_interface(interface=RSABackend)
-    @pytest.mark.requires_backend_interface(interface=X509Backend)
     def test_sign_with_revoked_certificates(self, backend):
         private_key = RSA_KEY_2048.private_key(backend)
         last_update = datetime.datetime(2002, 1, 1, 12, 1)
@@ -780,6 +777,17 @@ class TestCertificateRevocationListBuilder(object):
             .serial_number(2)
             .revocation_date(datetime.datetime(2012, 1, 1, 1, 1))
             .add_extension(invalidity_date, False)
+            .add_extension(
+                x509.CRLReason(x509.ReasonFlags.ca_compromise), False
+            )
+            .build(backend)
+        )
+        ci = x509.CertificateIssuer([x509.DNSName("cryptography.io")])
+        revoked_cert2 = (
+            x509.RevokedCertificateBuilder()
+            .serial_number(40)
+            .revocation_date(datetime.datetime(2011, 1, 1, 1, 1))
+            .add_extension(ci, False)
             .build(backend)
         )
         builder = (
@@ -797,10 +805,11 @@ class TestCertificateRevocationListBuilder(object):
             .next_update(next_update)
             .add_revoked_certificate(revoked_cert0)
             .add_revoked_certificate(revoked_cert1)
+            .add_revoked_certificate(revoked_cert2)
         )
 
         crl = builder.sign(private_key, hashes.SHA256(), backend)
-        assert len(crl) == 2
+        assert len(crl) == 3
         assert crl.last_update == last_update
         assert crl.next_update == next_update
         assert crl[0].serial_number == revoked_cert0.serial_number
@@ -808,7 +817,13 @@ class TestCertificateRevocationListBuilder(object):
         assert len(crl[0].extensions) == 0
         assert crl[1].serial_number == revoked_cert1.serial_number
         assert crl[1].revocation_date == revoked_cert1.revocation_date
-        assert len(crl[1].extensions) == 1
+        assert len(crl[1].extensions) == 2
         ext = crl[1].extensions.get_extension_for_class(x509.InvalidityDate)
         assert ext.critical is False
         assert ext.value == invalidity_date
+        assert (
+            crl[2]
+            .extensions.get_extension_for_class(x509.CertificateIssuer)
+            .value
+            == ci
+        )

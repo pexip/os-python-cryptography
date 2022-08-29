@@ -8,7 +8,6 @@ import binascii
 import pytest
 
 from cryptography.exceptions import AlreadyFinalized, _Reasons
-from cryptography.hazmat.backends.interfaces import CipherBackend
 from cryptography.hazmat.primitives.ciphers import (
     Cipher,
     algorithms,
@@ -24,8 +23,7 @@ from ...doubles import DummyCipherAlgorithm, DummyMode
 from ...utils import raises_unsupported_algorithm
 
 
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestCipher(object):
+class TestCipher:
     def test_creates_encryptor(self, backend):
         cipher = Cipher(
             algorithms.AES(binascii.unhexlify(b"0" * 32)),
@@ -50,8 +48,7 @@ class TestCipher(object):
             )
 
 
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestCipherContext(object):
+class TestCipherContext:
     def test_use_after_finalize(self, backend):
         cipher = Cipher(
             algorithms.AES(binascii.unhexlify(b"0" * 32)),
@@ -134,8 +131,7 @@ class TestCipherContext(object):
     ),
     skip_message="Does not support AES GCM",
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAEADCipherContext(object):
+class TestAEADCipherContext:
     test_aead_exceptions = generate_aead_exception_test(
         algorithms.AES,
         modes.GCM,
@@ -146,8 +142,7 @@ class TestAEADCipherContext(object):
     )
 
 
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestModeValidation(object):
+class TestModeValidation:
     def test_cbc(self, backend):
         with pytest.raises(ValueError):
             Cipher(
@@ -193,7 +188,7 @@ class TestModeValidation(object):
             modes.GCM(b"")
 
 
-class TestModesRequireBytes(object):
+class TestModesRequireBytes:
     def test_cbc(self):
         with pytest.raises(TypeError):
             modes.CBC([1] * 16)  # type:ignore[arg-type]
