@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 from enum import Enum
 
@@ -19,6 +18,7 @@ class _Reasons(Enum):
     UNSUPPORTED_X509 = 8
     UNSUPPORTED_EXCHANGE_ALGORITHM = 9
     UNSUPPORTED_DIFFIE_HELLMAN = 10
+    UNSUPPORTED_MAC = 11
 
 
 class UnsupportedAlgorithm(Exception):

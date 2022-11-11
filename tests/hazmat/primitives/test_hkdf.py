@@ -2,22 +2,21 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
 
 import pytest
 
-from cryptography.exceptions import (
-    AlreadyFinalized, InvalidKey, _Reasons
-)
+from cryptography.exceptions import AlreadyFinalized, InvalidKey, _Reasons
 from cryptography.hazmat.backends.interfaces import HMACBackend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF, HKDFExpand
 
 from ...utils import (
-    load_nist_vectors, load_vectors_from_file, raises_unsupported_algorithm
+    load_nist_vectors,
+    load_vectors_from_file,
+    raises_unsupported_algorithm,
 )
 
 
@@ -32,63 +31,33 @@ class TestHKDF(object):
                 big_length,
                 salt=None,
                 info=None,
-                backend=backend
+                backend=backend,
             )
 
     def test_already_finalized(self, backend):
-        hkdf = HKDF(
-            hashes.SHA256(),
-            16,
-            salt=None,
-            info=None,
-            backend=backend
-        )
+        hkdf = HKDF(hashes.SHA256(), 16, salt=None, info=None, backend=backend)
 
         hkdf.derive(b"\x01" * 16)
 
         with pytest.raises(AlreadyFinalized):
             hkdf.derive(b"\x02" * 16)
 
-        hkdf = HKDF(
-            hashes.SHA256(),
-            16,
-            salt=None,
-            info=None,
-            backend=backend
-        )
+        hkdf = HKDF(hashes.SHA256(), 16, salt=None, info=None, backend=backend)
 
         hkdf.verify(b"\x01" * 16, b"gJ\xfb{\xb1Oi\xc5sMC\xb7\xe4@\xf7u")
 
         with pytest.raises(AlreadyFinalized):
             hkdf.verify(b"\x02" * 16, b"gJ\xfb{\xb1Oi\xc5sMC\xb7\xe4@\xf7u")
 
-        hkdf = HKDF(
-            hashes.SHA256(),
-            16,
-            salt=None,
-            info=None,
-            backend=backend
-        )
+        hkdf = HKDF(hashes.SHA256(), 16, salt=None, info=None, backend=backend)
 
     def test_verify(self, backend):
-        hkdf = HKDF(
-            hashes.SHA256(),
-            16,
-            salt=None,
-            info=None,
-            backend=backend
-        )
+        hkdf = HKDF(hashes.SHA256(), 16, salt=None, info=None, backend=backend)
 
         hkdf.verify(b"\x01" * 16, b"gJ\xfb{\xb1Oi\xc5sMC\xb7\xe4@\xf7u")
 
     def test_verify_invalid(self, backend):
-        hkdf = HKDF(
-            hashes.SHA256(),
-            16,
-            salt=None,
-            info=None,
-            backend=backend
-        )
+        hkdf = HKDF(hashes.SHA256(), 16, salt=None, info=None, backend=backend)
 
         with pytest.raises(InvalidKey):
             hkdf.verify(b"\x02" * 16, b"gJ\xfb{\xb1Oi\xc5sMC\xb7\xe4@\xf7u")
@@ -98,9 +67,9 @@ class TestHKDF(object):
             HKDF(
                 hashes.SHA256(),
                 16,
-                salt=u"foo",
+                salt="foo",  # type: ignore[arg-type]
                 info=None,
-                backend=backend
+                backend=backend,
             )
 
         with pytest.raises(TypeError):
@@ -108,51 +77,33 @@ class TestHKDF(object):
                 hashes.SHA256(),
                 16,
                 salt=None,
-                info=u"foo",
-                backend=backend
+                info="foo",  # type: ignore[arg-type]
+                backend=backend,
             )
 
         with pytest.raises(TypeError):
             hkdf = HKDF(
-                hashes.SHA256(),
-                16,
-                salt=None,
-                info=None,
-                backend=backend
+                hashes.SHA256(), 16, salt=None, info=None, backend=backend
             )
 
-            hkdf.derive(u"foo")
+            hkdf.derive("foo")  # type: ignore[arg-type]
 
         with pytest.raises(TypeError):
             hkdf = HKDF(
-                hashes.SHA256(),
-                16,
-                salt=None,
-                info=None,
-                backend=backend
+                hashes.SHA256(), 16, salt=None, info=None, backend=backend
             )
 
-            hkdf.verify(u"foo", b"bar")
+            hkdf.verify("foo", b"bar")  # type: ignore[arg-type]
 
         with pytest.raises(TypeError):
             hkdf = HKDF(
-                hashes.SHA256(),
-                16,
-                salt=None,
-                info=None,
-                backend=backend
+                hashes.SHA256(), 16, salt=None, info=None, backend=backend
             )
 
-            hkdf.verify(b"foo", u"bar")
+            hkdf.verify(b"foo", "bar")  # type: ignore[arg-type]
 
     def test_derive_short_output(self, backend):
-        hkdf = HKDF(
-            hashes.SHA256(),
-            4,
-            salt=None,
-            info=None,
-            backend=backend
-        )
+        hkdf = HKDF(hashes.SHA256(), 4, salt=None, info=None, backend=backend)
 
         assert hkdf.derive(b"\x01" * 16) == b"gJ\xfb{"
 
@@ -165,7 +116,7 @@ class TestHKDF(object):
             int(vector["l"]),
             salt=vector["salt"],
             info=vector["info"],
-            backend=backend
+            backend=backend,
         )
         ikm = binascii.unhexlify(vector["ikm"])
 
@@ -180,7 +131,7 @@ class TestHKDF(object):
             int(vector["l"]),
             salt=vector["salt"],
             info=vector["info"],
-            backend=backend
+            backend=backend,
         )
         ikm = bytearray(binascii.unhexlify(vector["ikm"]))
 
@@ -194,8 +145,10 @@ class TestHKDFExpand(object):
             b"077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5"
         )
 
-        okm = (b"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c"
-               b"5bf34007208d5b887185865")
+        okm = (
+            b"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c"
+            b"5bf34007208d5b887185865"
+        )
 
         info = binascii.unhexlify(b"f0f1f2f3f4f5f6f7f8f9")
         hkdf = HKDFExpand(hashes.SHA256(), 42, info, backend)
@@ -203,12 +156,17 @@ class TestHKDFExpand(object):
         assert binascii.hexlify(hkdf.derive(prk)) == okm
 
     def test_buffer_protocol(self, backend):
-        prk = bytearray(binascii.unhexlify(
-            b"077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5"
-        ))
+        prk = bytearray(
+            binascii.unhexlify(
+                b"077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2"
+                b"b3e5"
+            )
+        )
 
-        okm = (b"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c"
-               b"5bf34007208d5b887185865")
+        okm = (
+            b"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c"
+            b"5bf34007208d5b887185865"
+        )
 
         info = binascii.unhexlify(b"f0f1f2f3f4f5f6f7f8f9")
         hkdf = HKDFExpand(hashes.SHA256(), 42, info, backend)
@@ -220,13 +178,15 @@ class TestHKDFExpand(object):
             b"077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5"
         )
 
-        okm = (b"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c"
-               b"5bf34007208d5b887185865")
+        okm = (
+            b"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c"
+            b"5bf34007208d5b887185865"
+        )
 
         info = binascii.unhexlify(b"f0f1f2f3f4f5f6f7f8f9")
         hkdf = HKDFExpand(hashes.SHA256(), 42, info, backend)
 
-        assert hkdf.verify(prk, binascii.unhexlify(okm)) is None
+        hkdf.verify(prk, binascii.unhexlify(okm))
 
     def test_invalid_verify(self, backend):
         prk = binascii.unhexlify(
@@ -253,7 +213,7 @@ class TestHKDFExpand(object):
         hkdf = HKDFExpand(hashes.SHA256(), 42, info, backend)
 
         with pytest.raises(TypeError):
-            hkdf.derive(u"first")
+            hkdf.derive("first")  # type: ignore[arg-type]
 
 
 def test_invalid_backend():

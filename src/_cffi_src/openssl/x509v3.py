@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 INCLUDES = """
 #include <openssl/x509v3.h>
@@ -177,6 +176,7 @@ typedef struct {
 typedef void (*sk_GENERAL_NAME_freefunc)(GENERAL_NAME *);
 typedef void (*sk_DIST_POINT_freefunc)(DIST_POINT *);
 typedef void (*sk_POLICYINFO_freefunc)(POLICYINFO *);
+typedef void (*sk_ACCESS_DESCRIPTION_freefunc)(ACCESS_DESCRIPTION *);
 """
 
 
@@ -228,6 +228,8 @@ ACCESS_DESCRIPTION *sk_ACCESS_DESCRIPTION_value(
     Cryptography_STACK_OF_ACCESS_DESCRIPTION *, int
 );
 void sk_ACCESS_DESCRIPTION_free(Cryptography_STACK_OF_ACCESS_DESCRIPTION *);
+void sk_ACCESS_DESCRIPTION_pop_free(Cryptography_STACK_OF_ACCESS_DESCRIPTION *,
+                              sk_ACCESS_DESCRIPTION_freefunc);
 int sk_ACCESS_DESCRIPTION_push(Cryptography_STACK_OF_ACCESS_DESCRIPTION *,
                                ACCESS_DESCRIPTION *);
 

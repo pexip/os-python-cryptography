@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 INCLUDES = """
 #include <openssl/asn1.h>
@@ -27,7 +26,10 @@ typedef struct asn1_string_st ASN1_TIME;
 typedef ... ASN1_OBJECT;
 typedef struct asn1_string_st ASN1_STRING;
 typedef struct asn1_string_st ASN1_UTF8STRING;
-typedef ... ASN1_TYPE;
+typedef struct {
+    int type;
+    ...;
+} ASN1_TYPE;
 typedef ... ASN1_GENERALIZEDTIME;
 typedef ... ASN1_ENUMERATED;
 typedef ... ASN1_NULL;
@@ -42,6 +44,7 @@ void ASN1_OBJECT_free(ASN1_OBJECT *);
 
 /*  ASN1 STRING */
 unsigned char *ASN1_STRING_data(ASN1_STRING *);
+const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *);
 int ASN1_STRING_set(ASN1_STRING *, const void *, int);
 
 /*  ASN1 OCTET STRING */
@@ -59,7 +62,6 @@ int ASN1_INTEGER_set(ASN1_INTEGER *, long);
 /*  ASN1 TIME */
 ASN1_TIME *ASN1_TIME_new(void);
 void ASN1_TIME_free(ASN1_TIME *);
-ASN1_TIME *ASN1_TIME_set(ASN1_TIME *, time_t);
 int ASN1_TIME_set_string(ASN1_TIME *, const char *);
 
 /*  ASN1 GENERALIZEDTIME */
