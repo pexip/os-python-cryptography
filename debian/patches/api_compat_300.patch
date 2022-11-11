@@ -1,0 +1,17 @@
+diff --git a/src/_cffi_src/openssl/cryptography.py b/src/_cffi_src/openssl/cryptography.py
+index c559401ddd0..6223ed5fbd7 100644
+--- a/src/_cffi_src/openssl/cryptography.py
++++ b/src/_cffi_src/openssl/cryptography.py
+@@ -4,9 +4,9 @@
+ 
+ 
+ INCLUDES = """
+-/* define our OpenSSL API compatibility level to 1.1.0. Any symbols older than
+-   that will raise an error during compilation. */
+-#define OPENSSL_API_COMPAT 0x10100000L
++/* define our OpenSSL API compatibility level to 3.0.0. Any symbols older than
++   that will raise an error during compilation. */
++#define OPENSSL_API_COMPAT 0x30000000L
+ 
+ #if defined(_WIN32)
+ #define WIN32_LEAN_AND_MEAN
