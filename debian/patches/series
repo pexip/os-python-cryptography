@@ -6,3 +6,4 @@ ease-chrono-dependency-from-0.4.22-to-0.4.patch
 drop-cffi-dep.patch
 
 getrandom-tolerance.patch
+api_compat_300.patch
