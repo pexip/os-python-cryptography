@@ -1,3 +1,16 @@
+python-cryptography (3.4.8-2pexip1) pexip; urgency=medium
+
+  * New upstream release
+
+ -- John-Mark Bell <jmb@pexip.com>  Fri, 10 Nov 2022 14:40:59 +0000
+
+python-cryptography (3.4.8-2) unstable; urgency=medium
+
+  * Team upload.
+  * Add support for OpenSSL 3.0.1 (Closes: #1006008)
+
+ -- Stefano Rivera <stefanor@debian.org>  Wed, 18 May 2022 12:22:15 -0400
+
 python-cryptography (3.4.8-1pexip1) pexip; urgency=medium
 
   * New upstream release

@@ -6,6 +6,8 @@ openssl3/0003-switch-to-using-EVP_PKEY_derive-instead-of-DH_comput.patch
 openssl3/0004-Use-well-defined-enum-representation.patch
 openssl3/0005-3.0.0-deprecated-func-and-it-isn-t-useful-to-us-in-g.patch
 openssl3/0006-remove-unneeded-binding-6150.patch
+openssl3/0009-Specify-the-out-length-when-obtaining-the-tag-for-po.patch
+openssl3/0010-try-thing.patch
 
 ecpkparameters.patch
 getrandom-tolerance.patch

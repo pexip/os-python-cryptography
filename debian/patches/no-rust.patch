@@ -1,3 +1,13 @@
+From: Tristan Seligmann <mithrandi@debian.org>
+Date: Wed, 18 May 2022 08:18:03 -0400
+Subject: no-rust
+
+---
+ setup.py | 43 ++-----------------------------------------
+ 1 file changed, 2 insertions(+), 41 deletions(-)
+
+diff --git a/setup.py b/setup.py
+index 74f69e7..69fc3dc 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -5,28 +5,10 @@
@@ -29,7 +39,7 @@
  base_dir = os.path.dirname(__file__)
  src_dir = os.path.join(base_dir, "src")
  
-@@ -41,27 +23,8 @@
+@@ -41,27 +23,8 @@ with open(os.path.join(src_dir, "cryptography", "__about__.py")) as f:
  
  # `install_requirements` and `setup_requirements` must be kept in sync with
  # `pyproject.toml`
@@ -58,7 +68,7 @@
  
  with open(os.path.join(base_dir, "README.rst")) as f:
      long_description = f.read()
-@@ -130,7 +93,6 @@
+@@ -130,7 +93,6 @@ try:
                  "sphinxcontrib-spelling >= 4.0.1",
              ],
              "sdist": [
@@ -66,7 +76,7 @@
              ],
              "pep8test": [
                  "black",
-@@ -148,8 +110,7 @@
+@@ -148,8 +110,7 @@ try:
          cffi_modules=[
              "src/_cffi_src/build_openssl.py:ffi",
              "src/_cffi_src/build_padding.py:ffi",
