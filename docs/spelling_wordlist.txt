@@ -10,6 +10,7 @@ bcrypt
 Bleichenbacher
 Blowfish
 boolean
+BoringSSL
 Botan
 Brainpool
 Bullseye
@@ -27,6 +28,7 @@ Cryptanalysis
 crypto
 cryptographic
 cryptographically
+de
 Debian
 deallocated
 decrypt
@@ -49,6 +51,7 @@ El
 Encodings
 endian
 extendable
+facto
 fallback
 Fernet
 fernet
@@ -57,6 +60,7 @@ Google
 hazmat
 Homebrew
 hostname
+incrementing
 indistinguishability
 initialisms
 interoperability
@@ -65,10 +69,13 @@ introspectability
 invariants
 iOS
 iterable
+Kerberos
+Keychain
 Koblitz
 Lange
 logins
 metadata
+Monterey
 Mozilla
 multi
 namespace
@@ -82,6 +89,8 @@ paddings
 Parallelization
 personalization
 RHEL
+parsers
+Parsers
 pickleable
 plaintext
 Poly
@@ -102,6 +111,7 @@ serializer
 Serializers
 SHA
 Solaris
+Sur
 syscall
 Tanja
 testability

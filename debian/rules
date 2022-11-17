@@ -1,8 +1,19 @@
 #!/usr/bin/make -f
 
-export DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow
+export DH_VERBOSE = 1
 
-export CRYPTOGRAPHY_DONT_BUILD_RUST=1
+include /usr/share/dpkg/pkg-info.mk
+include /usr/share/dpkg/architecture.mk
+include /usr/share/dpkg/buildflags.mk
+include /usr/share/rustc/architecture.mk
+export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+export DEB_HOST_RUST_TYPE DEB_HOST_GNU_TYPE
+
+export CARGO=/usr/share/cargo/bin/cargo
+export CARGO_HOME=$(shell pwd)/debian/cargo_home
+export DEB_CARGO_CRATE=$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)
+
+export DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow
 
 export PYBUILD_NAME=cryptography
 export PYBUILD_TEST_PYTEST=1
@@ -16,23 +27,25 @@ export PYBUILD_AFTER_TEST=rm -r {build_dir}/.hypothesis
 
 override_dh_auto_clean:
 	dh_auto_clean
-	rm -rf cryptography/hazmat/bindings/__pycache__ \
-	       cryptography/hazmat/primitives/__pycache__
+	rm -rf src/rust/target
+	rm -rf debian/cargo_registry
 
 
-ifeq ($(filter nodoc,$(DEB_BUILD_PROFILES)),)
-override_dh_auto_build:
-	dh_auto_build
-	PYTHONPATH=. \
-	   http_proxy='127.0.0.1:9' \
-	   https_proxy='127.0.0.1:9' \
-	   python3 -m sphinx -N -b html docs/ $(CURDIR)/.pybuild/docs/html/
+override_dh_sphinxdoc:
+ifeq (,$(findstring nodoc, $(DEB_BUILD_OPTIONS)))
+	PYTHONPATH=./src python3 -m sphinx -b html -N docs/ \
+		   $(CURDIR)/debian/python-cryptography-doc/usr/share/doc/python-cryptography-doc/html
+	dh_sphinxdoc
 endif
 
 
-override_dh_python3:
-	dh_python3 --depends=cffi
-	sed -Ei -e '/^cffi/d' debian/python3-cryptography/usr/lib/python3*/dist-packages/cryptography*.egg-info/requires.txt
-	-rm debian/python3-cryptography/usr/lib/python3.*/dist-packages/cryptography/hazmat/bindings/_openssl.abi3.so \
-	   debian/python3-cryptography/usr/lib/python3.*/dist-packages/cryptography/hazmat/bindings/_padding.abi3.so
-	-rmdir -p debian/python3-cryptography/usr/lib/python3.*/dist-packages/cryptography/hazmat/bindings
+override_dh_auto_configure:
+	$(CARGO) prepare-debian debian/cargo_registry --link-from-system
+	mkdir -p src/rust/target/release
+	ln -sf ../$(DEB_HOST_RUST_TYPE)/release/libcryptography_rust.so src/rust/target/release/libcryptography_rust.so
+	rm -f src/rust/Cargo.lock
+	dh_auto_configure
+
+
+override_dh_dwz:
+	dh_dwz --no-dwz-multifile

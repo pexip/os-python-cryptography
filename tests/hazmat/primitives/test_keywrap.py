@@ -8,7 +8,6 @@ import os
 
 import pytest
 
-from cryptography.hazmat.backends.interfaces import CipherBackend
 from cryptography.hazmat.primitives import keywrap
 from cryptography.hazmat.primitives.ciphers import algorithms, modes
 
@@ -16,8 +15,7 @@ from .utils import _load_all_params
 from ...utils import load_nist_vectors
 
 
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAESKeyWrap(object):
+class TestAESKeyWrap:
     @pytest.mark.supported(
         only_if=lambda backend: backend.cipher_supported(
             algorithms.AES(b"\x00" * 16), modes.ECB()
@@ -124,8 +122,7 @@ class TestAESKeyWrap(object):
     skip_message="Does not support AES key wrap (RFC 5649) because AES-ECB"
     " is unsupported",
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAESKeyWrapWithPadding(object):
+class TestAESKeyWrapWithPadding:
     def test_wrap(self, backend, subtests):
         params = _load_all_params(
             os.path.join("keywrap", "kwtestvectors"),

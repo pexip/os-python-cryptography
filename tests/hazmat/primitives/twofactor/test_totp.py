@@ -5,8 +5,6 @@
 
 import pytest
 
-from cryptography.exceptions import _Reasons
-from cryptography.hazmat.backends.interfaces import HMACBackend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.twofactor import InvalidToken
 from cryptography.hazmat.primitives.twofactor.totp import TOTP
@@ -14,14 +12,12 @@ from cryptography.hazmat.primitives.twofactor.totp import TOTP
 from ....utils import (
     load_nist_vectors,
     load_vectors_from_file,
-    raises_unsupported_algorithm,
 )
 
 vectors = load_vectors_from_file("twofactor/rfc-6238.txt", load_nist_vectors)
 
 
-@pytest.mark.requires_backend_interface(interface=HMACBackend)
-class TestTOTP(object):
+class TestTOTP:
     @pytest.mark.supported(
         only_if=lambda backend: backend.hmac_supported(hashes.SHA1()),
         skip_message="Does not support HMAC-SHA1.",
@@ -149,12 +145,3 @@ class TestTOTP(object):
         totp = TOTP(key, 8, hashes.SHA512(), 30, backend)
         time = 60
         assert totp.generate(time) == b"53049576"
-
-
-def test_invalid_backend():
-    secret = b"12345678901234567890"
-
-    pretend_backend = object()
-
-    with raises_unsupported_algorithm(_Reasons.BACKEND_MISSING_INTERFACE):
-        TOTP(secret, 8, hashes.SHA1(), 30, pretend_backend)

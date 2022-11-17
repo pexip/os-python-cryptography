@@ -9,18 +9,13 @@ import typing
 
 import pytest
 
-from cryptography.exceptions import AlreadyFinalized, InvalidSignature
-from cryptography.hazmat.backends.interfaces import (
-    DSABackend,
-    PEMSerializationBackend,
-)
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import dsa
 from cryptography.hazmat.primitives.asymmetric.utils import (
     Prehashed,
     encode_dss_signature,
 )
-from cryptography.utils import CryptographyDeprecationWarning
 
 from .fixtures_dsa import DSA_KEY_1024, DSA_KEY_2048, DSA_KEY_3072
 from .utils import skip_fips_traditional_openssl
@@ -31,32 +26,40 @@ from ...utils import (
     load_vectors_from_file,
 )
 
-_ALGORITHMS_DICT: typing.Dict[str, typing.Type[hashes.HashAlgorithm]] = {
-    "SHA1": hashes.SHA1,
-    "SHA224": hashes.SHA224,
-    "SHA256": hashes.SHA256,
-    "SHA384": hashes.SHA384,
-    "SHA512": hashes.SHA512,
+_ALGORITHMS_DICT: typing.Dict[str, hashes.HashAlgorithm] = {
+    "SHA1": hashes.SHA1(),
+    "SHA224": hashes.SHA224(),
+    "SHA256": hashes.SHA256(),
+    "SHA384": hashes.SHA384(),
+    "SHA512": hashes.SHA512(),
 }
 
 
-def _skip_if_dsa_not_supported(backend, algorithm, p, q, g):
-    if not backend.dsa_parameters_supported(
-        p, q, g
-    ) or not backend.dsa_hash_supported(algorithm):
+def _skip_if_dsa_not_supported(
+    backend: typing.Any,
+    algorithm: hashes.HashAlgorithm,
+    p: int,
+    q: int,
+    g: int,
+) -> None:
+    if not backend.dsa_hash_supported(algorithm):
         pytest.skip(
-            "{} does not support the provided parameters".format(backend)
+            "{} does not support the provided args. p: {}, hash: {}".format(
+                backend, p.bit_length(), algorithm.name
+            )
         )
 
 
-@pytest.mark.requires_backend_interface(interface=DSABackend)
 def test_skip_if_dsa_not_supported(backend):
     with pytest.raises(pytest.skip.Exception):
         _skip_if_dsa_not_supported(backend, DummyHashAlgorithm(), 1, 1, 1)
 
 
-@pytest.mark.requires_backend_interface(interface=DSABackend)
-class TestDSA(object):
+@pytest.mark.supported(
+    only_if=lambda backend: backend.dsa_supported(),
+    skip_message="Does not support DSA.",
+)
+class TestDSA:
     def test_generate_dsa_parameters(self, backend):
         parameters = dsa.generate_parameters(2048, backend)
         assert isinstance(parameters, dsa.DSAParameters)
@@ -73,11 +76,6 @@ class TestDSA(object):
         ),
     )
     def test_generate_dsa_keys(self, vector, backend):
-        if (
-            backend._fips_enabled
-            and vector["p"] < backend._fips_dsa_min_modulus
-        ):
-            pytest.skip("Small modulus blocked in FIPS mode")
         parameters = dsa.DSAParameterNumbers(
             p=vector["p"], q=vector["q"], g=vector["g"]
         ).parameters(backend)
@@ -114,38 +112,38 @@ class TestDSA(object):
         ("p", "q", "g"),
         [
             (
-                2 ** 1000,
+                2**1000,
                 DSA_KEY_1024.public_numbers.parameter_numbers.q,
                 DSA_KEY_1024.public_numbers.parameter_numbers.g,
             ),
             (
-                2 ** 2000,
+                2**2000,
                 DSA_KEY_2048.public_numbers.parameter_numbers.q,
                 DSA_KEY_2048.public_numbers.parameter_numbers.g,
             ),
             (
-                2 ** 3000,
+                2**3000,
                 DSA_KEY_3072.public_numbers.parameter_numbers.q,
                 DSA_KEY_3072.public_numbers.parameter_numbers.g,
             ),
             (
-                2 ** 3100,
+                2**3100,
                 DSA_KEY_3072.public_numbers.parameter_numbers.q,
                 DSA_KEY_3072.public_numbers.parameter_numbers.g,
             ),
             (
                 DSA_KEY_1024.public_numbers.parameter_numbers.p,
-                2 ** 150,
+                2**150,
                 DSA_KEY_1024.public_numbers.parameter_numbers.g,
             ),
             (
                 DSA_KEY_2048.public_numbers.parameter_numbers.p,
-                2 ** 250,
+                2**250,
                 DSA_KEY_2048.public_numbers.parameter_numbers.g,
             ),
             (
                 DSA_KEY_3072.public_numbers.parameter_numbers.p,
-                2 ** 260,
+                2**260,
                 DSA_KEY_3072.public_numbers.parameter_numbers.g,
             ),
             (
@@ -161,7 +159,7 @@ class TestDSA(object):
             (
                 DSA_KEY_1024.public_numbers.parameter_numbers.p,
                 DSA_KEY_1024.public_numbers.parameter_numbers.q,
-                2 ** 1200,
+                2**1200,
             ),
         ],
     )
@@ -173,28 +171,28 @@ class TestDSA(object):
         ("p", "q", "g", "y", "x"),
         [
             (
-                2 ** 1000,
+                2**1000,
                 DSA_KEY_1024.public_numbers.parameter_numbers.q,
                 DSA_KEY_1024.public_numbers.parameter_numbers.g,
                 DSA_KEY_1024.public_numbers.y,
                 DSA_KEY_1024.x,
             ),
             (
-                2 ** 2000,
+                2**2000,
                 DSA_KEY_2048.public_numbers.parameter_numbers.q,
                 DSA_KEY_2048.public_numbers.parameter_numbers.g,
                 DSA_KEY_2048.public_numbers.y,
                 DSA_KEY_2048.x,
             ),
             (
-                2 ** 3000,
+                2**3000,
                 DSA_KEY_3072.public_numbers.parameter_numbers.q,
                 DSA_KEY_3072.public_numbers.parameter_numbers.g,
                 DSA_KEY_3072.public_numbers.y,
                 DSA_KEY_3072.x,
             ),
             (
-                2 ** 3100,
+                2**3100,
                 DSA_KEY_3072.public_numbers.parameter_numbers.q,
                 DSA_KEY_3072.public_numbers.parameter_numbers.g,
                 DSA_KEY_3072.public_numbers.y,
@@ -202,21 +200,21 @@ class TestDSA(object):
             ),
             (
                 DSA_KEY_1024.public_numbers.parameter_numbers.p,
-                2 ** 150,
+                2**150,
                 DSA_KEY_1024.public_numbers.parameter_numbers.g,
                 DSA_KEY_1024.public_numbers.y,
                 DSA_KEY_1024.x,
             ),
             (
                 DSA_KEY_2048.public_numbers.parameter_numbers.p,
-                2 ** 250,
+                2**250,
                 DSA_KEY_2048.public_numbers.parameter_numbers.g,
                 DSA_KEY_2048.public_numbers.y,
                 DSA_KEY_2048.x,
             ),
             (
                 DSA_KEY_3072.public_numbers.parameter_numbers.p,
-                2 ** 260,
+                2**260,
                 DSA_KEY_3072.public_numbers.parameter_numbers.g,
                 DSA_KEY_3072.public_numbers.y,
                 DSA_KEY_3072.x,
@@ -238,7 +236,7 @@ class TestDSA(object):
             (
                 DSA_KEY_1024.public_numbers.parameter_numbers.p,
                 DSA_KEY_1024.public_numbers.parameter_numbers.q,
-                2 ** 1200,
+                2**1200,
                 DSA_KEY_1024.public_numbers.y,
                 DSA_KEY_1024.x,
             ),
@@ -261,20 +259,20 @@ class TestDSA(object):
                 DSA_KEY_1024.public_numbers.parameter_numbers.q,
                 DSA_KEY_1024.public_numbers.parameter_numbers.g,
                 DSA_KEY_1024.public_numbers.y,
-                2 ** 159,
+                2**159,
             ),
             (
                 DSA_KEY_1024.public_numbers.parameter_numbers.p,
                 DSA_KEY_1024.public_numbers.parameter_numbers.q,
                 DSA_KEY_1024.public_numbers.parameter_numbers.g,
                 DSA_KEY_1024.public_numbers.y,
-                2 ** 200,
+                2**200,
             ),
             (
                 DSA_KEY_1024.public_numbers.parameter_numbers.p,
                 DSA_KEY_1024.public_numbers.parameter_numbers.q,
                 DSA_KEY_1024.public_numbers.parameter_numbers.g,
-                2 ** 100,
+                2**100,
                 DSA_KEY_1024.x,
             ),
         ],
@@ -293,44 +291,44 @@ class TestDSA(object):
         ("p", "q", "g", "y"),
         [
             (
-                2 ** 1000,
+                2**1000,
                 DSA_KEY_1024.public_numbers.parameter_numbers.q,
                 DSA_KEY_1024.public_numbers.parameter_numbers.g,
                 DSA_KEY_1024.public_numbers.y,
             ),
             (
-                2 ** 2000,
+                2**2000,
                 DSA_KEY_2048.public_numbers.parameter_numbers.q,
                 DSA_KEY_2048.public_numbers.parameter_numbers.g,
                 DSA_KEY_2048.public_numbers.y,
             ),
             (
-                2 ** 3000,
+                2**3000,
                 DSA_KEY_3072.public_numbers.parameter_numbers.q,
                 DSA_KEY_3072.public_numbers.parameter_numbers.g,
                 DSA_KEY_3072.public_numbers.y,
             ),
             (
-                2 ** 3100,
+                2**3100,
                 DSA_KEY_3072.public_numbers.parameter_numbers.q,
                 DSA_KEY_3072.public_numbers.parameter_numbers.g,
                 DSA_KEY_3072.public_numbers.y,
             ),
             (
                 DSA_KEY_1024.public_numbers.parameter_numbers.p,
-                2 ** 150,
+                2**150,
                 DSA_KEY_1024.public_numbers.parameter_numbers.g,
                 DSA_KEY_1024.public_numbers.y,
             ),
             (
                 DSA_KEY_2048.public_numbers.parameter_numbers.p,
-                2 ** 250,
+                2**250,
                 DSA_KEY_2048.public_numbers.parameter_numbers.g,
                 DSA_KEY_2048.public_numbers.y,
             ),
             (
                 DSA_KEY_3072.public_numbers.parameter_numbers.p,
-                2 ** 260,
+                2**260,
                 DSA_KEY_3072.public_numbers.parameter_numbers.g,
                 DSA_KEY_3072.public_numbers.y,
             ),
@@ -349,7 +347,7 @@ class TestDSA(object):
             (
                 DSA_KEY_1024.public_numbers.parameter_numbers.p,
                 DSA_KEY_1024.public_numbers.parameter_numbers.q,
-                2 ** 1200,
+                2**1200,
                 DSA_KEY_1024.public_numbers.y,
             ),
         ],
@@ -368,6 +366,7 @@ class TestDSA(object):
             ),
             mode="rb",
         )
+        assert isinstance(key, dsa.DSAPrivateKey)
         pn = key.private_numbers()
         assert pn.public_numbers.parameter_numbers.p.bit_length() == 4096
         # Turn it back into a key to confirm that values this large pass
@@ -385,8 +384,11 @@ class TestDSA(object):
         ).private_key(backend)
 
 
-@pytest.mark.requires_backend_interface(interface=DSABackend)
-class TestDSAVerification(object):
+@pytest.mark.supported(
+    only_if=lambda backend: backend.dsa_supported(),
+    skip_message="Does not support DSA.",
+)
+class TestDSAVerification:
     def test_dsa_verification(self, backend, subtests):
         vectors = load_vectors_from_file(
             os.path.join("asymmetric", "DSA", "FIPS_186-3", "SigVer.rsp"),
@@ -411,33 +413,14 @@ class TestDSAVerification(object):
 
                 if vector["result"] == "F":
                     with pytest.raises(InvalidSignature):
-                        public_key.verify(sig, vector["msg"], algorithm())
+                        public_key.verify(sig, vector["msg"], algorithm)
                 else:
-                    public_key.verify(sig, vector["msg"], algorithm())
+                    public_key.verify(sig, vector["msg"], algorithm)
 
     def test_dsa_verify_invalid_asn1(self, backend):
         public_key = DSA_KEY_1024.public_numbers.public_key(backend)
         with pytest.raises(InvalidSignature):
             public_key.verify(b"fakesig", b"fakemsg", hashes.SHA1())
-
-    def test_signature_not_bytes(self, backend):
-        public_key = DSA_KEY_1024.public_numbers.public_key(backend)
-        with pytest.raises(TypeError), pytest.warns(
-            CryptographyDeprecationWarning
-        ):
-            public_key.verifier(1234, hashes.SHA1())
-
-    def test_use_after_finalize(self, backend):
-        public_key = DSA_KEY_1024.public_numbers.public_key(backend)
-        with pytest.warns(CryptographyDeprecationWarning):
-            verifier = public_key.verifier(b"fakesig", hashes.SHA1())
-        verifier.update(b"irrelevant")
-        with pytest.raises(InvalidSignature):
-            verifier.verify()
-        with pytest.raises(AlreadyFinalized):
-            verifier.verify()
-        with pytest.raises(AlreadyFinalized):
-            verifier.update(b"more data")
 
     def test_verify(self, backend):
         message = b"one little message"
@@ -469,27 +452,12 @@ class TestDSAVerification(object):
         with pytest.raises(ValueError):
             public_key.verify(b"\x00" * 128, digest, prehashed_alg)
 
-    def test_prehashed_unsupported_in_signer_ctx(self, backend):
-        private_key = DSA_KEY_1024.private_key(backend)
-        with pytest.raises(TypeError), pytest.warns(
-            CryptographyDeprecationWarning
-        ):
-            private_key.signer(
-                Prehashed(hashes.SHA1())  # type: ignore[arg-type]
-            )
 
-    def test_prehashed_unsupported_in_verifier_ctx(self, backend):
-        public_key = DSA_KEY_1024.private_key(backend).public_key()
-        with pytest.raises(TypeError), pytest.warns(
-            CryptographyDeprecationWarning
-        ):
-            public_key.verifier(
-                b"0" * 64, Prehashed(hashes.SHA1())  # type: ignore[arg-type]
-            )
-
-
-@pytest.mark.requires_backend_interface(interface=DSABackend)
-class TestDSASignature(object):
+@pytest.mark.supported(
+    only_if=lambda backend: backend.dsa_supported(),
+    skip_message="Does not support DSA.",
+)
+class TestDSASignature:
     def test_dsa_signing(self, backend, subtests):
         vectors = load_vectors_from_file(
             os.path.join("asymmetric", "DSA", "FIPS_186-3", "SigGen.txt"),
@@ -513,23 +481,12 @@ class TestDSASignature(object):
                     ),
                     x=vector["x"],
                 ).private_key(backend)
-                signature = private_key.sign(vector["msg"], algorithm())
+                signature = private_key.sign(vector["msg"], algorithm)
                 assert signature
 
                 private_key.public_key().verify(
-                    signature, vector["msg"], algorithm()
+                    signature, vector["msg"], algorithm
                 )
-
-    def test_use_after_finalize(self, backend):
-        private_key = DSA_KEY_1024.private_key(backend)
-        with pytest.warns(CryptographyDeprecationWarning):
-            signer = private_key.signer(hashes.SHA1())
-        signer.update(b"data")
-        signer.finalize()
-        with pytest.raises(AlreadyFinalized):
-            signer.finalize()
-        with pytest.raises(AlreadyFinalized):
-            signer.update(b"more data")
 
     def test_sign(self, backend):
         private_key = DSA_KEY_1024.private_key(backend)
@@ -561,7 +518,7 @@ class TestDSASignature(object):
             private_key.sign(digest, prehashed_alg)
 
 
-class TestDSANumbers(object):
+class TestDSANumbers:
     def test_dsa_parameter_numbers(self):
         parameter_numbers = dsa.DSAParameterNumbers(p=1, q=2, g=3)
         assert parameter_numbers.p == 1
@@ -641,7 +598,7 @@ class TestDSANumbers(object):
         )
 
 
-class TestDSANumberEquality(object):
+class TestDSANumberEquality:
     def test_parameter_numbers_eq(self):
         param = dsa.DSAParameterNumbers(1, 2, 3)
         assert param == dsa.DSAParameterNumbers(1, 2, 3)
@@ -693,9 +650,11 @@ class TestDSANumberEquality(object):
         assert priv != object()
 
 
-@pytest.mark.requires_backend_interface(interface=DSABackend)
-@pytest.mark.requires_backend_interface(interface=PEMSerializationBackend)
-class TestDSASerialization(object):
+@pytest.mark.supported(
+    only_if=lambda backend: backend.dsa_supported(),
+    skip_message="Does not support DSA.",
+)
+class TestDSASerialization:
     @pytest.mark.parametrize(
         ("fmt", "password"),
         itertools.product(
@@ -868,7 +827,7 @@ class TestDSASerialization(object):
         )
         with pytest.raises(TypeError):
             key.private_bytes(
-                "notencoding",
+                "notencoding",  # type: ignore[arg-type]
                 serialization.PrivateFormat.PKCS8,
                 serialization.NoEncryption(),
             )
@@ -883,7 +842,7 @@ class TestDSASerialization(object):
         with pytest.raises(TypeError):
             key.private_bytes(
                 serialization.Encoding.PEM,
-                "invalidformat",
+                "invalidformat",  # type: ignore[arg-type]
                 serialization.NoEncryption(),
             )
 
@@ -898,7 +857,7 @@ class TestDSASerialization(object):
             key.private_bytes(
                 serialization.Encoding.PEM,
                 serialization.PrivateFormat.TraditionalOpenSSL,
-                "notanencalg",
+                "notanencalg",  # type: ignore[arg-type]
             )
 
     def test_private_bytes_unsupported_encryption_type(self, backend):
@@ -916,9 +875,11 @@ class TestDSASerialization(object):
             )
 
 
-@pytest.mark.requires_backend_interface(interface=DSABackend)
-@pytest.mark.requires_backend_interface(interface=PEMSerializationBackend)
-class TestDSAPEMPublicKeySerialization(object):
+@pytest.mark.supported(
+    only_if=lambda backend: backend.dsa_supported(),
+    skip_message="Does not support DSA.",
+)
+class TestDSAPEMPublicKeySerialization:
     @pytest.mark.parametrize(
         ("key_path", "loader_func", "encoding"),
         [

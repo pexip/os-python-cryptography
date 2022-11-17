@@ -8,7 +8,6 @@ import binascii
 import pytest
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.backends.interfaces import RSABackend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
@@ -41,7 +40,6 @@ def should_verify(backend, wycheproof):
     return False
 
 
-@pytest.mark.requires_backend_interface(interface=RSABackend)
 @wycheproof_tests(
     "rsa_signature_test.json",
     "rsa_signature_2048_sha224_test.json",
@@ -104,6 +102,13 @@ def test_rsa_pkcs1v15_signature_generation(backend, wycheproof):
     assert isinstance(key, rsa.RSAPrivateKey)
     digest = _DIGESTS[wycheproof.testgroup["sha"]]
     assert digest is not None
+    if backend._fips_enabled:
+        if key.key_size < 2048 or isinstance(digest, hashes.SHA1):
+            pytest.skip(
+                "Invalid params for FIPS. key: {} bits, digest: {}".format(
+                    key.key_size, digest.name
+                )
+            )
 
     sig = key.sign(
         binascii.unhexlify(wycheproof.testcase["msg"]),
@@ -113,7 +118,6 @@ def test_rsa_pkcs1v15_signature_generation(backend, wycheproof):
     assert sig == binascii.unhexlify(wycheproof.testcase["sig"])
 
 
-@pytest.mark.requires_backend_interface(interface=RSABackend)
 @wycheproof_tests(
     "rsa_pss_2048_sha1_mgf1_20_test.json",
     "rsa_pss_2048_sha256_mgf1_0_test.json",
@@ -164,7 +168,6 @@ def test_rsa_pss_signature(backend, wycheproof):
             )
 
 
-@pytest.mark.requires_backend_interface(interface=RSABackend)
 @wycheproof_tests(
     "rsa_oaep_2048_sha1_mgf1sha1_test.json",
     "rsa_oaep_2048_sha224_mgf1sha1_test.json",
@@ -202,14 +205,6 @@ def test_rsa_oaep_encryption(backend, wycheproof):
         algorithm=digest,
         label=binascii.unhexlify(wycheproof.testcase["label"]),
     )
-
-    if not backend.rsa_padding_supported(padding_algo):
-        pytest.skip(
-            "OAEP with digest={} and MGF digest={} not supported".format(
-                wycheproof.testgroup["sha"],
-                wycheproof.testgroup["mgfSha"],
-            )
-        )
 
     if wycheproof.valid or wycheproof.acceptable:
         pt = key.decrypt(

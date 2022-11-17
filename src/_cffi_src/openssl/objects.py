@@ -25,7 +25,6 @@ int OBJ_obj2nid(const ASN1_OBJECT *);
 int OBJ_sn2nid(const char *);
 int OBJ_txt2nid(const char *);
 ASN1_OBJECT *OBJ_txt2obj(const char *, int);
-int OBJ_obj2txt(char *, int, const ASN1_OBJECT *, int);
 """
 
 CUSTOMIZATIONS = """

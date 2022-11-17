@@ -9,11 +9,8 @@ pyca/cryptography
     :target: https://cryptography.io
     :alt: Latest Docs
 
-.. image:: https://github.com/pyca/cryptography/workflows/CI/badge.svg?branch=master
-    :target: https://github.com/pyca/cryptography/actions?query=workflow%3ACI+branch%3Amaster
-
-.. image:: https://codecov.io/github/pyca/cryptography/coverage.svg?branch=master
-    :target: https://codecov.io/github/pyca/cryptography?branch=master
+.. image:: https://github.com/pyca/cryptography/workflows/CI/badge.svg?branch=main
+    :target: https://github.com/pyca/cryptography/actions?query=workflow%3ACI+branch%3Amain
 
 
 ``cryptography`` is a package which provides cryptographic recipes and
@@ -54,7 +51,7 @@ If you run into bugs, you can file them in our `issue tracker`_.
 
 We maintain a `cryptography-dev`_ mailing list for development discussion.
 
-You can also join ``#cryptography-dev`` on Freenode to ask questions or get
+You can also join ``#pyca`` on ``irc.libera.chat`` to ask questions or get
 involved.
 
 Security
@@ -65,7 +62,7 @@ documentation.
 
 
 .. _`documentation`: https://cryptography.io/
-.. _`the installation documentation`: https://cryptography.io/en/latest/installation.html
+.. _`the installation documentation`: https://cryptography.io/en/latest/installation/
 .. _`issue tracker`: https://github.com/pyca/cryptography/issues
 .. _`cryptography-dev`: https://mail.python.org/mailman/listinfo/cryptography-dev
-.. _`security reporting`: https://cryptography.io/en/latest/security.html
+.. _`security reporting`: https://cryptography.io/en/latest/security/

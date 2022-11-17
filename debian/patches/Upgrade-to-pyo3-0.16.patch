@@ -1,0 +1,912 @@
+From: Alex Gaynor <alex.gaynor@gmail.com>
+Date: Wed, 7 Sep 2022 13:28:39 +0200
+Subject: Upgrade to pyo3 0.16
+
+Ported from upstream PR: https://github.com/pyca/cryptography/pull/6935
+---
+ MANIFEST.in                      |  2 +
+ setup.cfg                        |  1 -
+ setup.py                         |  2 +-
+ src/cryptography/__init__.py     | 13 -------
+ src/rust/Cargo.lock              | 80 +++++++++++++++-------------------------
+ src/rust/Cargo.toml              |  2 +-
+ src/rust/src/asn1.rs             |  2 +-
+ src/rust/src/oid.rs              |  5 +--
+ src/rust/src/x509/certificate.rs | 21 +++++------
+ src/rust/src/x509/common.rs      | 26 ++++++-------
+ src/rust/src/x509/crl.rs         | 76 ++++++++++++++++----------------------
+ src/rust/src/x509/csr.rs         | 19 ++++------
+ src/rust/src/x509/extensions.rs  |  2 +-
+ src/rust/src/x509/ocsp_req.rs    |  4 +-
+ src/rust/src/x509/ocsp_resp.rs   | 37 +++++++++----------
+ src/rust/src/x509/sct.rs         | 43 ++++++++++-----------
+ src/rust/src/x509/sign.rs        | 12 +++---
+ 17 files changed, 143 insertions(+), 204 deletions(-)
+
+diff --git a/MANIFEST.in b/MANIFEST.in
+index 8471d75..f51a4d8 100644
+--- a/MANIFEST.in
++++ b/MANIFEST.in
+@@ -16,6 +16,8 @@ prune docs/_build
+ recursive-include tests *.py
+ exclude vectors
+ recursive-exclude vectors *
++exclude src/rust/target
++recursive-exclude src/rust/target *
+ 
+ recursive-exclude .github *
+ 
+diff --git a/setup.cfg b/setup.cfg
+index 23bb773..2a669fa 100644
+--- a/setup.cfg
++++ b/setup.cfg
+@@ -27,7 +27,6 @@ classifiers =
+ 	Programming Language :: Python
+ 	Programming Language :: Python :: 3
+ 	Programming Language :: Python :: 3 :: Only
+-	Programming Language :: Python :: 3.6
+ 	Programming Language :: Python :: 3.7
+ 	Programming Language :: Python :: 3.8
+ 	Programming Language :: Python :: 3.9
+diff --git a/setup.py b/setup.py
+index 320994e..5283c0f 100644
+--- a/setup.py
++++ b/setup.py
+@@ -52,7 +52,7 @@ try:
+                 features=(
+                     []
+                     if platform.python_implementation() == "PyPy"
+-                    else ["pyo3/abi3-py36"]
++                    else ["pyo3/abi3-py37"]
+                 ),
+                 rust_version=">=1.48.0",
+             )
+diff --git a/src/cryptography/__init__.py b/src/cryptography/__init__.py
+index 599bf51..32be322 100644
+--- a/src/cryptography/__init__.py
++++ b/src/cryptography/__init__.py
+@@ -2,15 +2,11 @@
+ # 2.0, and the BSD License. See the LICENSE file in the root of this repository
+ # for complete details.
+ 
+-import sys
+-import warnings
+-
+ from cryptography.__about__ import (
+     __author__,
+     __copyright__,
+     __version__,
+ )
+-from cryptography.utils import CryptographyDeprecationWarning
+ 
+ 
+ __all__ = [
+@@ -18,12 +14,3 @@ __all__ = [
+     "__author__",
+     "__copyright__",
+ ]
+-
+-if sys.version_info[:2] == (3, 6):
+-    warnings.warn(
+-        "Python 3.6 is no longer supported by the Python core team. "
+-        "Therefore, support for it is deprecated in cryptography and will be"
+-        " removed in a future release.",
+-        CryptographyDeprecationWarning,
+-        stacklevel=2,
+-    )
+diff --git a/src/rust/Cargo.lock b/src/rust/Cargo.lock
+index 4a0ecfd..976f865 100644
+--- a/src/rust/Cargo.lock
++++ b/src/rust/Cargo.lock
+@@ -120,24 +120,10 @@ dependencies = [
+ 
+ [[package]]
+ name = "indoc"
+-version = "0.3.6"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "47741a8bc60fb26eb8d6e0238bbb26d8575ff623fdc97b1a2c00c050b9684ed8"
+-dependencies = [
+- "indoc-impl",
+- "proc-macro-hack",
+-]
+-
+-[[package]]
+-name = "indoc-impl"
+-version = "0.3.6"
++version = "1.0.4"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ce046d161f000fffde5f432a0d034d0341dc152643b2598ed5bfce44c4f3a8f0"
++checksum = "e7906a9fababaeacb774f72410e497a1d18de916322e33797bb2cd29baa23c9e"
+ dependencies = [
+- "proc-macro-hack",
+- "proc-macro2",
+- "quote",
+- "syn",
+  "unindent",
+ ]
+ 
+@@ -257,25 +243,6 @@ dependencies = [
+  "winapi",
+ ]
+ 
+-[[package]]
+-name = "paste"
+-version = "0.1.18"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "45ca20c77d80be666aef2b45486da86238fabe33e38306bd3118fe4af33fa880"
+-dependencies = [
+- "paste-impl",
+- "proc-macro-hack",
+-]
+-
+-[[package]]
+-name = "paste-impl"
+-version = "0.1.18"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "d95a7db200b97ef370c8e6de0088252f7e0dfff7d047a28528e47456c0fc98b6"
+-dependencies = [
+- "proc-macro-hack",
+-]
+-
+ [[package]]
+ name = "pem"
+ version = "1.1.0"
+@@ -309,12 +276,6 @@ dependencies = [
+  "version_check",
+ ]
+ 
+-[[package]]
+-name = "proc-macro-hack"
+-version = "0.5.19"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
+-
+ [[package]]
+ name = "proc-macro2"
+ version = "1.0.43"
+@@ -326,35 +287,47 @@ dependencies = [
+ 
+ [[package]]
+ name = "pyo3"
+-version = "0.15.2"
++version = "0.16.5"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "d41d50a7271e08c7c8a54cd24af5d62f73ee3a6f6a314215281ebdec421d5752"
++checksum = "1e6302e85060011447471887705bb7838f14aba43fcb06957d823739a496b3dc"
+ dependencies = [
+  "cfg-if",
+  "indoc",
+  "libc",
+  "parking_lot",
+- "paste",
+  "pyo3-build-config",
++ "pyo3-ffi",
+  "pyo3-macros",
+  "unindent",
+ ]
+ 
+ [[package]]
+ name = "pyo3-build-config"
+-version = "0.15.2"
++version = "0.16.5"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "779239fc40b8e18bc8416d3a37d280ca9b9fb04bda54b98037bb6748595c2410"
++checksum = "b5b65b546c35d8a3b1b2f0ddbac7c6a569d759f357f2b9df884f5d6b719152c8"
+ dependencies = [
+  "once_cell",
++ "target-lexicon",
++]
++
++[[package]]
++name = "pyo3-ffi"
++version = "0.16.5"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "c275a07127c1aca33031a563e384ffdd485aee34ef131116fcd58e3430d1742b"
++dependencies = [
++ "libc",
++ "pyo3-build-config",
+ ]
+ 
+ [[package]]
+ name = "pyo3-macros"
+-version = "0.15.2"
++version = "0.16.5"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "00b247e8c664be87998d8628e86f282c25066165f1f8dda66100c48202fdb93a"
++checksum = "284fc4485bfbcc9850a6d661d627783f18d19c2ab55880b021671c4ba83e90f7"
+ dependencies = [
++ "proc-macro2",
+  "pyo3-macros-backend",
+  "quote",
+  "syn",
+@@ -362,12 +335,11 @@ dependencies = [
+ 
+ [[package]]
+ name = "pyo3-macros-backend"
+-version = "0.15.2"
++version = "0.16.5"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "5a8c2812c412e00e641d99eeb79dd478317d981d938aa60325dfa7157b607095"
++checksum = "53bda0f58f73f5c5429693c96ed57f7abdb38fdfc28ae06da4101a257adb7faf"
+ dependencies = [
+  "proc-macro2",
+- "pyo3-build-config",
+  "quote",
+  "syn",
+ ]
+@@ -413,6 +385,12 @@ dependencies = [
+  "unicode-ident",
+ ]
+ 
++[[package]]
++name = "target-lexicon"
++version = "0.12.4"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "c02424087780c9b71cc96799eaeddff35af2bc513278cda5c99fc1f5d026d3c1"
++
+ [[package]]
+ name = "unicode-ident"
+ version = "1.0.3"
+diff --git a/src/rust/Cargo.toml b/src/rust/Cargo.toml
+index 49e70a3..73347ab 100644
+--- a/src/rust/Cargo.toml
++++ b/src/rust/Cargo.toml
+@@ -7,7 +7,7 @@ publish = false
+ 
+ [dependencies]
+ once_cell = "1"
+-pyo3 = { version = "0.15.2" }
++pyo3 = { version = "0.16" }
+ asn1 = { version = "0.12.2", default-features = false, features = ["derive"] }
+ pem = "1.1"
+ chrono = { version = "0.4.22", default-features = false, features = ["alloc", "clock"] }
+diff --git a/src/rust/src/asn1.rs b/src/rust/src/asn1.rs
+index 1ca443d..ec873e7 100644
+--- a/src/rust/src/asn1.rs
++++ b/src/rust/src/asn1.rs
+@@ -273,7 +273,7 @@ mod tests {
+                 PyAsn1Error::Asn1Write(asn1::WriteError::AllocationError)
+             ));
+             let py_e: pyo3::PyErr = e.into();
+-            assert!(py_e.is_instance::<pyo3::exceptions::PyMemoryError>(py));
++            assert!(py_e.is_instance_of::<pyo3::exceptions::PyMemoryError>(py));
+ 
+             let e: PyAsn1Error = pyo3::PyDowncastError::new(py.None().as_ref(py), "abc").into();
+             assert!(matches!(e, PyAsn1Error::Py(_)));
+diff --git a/src/rust/src/oid.rs b/src/rust/src/oid.rs
+index bc65daf..8a77ee6 100644
+--- a/src/rust/src/oid.rs
++++ b/src/rust/src/oid.rs
+@@ -35,10 +35,7 @@ impl ObjectIdentifier {
+             .getattr(crate::intern!(py, "_OID_NAMES"))?;
+         oid_names.call_method1("get", (slf, "Unknown OID"))
+     }
+-}
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::PyObjectProtocol for ObjectIdentifier {
+     fn __repr__(&self) -> pyo3::PyResult<String> {
+         let gil = pyo3::Python::acquire_gil();
+         let py = gil.python();
+@@ -58,7 +55,7 @@ impl pyo3::PyObjectProtocol for ObjectIdentifier {
+ 
+     fn __richcmp__(
+         &self,
+-        other: pyo3::PyRef<ObjectIdentifier>,
++        other: pyo3::PyRef<'_, ObjectIdentifier>,
+         op: pyo3::basic::CompareOp,
+     ) -> pyo3::PyResult<bool> {
+         match op {
+diff --git a/src/rust/src/x509/certificate.rs b/src/rust/src/x509/certificate.rs
+index 59841d7..6a19dd7 100644
+--- a/src/rust/src/x509/certificate.rs
++++ b/src/rust/src/x509/certificate.rs
+@@ -82,8 +82,8 @@ pub(crate) struct Certificate {
+     pub(crate) cached_extensions: Option<pyo3::PyObject>,
+ }
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::PyObjectProtocol for Certificate {
++#[pyo3::prelude::pymethods]
++impl Certificate {
+     fn __hash__(&self) -> u64 {
+         let mut hasher = DefaultHasher::new();
+         self.raw.borrow_value().hash(&mut hasher);
+@@ -92,7 +92,7 @@ impl pyo3::PyObjectProtocol for Certificate {
+ 
+     fn __richcmp__(
+         &self,
+-        other: pyo3::PyRef<Certificate>,
++        other: pyo3::PyRef<'_, Certificate>,
+         op: pyo3::basic::CompareOp,
+     ) -> pyo3::PyResult<bool> {
+         match op {
+@@ -112,10 +112,7 @@ impl pyo3::PyObjectProtocol for Certificate {
+         let subject_repr = subject.repr()?.extract::<&str>()?;
+         Ok(format!("<Certificate(subject={}, ...)>", subject_repr))
+     }
+-}
+ 
+-#[pyo3::prelude::pymethods]
+-impl Certificate {
+     fn __deepcopy__(slf: pyo3::PyRef<'_, Self>, _memo: pyo3::PyObject) -> pyo3::PyRef<'_, Self> {
+         slf
+     }
+@@ -158,9 +155,9 @@ impl Certificate {
+             .getattr(crate::intern!(py, "Encoding"))?;
+ 
+         let result = asn1::write_single(self.raw.borrow_value())?;
+-        if encoding == encoding_class.getattr(crate::intern!(py, "DER"))? {
++        if encoding.is(encoding_class.getattr(crate::intern!(py, "DER"))?) {
+             Ok(pyo3::types::PyBytes::new(py, &result))
+-        } else if encoding == encoding_class.getattr(crate::intern!(py, "PEM"))? {
++        } else if encoding.is(encoding_class.getattr(crate::intern!(py, "PEM"))?) {
+             let pem = pem::encode_config(
+                 &pem::Pem {
+                     tag: "CERTIFICATE".to_string(),
+@@ -291,7 +288,7 @@ impl Certificate {
+         let hash_alg = sig_oids_to_hash.get_item(self.signature_algorithm_oid(py)?);
+         match hash_alg {
+             Ok(data) => Ok(data),
+-            Err(_) => Err(PyAsn1Error::from(pyo3::PyErr::from_instance(
++            Err(_) => Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+                 py.import("cryptography.exceptions")?.call_method1(
+                     "UnsupportedAlgorithm",
+                     (format!(
+@@ -368,11 +365,11 @@ fn cert_version(py: pyo3::Python<'_>, version: u8) -> Result<&pyo3::PyAny, PyAsn
+     match version {
+         0 => Ok(x509_module
+             .getattr(crate::intern!(py, "Version"))?
+-            .get_item("v1")?),
++            .get_item(crate::intern!(py, "v1"))?),
+         2 => Ok(x509_module
+             .getattr(crate::intern!(py, "Version"))?
+-            .get_item("v3")?),
+-        _ => Err(PyAsn1Error::from(pyo3::PyErr::from_instance(
++            .get_item(crate::intern!(py, "v3"))?),
++        _ => Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+             x509_module
+                 .getattr(crate::intern!(py, "InvalidVersion"))?
+                 .call1((format!("{} is not a valid X509 version", version), version))?,
+diff --git a/src/rust/src/x509/common.rs b/src/rust/src/x509/common.rs
+index 5cc8338..76d8d01 100644
+--- a/src/rust/src/x509/common.rs
++++ b/src/rust/src/x509/common.rs
+@@ -112,10 +112,10 @@ pub(crate) fn encode_name_entry<'p>(
+     let tag = attr_type
+         .getattr(crate::intern!(py, "value"))?
+         .extract::<u8>()?;
+-    let value: &[u8] = if attr_type != asn1_type.getattr(crate::intern!(py, "BitString"))? {
+-        let encoding = if attr_type == asn1_type.getattr(crate::intern!(py, "BMPString"))? {
++    let value: &[u8] = if !attr_type.is(asn1_type.getattr(crate::intern!(py, "BitString"))?) {
++        let encoding = if attr_type.is(asn1_type.getattr(crate::intern!(py, "BMPString"))?) {
+             "utf_16_be"
+-        } else if attr_type == asn1_type.getattr(crate::intern!(py, "UniversalString"))? {
++        } else if attr_type.is(asn1_type.getattr(crate::intern!(py, "UniversalString"))?) {
+             "utf_32_be"
+         } else {
+             "utf8"
+@@ -233,18 +233,18 @@ pub(crate) fn encode_general_name<'a>(
+     let gn_module = py.import("cryptography.x509.general_name")?;
+     let gn_type = gn.get_type().as_ref();
+     let gn_value = gn.getattr(crate::intern!(py, "value"))?;
+-    if gn_type == gn_module.getattr(crate::intern!(py, "DNSName"))? {
++    if gn_type.is(gn_module.getattr(crate::intern!(py, "DNSName"))?) {
+         Ok(GeneralName::DNSName(UnvalidatedIA5String(
+             gn_value.extract::<&str>()?,
+         )))
+-    } else if gn_type == gn_module.getattr(crate::intern!(py, "RFC822Name"))? {
++    } else if gn_type.is(gn_module.getattr(crate::intern!(py, "RFC822Name"))?) {
+         Ok(GeneralName::RFC822Name(UnvalidatedIA5String(
+             gn_value.extract::<&str>()?,
+         )))
+-    } else if gn_type == gn_module.getattr(crate::intern!(py, "DirectoryName"))? {
++    } else if gn_type.is(gn_module.getattr(crate::intern!(py, "DirectoryName"))?) {
+         let name = encode_name(py, gn_value)?;
+         Ok(GeneralName::DirectoryName(name))
+-    } else if gn_type == gn_module.getattr(crate::intern!(py, "OtherName"))? {
++    } else if gn_type.is(gn_module.getattr(crate::intern!(py, "OtherName"))?) {
+         Ok(GeneralName::OtherName(OtherName {
+             type_id: py_oid_to_oid(gn.getattr(crate::intern!(py, "type_id"))?)?,
+             value: asn1::parse_single(gn_value.extract::<&[u8]>()?).map_err(|e| {
+@@ -254,15 +254,15 @@ pub(crate) fn encode_general_name<'a>(
+                 ))
+             })?,
+         }))
+-    } else if gn_type == gn_module.getattr(crate::intern!(py, "UniformResourceIdentifier"))? {
++    } else if gn_type.is(gn_module.getattr(crate::intern!(py, "UniformResourceIdentifier"))?) {
+         Ok(GeneralName::UniformResourceIdentifier(
+             UnvalidatedIA5String(gn_value.extract::<&str>()?),
+         ))
+-    } else if gn_type == gn_module.getattr(crate::intern!(py, "IPAddress"))? {
++    } else if gn_type.is(gn_module.getattr(crate::intern!(py, "IPAddress"))?) {
+         Ok(GeneralName::IPAddress(
+             gn.call_method0("_packed")?.extract::<&[u8]>()?,
+         ))
+-    } else if gn_type == gn_module.getattr(crate::intern!(py, "RegisteredID"))? {
++    } else if gn_type.is(gn_module.getattr(crate::intern!(py, "RegisteredID"))?) {
+         let oid = py_oid_to_oid(gn_value)?;
+         Ok(GeneralName::RegisteredID(oid))
+     } else {
+@@ -462,7 +462,7 @@ pub(crate) fn parse_general_name(
+                 .to_object(py)
+         }
+         _ => {
+-            return Err(PyAsn1Error::from(pyo3::PyErr::from_instance(
++            return Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+                 x509_module.call_method1(
+                     "UnsupportedGeneralNameType",
+                     ("x400Address/EDIPartyName are not supported types",),
+@@ -560,7 +560,7 @@ pub(crate) fn parse_and_cache_extensions<
+             let oid_obj = oid_to_py_oid(py, &raw_ext.extn_id)?;
+ 
+             if seen_oids.contains(&raw_ext.extn_id) {
+-                return Err(pyo3::PyErr::from_instance(x509_module.call_method1(
++                return Err(pyo3::PyErr::from_value(x509_module.call_method1(
+                     "DuplicateExtension",
+                     (
+                         format!("Duplicate {} extension found", raw_ext.extn_id),
+@@ -606,7 +606,7 @@ pub(crate) fn encode_extensions<
+         let oid = py_oid_to_oid(py_ext.getattr(crate::intern!(py, "oid"))?)?;
+ 
+         let ext_val = py_ext.getattr(crate::intern!(py, "value"))?;
+-        if unrecognized_extension_type.is_instance(ext_val)? {
++        if ext_val.is_instance(unrecognized_extension_type)? {
+             exts.push(Extension {
+                 extn_id: oid,
+                 critical: py_ext.getattr(crate::intern!(py, "critical"))?.extract()?,
+diff --git a/src/rust/src/x509/crl.rs b/src/rust/src/x509/crl.rs
+index b34de10..29cfd60 100644
+--- a/src/rust/src/x509/crl.rs
++++ b/src/rust/src/x509/crl.rs
+@@ -25,7 +25,7 @@ fn load_der_x509_crl(
+     let version = raw.borrow_value().tbs_cert_list.version.unwrap_or(1);
+     if version != 1 {
+         let x509_module = py.import("cryptography.x509")?;
+-        return Err(PyAsn1Error::from(pyo3::PyErr::from_instance(
++        return Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+             x509_module
+                 .getattr(crate::intern!(py, "InvalidVersion"))?
+                 .call1((format!("{} is not a valid CRL version", version), version))?,
+@@ -96,11 +96,11 @@ impl CertificateRevocationList {
+     }
+ }
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::PyObjectProtocol for CertificateRevocationList {
++#[pyo3::prelude::pymethods]
++impl CertificateRevocationList {
+     fn __richcmp__(
+         &self,
+-        other: pyo3::PyRef<CertificateRevocationList>,
++        other: pyo3::PyRef<'_, CertificateRevocationList>,
+         op: pyo3::basic::CompareOp,
+     ) -> pyo3::PyResult<bool> {
+         match op {
+@@ -111,14 +111,26 @@ impl pyo3::PyObjectProtocol for CertificateRevocationList {
+             )),
+         }
+     }
+-}
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::PyMappingProtocol for CertificateRevocationList {
+     fn __len__(&self) -> usize {
+         self.len()
+     }
+ 
++    fn __iter__(&self) -> CRLIterator {
++        CRLIterator {
++            contents: OwnedCRLIteratorData::try_new(Arc::clone(&self.raw), |v| {
++                Ok::<_, ()>(
++                    v.borrow_value()
++                        .tbs_cert_list
++                        .revoked_certificates
++                        .as_ref()
++                        .map(|v| v.unwrap_read().clone()),
++                )
++            })
++            .unwrap(),
++        }
++    }
++
+     fn __getitem__(&self, idx: &pyo3::PyAny) -> pyo3::PyResult<pyo3::PyObject> {
+         let gil = pyo3::Python::acquire_gil();
+         let py = gil.python();
+@@ -132,7 +144,7 @@ impl pyo3::PyMappingProtocol for CertificateRevocationList {
+             });
+         });
+ 
+-        if idx.is_instance::<pyo3::types::PySlice>()? {
++        if idx.is_instance_of::<pyo3::types::PySlice>()? {
+             let indices = idx
+                 .downcast::<pyo3::types::PySlice>()?
+                 .indices(self.len().try_into().unwrap())?;
+@@ -153,10 +165,7 @@ impl pyo3::PyMappingProtocol for CertificateRevocationList {
+             Ok(pyo3::PyCell::new(py, self.revoked_cert(py, idx as usize)?)?.to_object(py))
+         }
+     }
+-}
+ 
+-#[pyo3::prelude::pymethods]
+-impl CertificateRevocationList {
+     fn fingerprint<'p>(
+         &self,
+         py: pyo3::Python<'p>,
+@@ -188,7 +197,7 @@ impl CertificateRevocationList {
+             .get_item(oid)
+         {
+             Ok(v) => Ok(v),
+-            Err(_) => Err(pyo3::PyErr::from_instance(exceptions_module.call_method1(
++            Err(_) => Err(pyo3::PyErr::from_value(exceptions_module.call_method1(
+                 "UnsupportedAlgorithm",
+                 (format!(
+                     "Signature algorithm OID:{} not recognized",
+@@ -222,9 +231,9 @@ impl CertificateRevocationList {
+             .getattr(crate::intern!(py, "Encoding"))?;
+ 
+         let result = asn1::write_single(self.raw.borrow_value())?;
+-        if encoding == encoding_class.getattr(crate::intern!(py, "DER"))? {
++        if encoding.is(encoding_class.getattr(crate::intern!(py, "DER"))?) {
+             Ok(pyo3::types::PyBytes::new(py, &result))
+-        } else if encoding == encoding_class.getattr(crate::intern!(py, "PEM"))? {
++        } else if encoding.is(encoding_class.getattr(crate::intern!(py, "PEM"))?) {
+             let pem = pem::encode_config(
+                 &pem::Pem {
+                     tag: "X509 CRL".to_string(),
+@@ -424,24 +433,6 @@ impl CertificateRevocationList {
+     }
+ }
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::PyIterProtocol<'_> for CertificateRevocationList {
+-    fn __iter__(slf: pyo3::PyRef<'p, Self>) -> CRLIterator {
+-        CRLIterator {
+-            contents: OwnedCRLIteratorData::try_new(Arc::clone(&slf.raw), |v| {
+-                Ok::<_, ()>(
+-                    v.borrow_value()
+-                        .tbs_cert_list
+-                        .revoked_certificates
+-                        .as_ref()
+-                        .map(|v| v.unwrap_read().clone()),
+-                )
+-            })
+-            .unwrap(),
+-        }
+-    }
+-}
+-
+ #[ouroboros::self_referencing]
+ struct OwnedCRLIteratorData {
+     data: Arc<OwnedRawCertificateRevocationList>,
+@@ -484,14 +475,18 @@ fn try_map_arc_data_mut_crl_iterator<E>(
+     })
+ }
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::PyIterProtocol<'_> for CRLIterator {
+-    fn __iter__(slf: pyo3::PyRef<'p, Self>) -> pyo3::PyRef<'p, Self> {
++#[pyo3::prelude::pymethods]
++impl CRLIterator {
++    fn __len__(&self) -> usize {
++        self.contents.borrow_value().clone().map_or(0, |v| v.len())
++    }
++
++    fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
+         slf
+     }
+ 
+-    fn __next__(mut slf: pyo3::PyRefMut<'p, Self>) -> Option<RevokedCertificate> {
+-        let revoked = try_map_arc_data_mut_crl_iterator(&mut slf.contents, |_data, v| match v {
++    fn __next__(&mut self) -> Option<RevokedCertificate> {
++        let revoked = try_map_arc_data_mut_crl_iterator(&mut self.contents, |_data, v| match v {
+             Some(v) => match v.next() {
+                 Some(revoked) => Ok(revoked),
+                 None => Err(()),
+@@ -506,13 +501,6 @@ impl pyo3::PyIterProtocol<'_> for CRLIterator {
+     }
+ }
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::PySequenceProtocol<'_> for CRLIterator {
+-    fn __len__(&self) -> usize {
+-        self.contents.borrow_value().clone().map_or(0, |v| v.len())
+-    }
+-}
+-
+ #[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Hash)]
+ struct RawCertificateRevocationList<'a> {
+     tbs_cert_list: TBSCertList<'a>,
+diff --git a/src/rust/src/x509/csr.rs b/src/rust/src/x509/csr.rs
+index 7579bcc..af4df7e 100644
+--- a/src/rust/src/x509/csr.rs
++++ b/src/rust/src/x509/csr.rs
+@@ -79,8 +79,8 @@ struct CertificateSigningRequest {
+     cached_extensions: Option<pyo3::PyObject>,
+ }
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::basic::PyObjectProtocol for CertificateSigningRequest {
++#[pyo3::prelude::pymethods]
++impl CertificateSigningRequest {
+     fn __hash__(&self) -> u64 {
+         let mut hasher = DefaultHasher::new();
+         self.raw.borrow_data().hash(&mut hasher);
+@@ -89,7 +89,7 @@ impl pyo3::basic::PyObjectProtocol for CertificateSigningRequest {
+ 
+     fn __richcmp__(
+         &self,
+-        other: pyo3::PyRef<CertificateSigningRequest>,
++        other: pyo3::PyRef<'_, CertificateSigningRequest>,
+         op: pyo3::basic::CompareOp,
+     ) -> pyo3::PyResult<bool> {
+         match op {
+@@ -100,10 +100,7 @@ impl pyo3::basic::PyObjectProtocol for CertificateSigningRequest {
+             )),
+         }
+     }
+-}
+ 
+-#[pyo3::prelude::pymethods]
+-impl CertificateSigningRequest {
+     fn public_key<'p>(&self, py: pyo3::Python<'p>) -> PyAsn1Result<&'p pyo3::PyAny> {
+         // This makes an unnecessary copy. It'd be nice to get rid of it.
+         let serialized = pyo3::types::PyBytes::new(
+@@ -149,7 +146,7 @@ impl CertificateSigningRequest {
+         let hash_alg = sig_oids_to_hash.get_item(self.signature_algorithm_oid(py)?);
+         match hash_alg {
+             Ok(data) => Ok(data),
+-            Err(_) => Err(PyAsn1Error::from(pyo3::PyErr::from_instance(
++            Err(_) => Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+                 py.import("cryptography.exceptions")?.call_method1(
+                     "UnsupportedAlgorithm",
+                     (format!(
+@@ -176,9 +173,9 @@ impl CertificateSigningRequest {
+             .getattr(crate::intern!(py, "Encoding"))?;
+ 
+         let result = asn1::write_single(self.raw.borrow_value())?;
+-        if encoding == encoding_class.getattr(crate::intern!(py, "DER"))? {
++        if encoding.is(encoding_class.getattr(crate::intern!(py, "DER"))?) {
+             Ok(pyo3::types::PyBytes::new(py, &result))
+-        } else if encoding == encoding_class.getattr(crate::intern!(py, "PEM"))? {
++        } else if encoding.is(encoding_class.getattr(crate::intern!(py, "PEM"))?) {
+             let pem = pem::encode_config(
+                 &pem::Pem {
+                     tag: "CERTIFICATE REQUEST".to_string(),
+@@ -239,7 +236,7 @@ impl CertificateSigningRequest {
+                 }
+             }
+         }
+-        Err(pyo3::PyErr::from_instance(
++        Err(pyo3::PyErr::from_value(
+             py.import("cryptography.x509")?.call_method1(
+                 "AttributeNotFound",
+                 (format!("No {} attribute was found", oid), oid),
+@@ -338,7 +335,7 @@ fn load_der_x509_csr(py: pyo3::Python<'_>, data: &[u8]) -> PyAsn1Result<Certific
+     let version = raw.borrow_value().csr_info.version;
+     if version != 0 {
+         let x509_module = py.import("cryptography.x509")?;
+-        return Err(PyAsn1Error::from(pyo3::PyErr::from_instance(
++        return Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+             x509_module
+                 .getattr(crate::intern!(py, "InvalidVersion"))?
+                 .call1((format!("{} is not a valid CSR version", version), version))?,
+diff --git a/src/rust/src/x509/extensions.rs b/src/rust/src/x509/extensions.rs
+index 537106a..e5db68a 100644
+--- a/src/rust/src/x509/extensions.rs
++++ b/src/rust/src/x509/extensions.rs
+@@ -228,7 +228,7 @@ pub(crate) fn encode_extension(
+                     let mut qualifiers = vec![];
+                     for py_qualifier in py_policy_qualifiers.iter()? {
+                         let py_qualifier = py_qualifier?;
+-                        let qualifier = if py_qualifier.is_instance::<pyo3::types::PyString>()? {
++                        let qualifier = if py_qualifier.is_instance_of::<pyo3::types::PyString>()? {
+                             let cps_uri = match asn1::IA5String::new(py_qualifier.extract()?) {
+                                 Some(s) => s,
+                                 None => {
+diff --git a/src/rust/src/x509/ocsp_req.rs b/src/rust/src/x509/ocsp_req.rs
+index 92fe96f..483acc8 100644
+--- a/src/rust/src/x509/ocsp_req.rs
++++ b/src/rust/src/x509/ocsp_req.rs
+@@ -82,7 +82,7 @@ impl OCSPRequest {
+             Some(alg_name) => Ok(hashes.getattr(alg_name)?.call0()?),
+             None => {
+                 let exceptions = py.import("cryptography.exceptions")?;
+-                Err(PyAsn1Error::from(pyo3::PyErr::from_instance(
++                Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+                     exceptions
+                         .getattr(crate::intern!(py, "UnsupportedAlgorithm"))?
+                         .call1((format!(
+@@ -134,7 +134,7 @@ impl OCSPRequest {
+             .import("cryptography.hazmat.primitives.serialization")?
+             .getattr(crate::intern!(py, "Encoding"))?
+             .getattr(crate::intern!(py, "DER"))?;
+-        if encoding != der {
++        if !encoding.is(der) {
+             return Err(pyo3::exceptions::PyValueError::new_err(
+                 "The only allowed encoding value is Encoding.DER",
+             )
+diff --git a/src/rust/src/x509/ocsp_resp.rs b/src/rust/src/x509/ocsp_resp.rs
+index 22d2940..00205a2 100644
+--- a/src/rust/src/x509/ocsp_resp.rs
++++ b/src/rust/src/x509/ocsp_resp.rs
+@@ -176,7 +176,7 @@ impl OCSPResponse {
+                     "Signature algorithm OID: {} not recognized",
+                     self.requires_successful_response()?.signature_algorithm.oid
+                 );
+-                Err(PyAsn1Error::from(pyo3::PyErr::from_instance(
++                Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+                     py.import("cryptography.exceptions")?
+                         .call_method1("UnsupportedAlgorithm", (exc_messsage,))?,
+                 )))
+@@ -365,7 +365,7 @@ impl OCSPResponse {
+             .import("cryptography.hazmat.primitives.serialization")?
+             .getattr(crate::intern!(py, "Encoding"))?
+             .getattr(crate::intern!(py, "DER"))?;
+-        if encoding != der {
++        if !encoding.is(der) {
+             return Err(pyo3::exceptions::PyValueError::new_err(
+                 "The only allowed encoding value is Encoding.DER",
+             )
+@@ -517,7 +517,7 @@ impl SingleResponse<'_> {
+             Some(alg_name) => Ok(hashes.getattr(alg_name)?.call0()?),
+             None => {
+                 let exceptions = py.import("cryptography.exceptions")?;
+-                Err(PyAsn1Error::from(pyo3::PyErr::from_instance(
++                Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+                     exceptions
+                         .getattr(crate::intern!(py, "UnsupportedAlgorithm"))?
+                         .call1((format!(
+@@ -599,16 +599,14 @@ fn create_ocsp_basic_response<'p>(
+             .extract()?;
+ 
+     let py_cert_status = py_single_resp.getattr(crate::intern!(py, "_cert_status"))?;
+-    let cert_status = if py_cert_status
+-        == ocsp_mod
+-            .getattr(crate::intern!(py, "OCSPCertStatus"))?
+-            .getattr(crate::intern!(py, "GOOD"))?
++    let cert_status = if py_cert_status.is(ocsp_mod
++        .getattr(crate::intern!(py, "OCSPCertStatus"))?
++        .getattr(crate::intern!(py, "GOOD"))?)
+     {
+         CertStatus::Good(())
+-    } else if py_cert_status
+-        == ocsp_mod
+-            .getattr(crate::intern!(py, "OCSPCertStatus"))?
+-            .getattr(crate::intern!(py, "UNKNOWN"))?
++    } else if py_cert_status.is(ocsp_mod
++        .getattr(crate::intern!(py, "OCSPCertStatus"))?
++        .getattr(crate::intern!(py, "UNKNOWN"))?)
+     {
+         CertStatus::Unknown(())
+     } else {
+@@ -657,10 +655,9 @@ fn create_ocsp_basic_response<'p>(
+     }];
+ 
+     let borrowed_cert = responder_cert.borrow();
+-    let responder_id = if responder_encoding
+-        == ocsp_mod
+-            .getattr(crate::intern!(py, "OCSPResponderEncoding"))?
+-            .getattr(crate::intern!(py, "HASH"))?
++    let responder_id = if responder_encoding.is(ocsp_mod
++        .getattr(crate::intern!(py, "OCSPResponderEncoding"))?
++        .getattr(crate::intern!(py, "HASH"))?)
+     {
+         let sha1 = py
+             .import("cryptography.hazmat.primitives.hashes")?
+@@ -785,15 +782,15 @@ struct OCSPResponseIterator {
+     contents: OwnedOCSPResponseIteratorData,
+ }
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::PyIterProtocol<'_> for OCSPResponseIterator {
+-    fn __iter__(slf: pyo3::PyRef<'p, Self>) -> pyo3::PyRef<'p, Self> {
++#[pyo3::prelude::pymethods]
++impl OCSPResponseIterator {
++    fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
+         slf
+     }
+ 
+-    fn __next__(mut slf: pyo3::PyRefMut<'p, Self>) -> Option<OCSPSingleResponse> {
++    fn __next__(&mut self) -> Option<OCSPSingleResponse> {
+         let single_resp =
+-            try_map_arc_data_mut_ocsp_response_iterator(&mut slf.contents, |_data, v| {
++            try_map_arc_data_mut_ocsp_response_iterator(&mut self.contents, |_data, v| {
+                 match v.next() {
+                     Some(single_resp) => Ok(single_resp),
+                     None => Err(()),
+diff --git a/src/rust/src/x509/sct.rs b/src/rust/src/x509/sct.rs
+index aaa374b..ed2b628 100644
+--- a/src/rust/src/x509/sct.rs
++++ b/src/rust/src/x509/sct.rs
+@@ -143,6 +143,26 @@ pub(crate) struct Sct {
+ 
+ #[pyo3::prelude::pymethods]
+ impl Sct {
++    fn __richcmp__(
++        &self,
++        other: pyo3::PyRef<'_, Sct>,
++        op: pyo3::basic::CompareOp,
++    ) -> pyo3::PyResult<bool> {
++        match op {
++            pyo3::basic::CompareOp::Eq => Ok(self.sct_data == other.sct_data),
++            pyo3::basic::CompareOp::Ne => Ok(self.sct_data != other.sct_data),
++            _ => Err(pyo3::exceptions::PyTypeError::new_err(
++                "SCTs cannot be ordered",
++            )),
++        }
++    }
++
++    fn __hash__(&self) -> u64 {
++        let mut hasher = DefaultHasher::new();
++        self.sct_data.hash(&mut hasher);
++        hasher.finish()
++    }
++
+     #[getter]
+     fn version<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+         py.import("cryptography.x509.certificate_transparency")?
+@@ -209,29 +229,6 @@ impl Sct {
+     }
+ }
+ 
+-#[pyo3::prelude::pyproto]
+-impl pyo3::PyObjectProtocol for Sct {
+-    fn __richcmp__(
+-        &self,
+-        other: pyo3::PyRef<Sct>,
+-        op: pyo3::basic::CompareOp,
+-    ) -> pyo3::PyResult<bool> {
+-        match op {
+-            pyo3::basic::CompareOp::Eq => Ok(self.sct_data == other.sct_data),
+-            pyo3::basic::CompareOp::Ne => Ok(self.sct_data != other.sct_data),
+-            _ => Err(pyo3::exceptions::PyTypeError::new_err(
+-                "SCTs cannot be ordered",
+-            )),
+-        }
+-    }
+-
+-    fn __hash__(&self) -> u64 {
+-        let mut hasher = DefaultHasher::new();
+-        self.sct_data.hash(&mut hasher);
+-        hasher.finish()
+-    }
+-}
+-
+ pub(crate) fn parse_scts(
+     py: pyo3::Python<'_>,
+     data: &[u8],
+diff --git a/src/rust/src/x509/sign.rs b/src/rust/src/x509/sign.rs
+index 4d91575..034e470 100644
+--- a/src/rust/src/x509/sign.rs
++++ b/src/rust/src/x509/sign.rs
+@@ -58,15 +58,15 @@ fn identify_key_type(py: pyo3::Python<'_>, private_key: &pyo3::PyAny) -> pyo3::P
+         .getattr(crate::intern!(py, "Ed448PrivateKey"))?
+         .extract()?;
+ 
+-    if rsa_private_key.is_instance(private_key)? {
++    if private_key.is_instance(rsa_private_key)? {
+         Ok(KeyType::Rsa)
+-    } else if dsa_key_type.is_instance(private_key)? {
++    } else if private_key.is_instance(dsa_key_type)? {
+         Ok(KeyType::Dsa)
+-    } else if ec_key_type.is_instance(private_key)? {
++    } else if private_key.is_instance(ec_key_type)? {
+         Ok(KeyType::Ec)
+-    } else if ed25519_key_type.is_instance(private_key)? {
++    } else if private_key.is_instance(ed25519_key_type)? {
+         Ok(KeyType::Ed25519)
+-    } else if ed448_key_type.is_instance(private_key)? {
++    } else if private_key.is_instance(ed448_key_type)? {
+         Ok(KeyType::Ed448)
+     } else {
+         Err(pyo3::exceptions::PyTypeError::new_err(
+@@ -87,7 +87,7 @@ fn identify_hash_type(
+         .import("cryptography.hazmat.primitives.hashes")?
+         .getattr(crate::intern!(py, "HashAlgorithm"))?
+         .extract()?;
+-    if !hash_algorithm_type.is_instance(hash_algorithm)? {
++    if !hash_algorithm.is_instance(hash_algorithm_type)? {
+         return Err(pyo3::exceptions::PyTypeError::new_err(
+             "Algorithm must be a registered hash algorithm.",
+         ));

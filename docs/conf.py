@@ -33,7 +33,7 @@ except ImportError:
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath("."))
+sys.path.insert(0, os.path.abspath("_ext"))
 
 # -- General configuration ----------------------------------------------------
 
@@ -47,12 +47,15 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
-    "sphinx.ext.viewcode",
+    "sphinx.ext.linkcode",
     "cryptography-docs",
 ]
 
 if spelling is not None:
     extensions.append("sphinxcontrib.spelling")
+
+# Linkcode resolver
+from linkcode_res import linkcode_resolve  # noqa: E402, F401
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -70,7 +73,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Cryptography"
-copyright = "2013-2021, Individual Contributors"
+copyright = "2013-2022, Individual Contributors"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -198,6 +201,10 @@ linkcheck_ignore = [
     r"https://info.isl.ntt.co.jp/crypt/eng/camellia/",
     # Inconsistent small DH params they seem incapable of fixing
     r"https://www.secg.org/sec1-v2.pdf",
+    # Incomplete cert chain
+    r"https://e-trust.gosuslugi.ru",
+    # Expired cert (1 week at time of writing)
+    r"https://www.cosic.esat.kuleuven.be",
 ]
 
 autosectionlabel_prefix_document = True
