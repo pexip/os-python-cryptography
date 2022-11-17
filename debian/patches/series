@@ -1,3 +1,5 @@
+v39.0.0-dev1.patch
+
 Use-local-python3-doc-inventory.patch
 Upgrade-to-pyo3-0.16.patch
 ease-asn1-version-from-0.12.1-to-0.12.patch
