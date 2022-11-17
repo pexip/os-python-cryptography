@@ -1,3 +1,9 @@
+python-cryptography (38.0.2-1~pexip1) pexip; urgency=medium
+
+  * New upstream release
+
+ -- John-Mark Bell <jmb@pexip.com>  Thu, 17 Nov 2022 18:16:34 +0000
+
 python-cryptography (38.0.2-1) UNRELEASED; urgency=medium
 
   * New upstream release (Closes: #1011155).
