@@ -1,3 +1,22 @@
+python-cryptography (38.0.0-1) UNRELEASED; urgency=medium
+
+  * New upstream release (Closes: #1011155).
+  * Dropped openssl3 patches, no longer required.
+  * Integrated build of embedded rust library.
+
+ -- Claudius Heine <ch@denx.de>  Mon, 29 Aug 2022 08:52:44 +0200
+
+python-cryptography (3.4.8-3) UNRELEASED; urgency=medium
+
+  * Remove constraints unnecessary since buster:
+    + Build-Depends: Drop versioned constraint on dpkg-dev, python3-asn1crypto,
+      python3-cffi, python3-idna, python3-pytest, python3-setuptools and
+      python3-six.
+    + python3-cryptography: Drop versioned constraint on python3-openssl in
+      Breaks.
+
+ -- Debian Janitor <janitor@jelmer.uk>  Thu, 19 May 2022 05:05:36 -0000
+
 python-cryptography (3.4.8-2) unstable; urgency=medium
 
   * Team upload.

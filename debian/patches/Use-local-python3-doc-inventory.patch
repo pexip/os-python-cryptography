@@ -7,10 +7,10 @@ Subject: Use local python3-doc inventory.
  1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/docs/conf.py b/docs/conf.py
-index 91bdf25..2e55ee9 100644
+index 0c38d4d..d47de91 100644
 --- a/docs/conf.py
 +++ b/docs/conf.py
-@@ -184,7 +184,10 @@ texinfo_documents = [
+@@ -186,7 +186,10 @@ texinfo_documents = [
  ]
  
  # Example configuration for intersphinx: refer to the Python standard library.

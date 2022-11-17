@@ -1,0 +1,9 @@
+Document: python-cryptography
+Title: cryptography Documentation
+Author: Contributors to python cryptography
+Abstract: This documentation gives an introduction to cryptography.
+Section: Programming/Python
+
+Format: HTML
+Index: /usr/share/doc/python-cryptography-doc/html/index.html
+Files: /usr/share/doc/python-cryptography-doc/html/*.html

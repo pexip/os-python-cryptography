@@ -1,0 +1,1 @@
+extend-diff-ignore = "(^|/)(.*\.egg-info/(PKG-INFO|SOURCES\.txt|requires\.txt))$"
