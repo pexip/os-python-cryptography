@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
@@ -166,11 +165,15 @@ class TestEd448Signing(object):
 
     def test_invalid_type_public_bytes(self, backend):
         with pytest.raises(TypeError):
-            Ed448PublicKey.from_public_bytes(object())
+            Ed448PublicKey.from_public_bytes(
+                object()  # type: ignore[arg-type]
+            )
 
     def test_invalid_type_private_bytes(self, backend):
         with pytest.raises(TypeError):
-            Ed448PrivateKey.from_private_bytes(object())
+            Ed448PrivateKey.from_private_bytes(
+                object()  # type: ignore[arg-type]
+            )
 
     def test_invalid_length_from_public_bytes(self, backend):
         with pytest.raises(ValueError):
@@ -190,14 +193,14 @@ class TestEd448Signing(object):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.Raw,
-                None,
+                None,  # type: ignore[arg-type]
             )
 
         with pytest.raises(ValueError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.PKCS8,
-                None,
+                None,  # type: ignore[arg-type]
             )
 
         with pytest.raises(ValueError):

@@ -2,18 +2,16 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 import collections
 import json
 import os
 import re
+import typing
 from contextlib import contextmanager
 
 import pytest
-
-import six
 
 from cryptography.exceptions import UnsupportedAlgorithm
 
@@ -46,7 +44,7 @@ def load_vectors_from_file(filename, loader, mode="r"):
 
 
 def load_nist_vectors(vector_data):
-    test_data = None
+    test_data = {}
     data = []
 
     for line in vector_data:
@@ -111,7 +109,7 @@ def load_cryptrec_vectors(vector_data):
 
 
 def load_hash_vectors(vector_data):
-    vectors = []
+    vectors: typing.List[typing.Union[KeyedHashVector, HashVector]] = []
     key = None
     msg = None
     md = None
@@ -153,11 +151,11 @@ def load_pkcs1_vectors(vector_data):
     """
     Loads data out of RSA PKCS #1 vector files.
     """
-    private_key_vector = None
-    public_key_vector = None
+    private_key_vector: typing.Optional[typing.Dict[str, typing.Any]] = None
+    public_key_vector: typing.Optional[typing.Dict[str, typing.Any]] = None
     attr = None
-    key = None
-    example_vector = None
+    key: typing.Any = None
+    example_vector: typing.Optional[typing.Dict[str, typing.Any]] = None
     examples = []
     vectors = []
     for line in vector_data:
@@ -167,9 +165,9 @@ def load_pkcs1_vectors(vector_data):
             or line.startswith("# PKCS#1 v1.5")
         ):
             if example_vector:
-                for key, value in six.iteritems(example_vector):
-                    hex_str = "".join(value).replace(" ", "").encode("ascii")
-                    example_vector[key] = hex_str
+                for key, value in example_vector.items():
+                    hex_bytes = "".join(value).replace(" ", "").encode("ascii")
+                    example_vector[key] = hex_bytes
                 examples.append(example_vector)
 
             attr = None
@@ -193,9 +191,9 @@ def load_pkcs1_vectors(vector_data):
         elif example_vector and line.startswith(
             "# ============================================="
         ):
-            for key, value in six.iteritems(example_vector):
-                hex_str = "".join(value).replace(" ", "").encode("ascii")
-                example_vector[key] = hex_str
+            for key, value in example_vector.items():
+                hex_bytes = "".join(value).replace(" ", "").encode("ascii")
+                example_vector[key] = hex_bytes
             examples.append(example_vector)
             example_vector = None
             attr = None
@@ -213,11 +211,11 @@ def load_pkcs1_vectors(vector_data):
                 assert private_key_vector
                 assert public_key_vector
 
-                for key, value in six.iteritems(public_key_vector):
+                for key, value in public_key_vector.items():
                     hex_str = "".join(value).replace(" ", "")
                     public_key_vector[key] = int(hex_str, 16)
 
-                for key, value in six.iteritems(private_key_vector):
+                for key, value in private_key_vector.items():
                     hex_str = "".join(value).replace(" ", "")
                     private_key_vector[key] = int(hex_str, 16)
 
@@ -280,7 +278,7 @@ def load_pkcs1_vectors(vector_data):
 
 
 def load_rsa_nist_vectors(vector_data):
-    test_data = None
+    test_data: typing.Dict[str, typing.Any] = {}
     p = None
     salt_length = None
     data = []
@@ -543,7 +541,7 @@ def load_kasvs_dh_vectors(vector_data):
     result_rx = re.compile(r"([FP]) \(([0-9]+) -")
 
     vectors = []
-    data = {"fail_z": False, "fail_agree": False}
+    data: typing.Dict[str, typing.Any] = {"fail_z": False, "fail_agree": False}
 
     for line in vector_data:
         line = line.strip()
@@ -571,6 +569,7 @@ def load_kasvs_dh_vectors(vector_data):
         elif line.startswith("Result = "):
             result_str = line.split("=")[1].strip()
             match = result_rx.match(result_str)
+            assert match is not None
 
             if match.group(1) == "F":
                 if int(match.group(2)) in (5, 10):
@@ -644,7 +643,7 @@ def load_kasvs_ecdh_vectors(vector_data):
             break
 
     # Data
-    data = {
+    data: typing.Dict[str, typing.Any] = {
         "CAVS": {},
         "IUT": {},
     }
@@ -680,6 +679,7 @@ def load_kasvs_ecdh_vectors(vector_data):
         elif line.startswith("Result = "):
             result_str = line.split("=")[1].strip()
             match = result_rx.match(result_str)
+            assert match is not None
 
             if match.group(1) == "F":
                 data["fail"] = True
@@ -732,14 +732,17 @@ def load_x963_vectors(vector_data):
             vector["key_data_length"] = key_data_len
         elif line.startswith("Z"):
             vector["Z"] = line.split("=")[1].strip()
+            assert vector["Z"] is not None
             assert ((shared_secret_len + 7) // 8) * 2 == len(vector["Z"])
         elif line.startswith("SharedInfo"):
             if shared_info_len != 0:
                 vector["sharedinfo"] = line.split("=")[1].strip()
+                assert vector["sharedinfo"] is not None
                 silen = len(vector["sharedinfo"])
                 assert ((shared_info_len + 7) // 8) * 2 == silen
         elif line.startswith("key_data"):
             vector["key_data"] = line.split("=")[1].strip()
+            assert vector["key_data"] is not None
             assert ((key_data_len + 7) // 8) * 2 == len(vector["key_data"])
             vectors.append(vector)
             vector = {}
@@ -804,7 +807,7 @@ def load_ed25519_vectors(vector_data):
 
 
 def load_nist_ccm_vectors(vector_data):
-    test_data = None
+    test_data = {}
     section_data = None
     global_data = {}
     new_section = False

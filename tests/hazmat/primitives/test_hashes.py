@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 
@@ -22,11 +21,11 @@ class TestHashContext(object):
     def test_hash_reject_unicode(self, backend):
         m = hashes.Hash(hashes.SHA1(), backend=backend)
         with pytest.raises(TypeError):
-            m.update(u"\u00FC")
+            m.update("\u00FC")  # type: ignore[arg-type]
 
     def test_hash_algorithm_instance(self, backend):
         with pytest.raises(TypeError):
-            hashes.Hash(hashes.SHA1, backend=backend)
+            hashes.Hash(hashes.SHA1, backend=backend)  # type: ignore[arg-type]
 
     def test_raises_after_finalize(self, backend):
         h = hashes.Hash(hashes.SHA1(), backend=backend)

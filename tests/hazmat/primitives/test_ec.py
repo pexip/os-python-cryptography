@@ -2,11 +2,11 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 import itertools
 import os
+import typing
 from binascii import hexlify
 
 import pytest
@@ -36,7 +36,7 @@ from ...utils import (
     raises_unsupported_algorithm,
 )
 
-_HASH_TYPES = {
+_HASH_TYPES: typing.Dict[str, typing.Type[hashes.HashAlgorithm]] = {
     "SHA-1": hashes.SHA1,
     "SHA-224": hashes.SHA224,
     "SHA-256": hashes.SHA256,
@@ -82,15 +82,13 @@ def test_get_curve_for_oid():
         ec.get_curve_for_oid(x509.ObjectIdentifier("1.1.1.1"))
 
 
-@utils.register_interface(ec.EllipticCurve)
-class DummyCurve(object):
+class DummyCurve(ec.EllipticCurve):
     name = "dummy-curve"
     key_size = 1
 
 
-@utils.register_interface(ec.EllipticCurveSignatureAlgorithm)
-class DummySignatureAlgorithm(object):
-    algorithm = None
+class DummySignatureAlgorithm(ec.EllipticCurveSignatureAlgorithm):
+    algorithm = hashes.SHA256()
 
 
 @pytest.mark.requires_backend_interface(interface=EllipticCurveBackend)
@@ -131,10 +129,10 @@ def test_derive_private_key_errors(backend):
     _skip_curve_unsupported(backend, curve)
 
     with pytest.raises(TypeError):
-        ec.derive_private_key("one", curve, backend)
+        ec.derive_private_key("one", curve, backend)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError):
-        ec.derive_private_key(10, "five", backend)
+        ec.derive_private_key(10, "five", backend)  # type: ignore[arg-type]
 
     with pytest.raises(ValueError):
         ec.derive_private_key(-7, curve, backend)
@@ -169,7 +167,7 @@ def test_invalid_ec_numbers_args(private_value, x, y, curve):
 
 def test_invalid_private_numbers_public_numbers():
     with pytest.raises(TypeError):
-        ec.EllipticCurvePrivateNumbers(1, None)
+        ec.EllipticCurvePrivateNumbers(1, None)  # type: ignore[arg-type]
 
 
 def test_encode_point():
@@ -235,7 +233,7 @@ def test_from_encoded_point_not_a_curve():
     with pytest.raises(TypeError):
         with pytest.warns(CryptographyDeprecationWarning):
             ec.EllipticCurvePublicNumbers.from_encoded_point(
-                "notacurve", b"\x04data"
+                "notacurve", b"\x04data"  # type: ignore[arg-type]
             )
 
 
@@ -279,81 +277,77 @@ def test_ec_key_key_size(backend):
 
 @pytest.mark.requires_backend_interface(interface=EllipticCurveBackend)
 class TestECWithNumbers(object):
-    @pytest.mark.parametrize(
-        ("vector", "hash_type"),
-        list(
-            itertools.product(
-                load_vectors_from_file(
-                    os.path.join(
-                        "asymmetric", "ECDSA", "FIPS_186-3", "KeyPair.rsp"
-                    ),
-                    load_fips_ecdsa_key_pair_vectors,
+    def test_with_numbers(self, backend, subtests):
+        vectors = itertools.product(
+            load_vectors_from_file(
+                os.path.join(
+                    "asymmetric", "ECDSA", "FIPS_186-3", "KeyPair.rsp"
                 ),
-                _HASH_TYPES.values(),
-            )
-        ),
-    )
-    def test_with_numbers(self, backend, vector, hash_type):
-        curve_type = ec._CURVE_TYPES[vector["curve"]]
-
-        _skip_ecdsa_vector(backend, curve_type, hash_type)
-
-        key = ec.EllipticCurvePrivateNumbers(
-            vector["d"],
-            ec.EllipticCurvePublicNumbers(
-                vector["x"], vector["y"], curve_type()
+                load_fips_ecdsa_key_pair_vectors,
             ),
-        ).private_key(backend)
-        assert key
+            _HASH_TYPES.values(),
+        )
+        for vector, hash_type in vectors:
+            with subtests.test():
+                curve_type: typing.Type[ec.EllipticCurve] = ec._CURVE_TYPES[
+                    vector["curve"]
+                ]
 
-        priv_num = key.private_numbers()
-        assert priv_num.private_value == vector["d"]
-        assert priv_num.public_numbers.x == vector["x"]
-        assert priv_num.public_numbers.y == vector["y"]
-        assert curve_type().name == priv_num.public_numbers.curve.name
+                _skip_ecdsa_vector(backend, curve_type, hash_type)
+
+                key = ec.EllipticCurvePrivateNumbers(
+                    vector["d"],
+                    ec.EllipticCurvePublicNumbers(
+                        vector["x"], vector["y"], curve_type()
+                    ),
+                ).private_key(backend)
+                assert key
+
+                priv_num = key.private_numbers()
+                assert priv_num.private_value == vector["d"]
+                assert priv_num.public_numbers.x == vector["x"]
+                assert priv_num.public_numbers.y == vector["y"]
+                assert curve_type().name == priv_num.public_numbers.curve.name
 
 
 @pytest.mark.requires_backend_interface(interface=EllipticCurveBackend)
 class TestECDSAVectors(object):
-    @pytest.mark.parametrize(
-        ("vector", "hash_type"),
-        list(
-            itertools.product(
-                load_vectors_from_file(
-                    os.path.join(
-                        "asymmetric", "ECDSA", "FIPS_186-3", "KeyPair.rsp"
-                    ),
-                    load_fips_ecdsa_key_pair_vectors,
+    def test_signing_with_example_keys(self, backend, subtests):
+        vectors = itertools.product(
+            load_vectors_from_file(
+                os.path.join(
+                    "asymmetric", "ECDSA", "FIPS_186-3", "KeyPair.rsp"
                 ),
-                _HASH_TYPES.values(),
-            )
-        ),
-    )
-    def test_signing_with_example_keys(self, backend, vector, hash_type):
-        curve_type = ec._CURVE_TYPES[vector["curve"]]
-
-        _skip_ecdsa_vector(backend, curve_type, hash_type)
-
-        key = ec.EllipticCurvePrivateNumbers(
-            vector["d"],
-            ec.EllipticCurvePublicNumbers(
-                vector["x"], vector["y"], curve_type()
+                load_fips_ecdsa_key_pair_vectors,
             ),
-        ).private_key(backend)
-        assert key
+            _HASH_TYPES.values(),
+        )
+        for vector, hash_type in vectors:
+            with subtests.test():
+                curve_type = ec._CURVE_TYPES[vector["curve"]]
 
-        pkey = key.public_key()
-        assert pkey
+                _skip_ecdsa_vector(backend, curve_type, hash_type)
 
-        with pytest.warns(CryptographyDeprecationWarning):
-            signer = key.signer(ec.ECDSA(hash_type()))
-        signer.update(b"YELLOW SUBMARINE")
-        signature = signer.finalize()
+                key = ec.EllipticCurvePrivateNumbers(
+                    vector["d"],
+                    ec.EllipticCurvePublicNumbers(
+                        vector["x"], vector["y"], curve_type()
+                    ),
+                ).private_key(backend)
+                assert key
 
-        with pytest.warns(CryptographyDeprecationWarning):
-            verifier = pkey.verifier(signature, ec.ECDSA(hash_type()))
-        verifier.update(b"YELLOW SUBMARINE")
-        verifier.verify()
+                pkey = key.public_key()
+                assert pkey
+
+                with pytest.warns(CryptographyDeprecationWarning):
+                    signer = key.signer(ec.ECDSA(hash_type()))
+                signer.update(b"YELLOW SUBMARINE")
+                signature = signer.finalize()
+
+                with pytest.warns(CryptographyDeprecationWarning):
+                    verifier = pkey.verifier(signature, ec.ECDSA(hash_type()))
+                verifier.update(b"YELLOW SUBMARINE")
+                verifier.verify()
 
     @pytest.mark.parametrize("curve", ec._CURVE_TYPES.values())
     def test_generate_vector_curves(self, backend, curve):
@@ -493,9 +487,8 @@ class TestECDSAVectors(object):
         with pytest.raises(ValueError):
             numbers.public_key(backend)
 
-    @pytest.mark.parametrize(
-        "vector",
-        itertools.chain(
+    def test_signatures(self, backend, subtests):
+        vectors = itertools.chain(
             load_vectors_from_file(
                 os.path.join(
                     "asymmetric", "ECDSA", "FIPS_186-3", "SigGen.txt"
@@ -506,46 +499,51 @@ class TestECDSAVectors(object):
                 os.path.join("asymmetric", "ECDSA", "SECP256K1", "SigGen.txt"),
                 load_fips_ecdsa_signing_vectors,
             ),
-        ),
-    )
-    def test_signatures(self, backend, vector):
-        hash_type = _HASH_TYPES[vector["digest_algorithm"]]
-        curve_type = ec._CURVE_TYPES[vector["curve"]]
+        )
+        for vector in vectors:
+            with subtests.test():
+                hash_type = _HASH_TYPES[vector["digest_algorithm"]]
+                curve_type: typing.Type[ec.EllipticCurve] = ec._CURVE_TYPES[
+                    vector["curve"]
+                ]
 
-        _skip_ecdsa_vector(backend, curve_type, hash_type)
+                _skip_ecdsa_vector(backend, curve_type, hash_type)
 
-        key = ec.EllipticCurvePublicNumbers(
-            vector["x"], vector["y"], curve_type()
-        ).public_key(backend)
+                key = ec.EllipticCurvePublicNumbers(
+                    vector["x"], vector["y"], curve_type()
+                ).public_key(backend)
 
-        signature = encode_dss_signature(vector["r"], vector["s"])
+                signature = encode_dss_signature(vector["r"], vector["s"])
 
-        key.verify(signature, vector["message"], ec.ECDSA(hash_type()))
+                key.verify(signature, vector["message"], ec.ECDSA(hash_type()))
 
-    @pytest.mark.parametrize(
-        "vector",
-        load_vectors_from_file(
+    def test_signature_failures(self, backend, subtests):
+        vectors = load_vectors_from_file(
             os.path.join("asymmetric", "ECDSA", "FIPS_186-3", "SigVer.rsp"),
             load_fips_ecdsa_signing_vectors,
-        ),
-    )
-    def test_signature_failures(self, backend, vector):
-        hash_type = _HASH_TYPES[vector["digest_algorithm"]]
-        curve_type = ec._CURVE_TYPES[vector["curve"]]
+        )
+        for vector in vectors:
+            with subtests.test():
+                hash_type = _HASH_TYPES[vector["digest_algorithm"]]
+                curve_type = ec._CURVE_TYPES[vector["curve"]]
 
-        _skip_ecdsa_vector(backend, curve_type, hash_type)
+                _skip_ecdsa_vector(backend, curve_type, hash_type)
 
-        key = ec.EllipticCurvePublicNumbers(
-            vector["x"], vector["y"], curve_type()
-        ).public_key(backend)
+                key = ec.EllipticCurvePublicNumbers(
+                    vector["x"], vector["y"], curve_type()
+                ).public_key(backend)
 
-        signature = encode_dss_signature(vector["r"], vector["s"])
+                signature = encode_dss_signature(vector["r"], vector["s"])
 
-        if vector["fail"] is True:
-            with pytest.raises(exceptions.InvalidSignature):
-                key.verify(signature, vector["message"], ec.ECDSA(hash_type()))
-        else:
-            key.verify(signature, vector["message"], ec.ECDSA(hash_type()))
+                if vector["fail"] is True:
+                    with pytest.raises(exceptions.InvalidSignature):
+                        key.verify(
+                            signature, vector["message"], ec.ECDSA(hash_type())
+                        )
+                else:
+                    key.verify(
+                        signature, vector["message"], ec.ECDSA(hash_type())
+                    )
 
     def test_sign(self, backend):
         _skip_curve_unsupported(backend, ec.SECP256R1())
@@ -694,6 +692,7 @@ class TestECSerialization(object):
             lambda pemfile: pemfile.read().encode(),
         )
         key = serialization.load_pem_private_key(key_bytes, None, backend)
+        assert isinstance(key, ec.EllipticCurvePrivateKey)
         serialized = key.private_bytes(
             serialization.Encoding.PEM,
             fmt,
@@ -702,6 +701,7 @@ class TestECSerialization(object):
         loaded_key = serialization.load_pem_private_key(
             serialized, password, backend
         )
+        assert isinstance(loaded_key, ec.EllipticCurvePrivateKey)
         loaded_priv_num = loaded_key.private_numbers()
         priv_num = key.private_numbers()
         assert loaded_priv_num == priv_num
@@ -737,6 +737,7 @@ class TestECSerialization(object):
             lambda pemfile: pemfile.read().encode(),
         )
         key = serialization.load_pem_private_key(key_bytes, None, backend)
+        assert isinstance(key, ec.EllipticCurvePrivateKey)
         serialized = key.private_bytes(
             serialization.Encoding.DER,
             fmt,
@@ -745,6 +746,7 @@ class TestECSerialization(object):
         loaded_key = serialization.load_der_private_key(
             serialized, password, backend
         )
+        assert isinstance(loaded_key, ec.EllipticCurvePrivateKey)
         loaded_priv_num = loaded_key.private_numbers()
         priv_num = key.private_numbers()
         assert loaded_priv_num == priv_num
@@ -783,10 +785,12 @@ class TestECSerialization(object):
             lambda pemfile: pemfile.read().encode(),
         )
         key = serialization.load_pem_private_key(key_bytes, None, backend)
+        assert isinstance(key, ec.EllipticCurvePrivateKey)
         serialized = key.private_bytes(
             encoding, fmt, serialization.NoEncryption()
         )
         loaded_key = loader_func(serialized, None, backend)
+        assert isinstance(loaded_key, ec.EllipticCurvePrivateKey)
         loaded_priv_num = loaded_key.private_numbers()
         priv_num = key.private_numbers()
         assert loaded_priv_num == priv_num
@@ -1124,7 +1128,7 @@ class TestEllipticCurvePEMPublicKeySerialization(object):
     def test_from_encoded_point_not_a_curve(self):
         with pytest.raises(TypeError):
             ec.EllipticCurvePublicKey.from_encoded_point(
-                "notacurve", b"\x04data"
+                "notacurve", b"\x04data"  # type: ignore[arg-type]
             )
 
     def test_from_encoded_point_unsupported_encoding(self):
@@ -1183,70 +1187,71 @@ class TestECDSAVerification(object):
         with pytest.raises(TypeError), pytest.warns(
             CryptographyDeprecationWarning
         ):
-            public_key.verifier(1234, ec.ECDSA(hashes.SHA256()))
+            public_key.verifier(
+                1234, ec.ECDSA(hashes.SHA256())  # type: ignore[arg-type]
+            )
 
 
 @pytest.mark.requires_backend_interface(interface=EllipticCurveBackend)
 class TestECDH(object):
-    @pytest.mark.parametrize(
-        "vector",
-        load_vectors_from_file(
+    def test_key_exchange_with_vectors(self, backend, subtests):
+        vectors = load_vectors_from_file(
             os.path.join(
                 "asymmetric",
                 "ECDH",
                 "KASValidityTest_ECCStaticUnified_NOKC_ZZOnly_init.fax",
             ),
             load_kasvs_ecdh_vectors,
-        ),
-    )
-    def test_key_exchange_with_vectors(self, backend, vector):
-        _skip_exchange_algorithm_unsupported(
-            backend, ec.ECDH(), ec._CURVE_TYPES[vector["curve"]]
         )
+        for vector in vectors:
+            with subtests.test():
+                _skip_exchange_algorithm_unsupported(
+                    backend, ec.ECDH(), ec._CURVE_TYPES[vector["curve"]]
+                )
 
-        key_numbers = vector["IUT"]
-        private_numbers = ec.EllipticCurvePrivateNumbers(
-            key_numbers["d"],
-            ec.EllipticCurvePublicNumbers(
-                key_numbers["x"],
-                key_numbers["y"],
-                ec._CURVE_TYPES[vector["curve"]](),
-            ),
-        )
-        # Errno 5-7 indicates a bad public or private key, this doesn't test
-        # the ECDH code at all
-        if vector["fail"] and vector["errno"] in [5, 6, 7]:
-            with pytest.raises(ValueError):
-                private_numbers.private_key(backend)
-            return
-        else:
-            private_key = private_numbers.private_key(backend)
+                key_numbers = vector["IUT"]
+                private_numbers = ec.EllipticCurvePrivateNumbers(
+                    key_numbers["d"],
+                    ec.EllipticCurvePublicNumbers(
+                        key_numbers["x"],
+                        key_numbers["y"],
+                        ec._CURVE_TYPES[vector["curve"]](),
+                    ),
+                )
+                # Errno 5-7 indicates a bad public or private key, this
+                # doesn't test the ECDH code at all
+                if vector["fail"] and vector["errno"] in [5, 6, 7]:
+                    with pytest.raises(ValueError):
+                        private_numbers.private_key(backend)
+                    continue
+                else:
+                    private_key = private_numbers.private_key(backend)
 
-        peer_numbers = vector["CAVS"]
-        public_numbers = ec.EllipticCurvePublicNumbers(
-            peer_numbers["x"],
-            peer_numbers["y"],
-            ec._CURVE_TYPES[vector["curve"]](),
-        )
-        # Errno 1 and 2 indicates a bad public key, this doesn't test the ECDH
-        # code at all
-        if vector["fail"] and vector["errno"] in [1, 2]:
-            with pytest.raises(ValueError):
-                public_numbers.public_key(backend)
-            return
-        else:
-            peer_pubkey = public_numbers.public_key(backend)
+                peer_numbers = vector["CAVS"]
+                public_numbers = ec.EllipticCurvePublicNumbers(
+                    peer_numbers["x"],
+                    peer_numbers["y"],
+                    ec._CURVE_TYPES[vector["curve"]](),
+                )
+                # Errno 1 and 2 indicates a bad public key, this doesn't test
+                # the ECDH code at all
+                if vector["fail"] and vector["errno"] in [1, 2]:
+                    with pytest.raises(ValueError):
+                        public_numbers.public_key(backend)
+                    continue
+                else:
+                    peer_pubkey = public_numbers.public_key(backend)
 
-        z = private_key.exchange(ec.ECDH(), peer_pubkey)
-        z = int(hexlify(z).decode("ascii"), 16)
-        # At this point fail indicates that one of the underlying keys was
-        # changed. This results in a non-matching derived key.
-        if vector["fail"]:
-            # Errno 8 indicates Z should be changed.
-            assert vector["errno"] == 8
-            assert z != vector["Z"]
-        else:
-            assert z == vector["Z"]
+                z = private_key.exchange(ec.ECDH(), peer_pubkey)
+                zz = int(hexlify(z).decode("ascii"), 16)
+                # At this point fail indicates that one of the underlying keys
+                # was changed. This results in a non-matching derived key.
+                if vector["fail"]:
+                    # Errno 8 indicates Z should be changed.
+                    assert vector["errno"] == 8
+                    assert zz != vector["Z"]
+                else:
+                    assert zz == vector["Z"]
 
     @pytest.mark.parametrize(
         "vector",

@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import itertools
 import os
@@ -39,17 +38,17 @@ from ...x509.test_x509 import _load_cert
 
 
 def skip_if_libre_ssl(openssl_version):
-    if u"LibreSSL" in openssl_version:
+    if "LibreSSL" in openssl_version:
         pytest.skip("LibreSSL hard-codes RAND_bytes to use arc4random.")
 
 
 class TestLibreSkip(object):
     def test_skip_no(self):
-        assert skip_if_libre_ssl(u"OpenSSL 1.0.2h  3 May 2016") is None
+        assert skip_if_libre_ssl("OpenSSL 1.0.2h  3 May 2016") is None
 
     def test_skip_yes(self):
         with pytest.raises(pytest.skip.Exception):
-            skip_if_libre_ssl(u"LibreSSL 2.1.6")
+            skip_if_libre_ssl("LibreSSL 2.1.6")
 
 
 class DummyMGF(object):
@@ -408,7 +407,9 @@ class TestOpenSSLRSA(object):
         assert (
             backend.rsa_padding_supported(
                 padding.OAEP(
-                    mgf=DummyMGF(), algorithm=hashes.SHA1(), label=None
+                    mgf=DummyMGF(),  # type: ignore[arg-type]
+                    algorithm=hashes.SHA1(),
+                    label=None,
                 ),
             )
             is False

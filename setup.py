@@ -4,13 +4,27 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
-
 import os
 import platform
 import sys
 
 from setuptools import find_packages, setup
+
+try:
+    from setuptools_rust import RustExtension
+except ImportError:
+    print(
+        """
+        =============================DEBUG ASSISTANCE==========================
+        If you are seeing an error here please try the following to
+        successfully install cryptography:
+
+        Upgrade to the latest pip and try again. This will fix errors for most
+        users. See: https://pip.pypa.io/en/stable/installing/#upgrading-pip
+        =============================DEBUG ASSISTANCE==========================
+        """
+    )
+    raise
 
 
 base_dir = os.path.dirname(__file__)
@@ -22,19 +36,32 @@ sys.path.insert(0, src_dir)
 
 about = {}
 with open(os.path.join(src_dir, "cryptography", "__about__.py")) as f:
-    exec (f.read(), about)
+    exec(f.read(), about)
 
 
-# `setup_requirements` must be kept in sync with `pyproject.toml`
-setup_requirements = ["cffi>=1.12"]
+# `install_requirements` and `setup_requirements` must be kept in sync with
+# `pyproject.toml`
+setuptools_rust = "setuptools-rust>=0.11.4"
+install_requirements = ["cffi>=1.12"]
+setup_requirements = install_requirements + [setuptools_rust]
 
-if platform.python_implementation() == "PyPy":
-    if sys.pypy_version_info < (5, 4):
-        raise RuntimeError(
-            "cryptography is not compatible with PyPy < 5.4. Please upgrade "
-            "PyPy to use this library."
+if os.environ.get("CRYPTOGRAPHY_DONT_BUILD_RUST"):
+    rust_extensions = []
+else:
+    rust_extensions = [
+        RustExtension(
+            "_rust",
+            "src/rust/Cargo.toml",
+            py_limited_api=True,
+            # Enable abi3 mode if we're not using PyPy.
+            features=(
+                []
+                if platform.python_implementation() == "PyPy"
+                else ["pyo3/abi3-py36"]
+            ),
+            rust_version=">=1.41.0",
         )
-
+    ]
 
 with open(os.path.join(base_dir, "README.rst")) as f:
     long_description = f.read()
@@ -63,9 +90,8 @@ try:
             "Operating System :: POSIX :: Linux",
             "Operating System :: Microsoft :: Windows",
             "Programming Language :: Python",
-            "Programming Language :: Python :: 2",
-            "Programming Language :: Python :: 2.7",
             "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: 3 :: Only",
             "Programming Language :: Python :: 3.6",
             "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8",
@@ -79,15 +105,15 @@ try:
             where="src", exclude=["_cffi_src", "_cffi_src.*"]
         ),
         include_package_data=True,
-        python_requires=(
-            ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*"
-        ),
-        install_requires=["six >= 1.4.1"] + setup_requirements,
+        python_requires=">=3.6",
+        install_requires=install_requirements,
         setup_requires=setup_requirements,
         extras_require={
-            ":python_version < '3'": ["enum34", "ipaddress"],
             "test": [
-                "pytest>=3.6.0,!=3.9.0,!=3.9.1,!=3.9.2",
+                "pytest>=6.0",
+                "pytest-cov",
+                "pytest-subtests",
+                "pytest-xdist",
                 "pretend",
                 "iso8601",
                 "pytz",
@@ -102,6 +128,9 @@ try:
                 "pyenchant >= 1.6.11",
                 "twine >= 1.12.0",
                 "sphinxcontrib-spelling >= 4.0.1",
+            ],
+            "sdist": [
+                setuptools_rust,
             ],
             "pep8test": [
                 "black",
@@ -120,6 +149,7 @@ try:
             "src/_cffi_src/build_openssl.py:ffi",
             "src/_cffi_src/build_padding.py:ffi",
         ],
+        rust_extensions=rust_extensions,
     )
 except:  # noqa: E722
     # Note: This is a bare exception that re-raises so that we don't interfere
@@ -140,6 +170,10 @@ except:  # noqa: E722
        instructions for your platform.
     3) Check our frequently asked questions for more information:
        https://cryptography.io/en/latest/faq.html
+    4) Ensure you have a recent Rust toolchain installed:
+       https://cryptography.io/en/latest/installation.html#rust
+    5) If you are experiencing issues with Rust for *this release only* you may
+       set the environment variable `CRYPTOGRAPHY_DONT_BUILD_RUST=1`.
     =============================DEBUG ASSISTANCE=============================
     """
     )

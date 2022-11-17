@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import binascii
 import os
@@ -95,7 +94,7 @@ class TestScrypt(object):
 
         with pytest.raises(TypeError):
             Scrypt(
-                salt,
+                salt,  # type: ignore[arg-type]
                 length,
                 work_factor,
                 block_size,
@@ -141,7 +140,7 @@ class TestScrypt(object):
         )
 
         with pytest.raises(TypeError):
-            scrypt.derive(password)
+            scrypt.derive(password)  # type: ignore[arg-type]
 
     def test_buffer_protocol(self, backend):
         password = bytearray(b"password")
@@ -181,7 +180,7 @@ class TestScrypt(object):
             parallelization_factor,
             backend,
         )
-        assert scrypt.verify(password, binascii.unhexlify(derived_key)) is None
+        scrypt.verify(password, binascii.unhexlify(derived_key))
 
     def test_invalid_verify(self, backend):
         password = b"password"
