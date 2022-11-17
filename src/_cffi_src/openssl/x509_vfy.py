@@ -18,7 +18,6 @@ typedef STACK_OF(X509_OBJECT) Cryptography_STACK_OF_X509_OBJECT;
 """
 
 TYPES = """
-static const long Cryptography_HAS_102_VERIFICATION;
 static const long Cryptography_HAS_110_VERIFICATION_PARAMS;
 static const long Cryptography_HAS_X509_STORE_CTX_GET_ISSUER;
 
@@ -90,19 +89,12 @@ static const int X509_V_ERR_UNSUPPORTED_CONSTRAINT_TYPE;
 static const int X509_V_ERR_UNSUPPORTED_CONSTRAINT_SYNTAX;
 static const int X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
 static const int X509_V_ERR_CRL_PATH_VALIDATION_ERROR;
-static const int X509_V_ERR_SUITE_B_INVALID_VERSION;
-static const int X509_V_ERR_SUITE_B_INVALID_ALGORITHM;
-static const int X509_V_ERR_SUITE_B_INVALID_CURVE;
-static const int X509_V_ERR_SUITE_B_INVALID_SIGNATURE_ALGORITHM;
-static const int X509_V_ERR_SUITE_B_LOS_NOT_ALLOWED;
-static const int X509_V_ERR_SUITE_B_CANNOT_SIGN_P_384_WITH_P_256;
 static const int X509_V_ERR_HOSTNAME_MISMATCH;
 static const int X509_V_ERR_EMAIL_MISMATCH;
 static const int X509_V_ERR_IP_ADDRESS_MISMATCH;
 static const int X509_V_ERR_APPLICATION_VERIFICATION;
 
 /* Verification parameters */
-static const long X509_V_FLAG_CB_ISSUER_CHECK;
 static const long X509_V_FLAG_USE_CHECK_TIME;
 static const long X509_V_FLAG_CRL_CHECK;
 static const long X509_V_FLAG_CRL_CHECK_ALL;
@@ -118,9 +110,6 @@ static const long X509_V_FLAG_EXTENDED_CRL_SUPPORT;
 static const long X509_V_FLAG_USE_DELTAS;
 static const long X509_V_FLAG_CHECK_SS_SIGNATURE;
 static const long X509_V_FLAG_TRUSTED_FIRST;
-static const long X509_V_FLAG_SUITEB_128_LOS_ONLY;
-static const long X509_V_FLAG_SUITEB_192_LOS;
-static const long X509_V_FLAG_SUITEB_128_LOS;
 static const long X509_V_FLAG_PARTIAL_CHAIN;
 static const long X509_V_FLAG_NO_ALT_CHAINS;
 static const long X509_V_FLAG_NO_CHECK_TIME;
@@ -134,6 +123,20 @@ static const long X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS;
 static const long X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS;
 static const long X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS;
 static const long X509_CHECK_FLAG_NEVER_CHECK_SUBJECT;
+
+/* Included due to external consumer, see
+   https://github.com/pyca/pyopenssl/issues/1031 */
+static const long X509_PURPOSE_SSL_CLIENT;
+static const long X509_PURPOSE_SSL_SERVER;
+static const long X509_PURPOSE_NS_SSL_SERVER;
+static const long X509_PURPOSE_SMIME_SIGN;
+static const long X509_PURPOSE_SMIME_ENCRYPT;
+static const long X509_PURPOSE_CRL_SIGN;
+static const long X509_PURPOSE_ANY;
+static const long X509_PURPOSE_OCSP_HELPER;
+static const long X509_PURPOSE_TIMESTAMP_SIGN;
+static const long X509_PURPOSE_MIN;
+static const long X509_PURPOSE_MAX;
 """
 
 FUNCTIONS = """
@@ -147,6 +150,9 @@ int X509_STORE_load_locations(X509_STORE *, const char *, const char *);
 int X509_STORE_set1_param(X509_STORE *, X509_VERIFY_PARAM *);
 int X509_STORE_set_default_paths(X509_STORE *);
 int X509_STORE_set_flags(X509_STORE *, unsigned long);
+/* Included due to external consumer, see
+   https://github.com/pyca/pyopenssl/issues/1031 */
+int X509_STORE_set_purpose(X509_STORE *, int);
 void X509_STORE_free(X509_STORE *);
 
 /* X509_STORE_CTX */
@@ -155,20 +161,12 @@ void X509_STORE_CTX_cleanup(X509_STORE_CTX *);
 void X509_STORE_CTX_free(X509_STORE_CTX *);
 int X509_STORE_CTX_init(X509_STORE_CTX *, X509_STORE *, X509 *,
                         Cryptography_STACK_OF_X509 *);
-void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *,
-                                  Cryptography_STACK_OF_X509 *);
-void X509_STORE_CTX_set0_trusted_stack(X509_STORE_CTX *,
-                                  Cryptography_STACK_OF_X509 *);
 void X509_STORE_CTX_set_cert(X509_STORE_CTX *, X509 *);
-void X509_STORE_CTX_set_chain(X509_STORE_CTX *,Cryptography_STACK_OF_X509 *);
-void X509_STORE_CTX_set0_untrusted(X509_STORE_CTX *,
-                                  Cryptography_STACK_OF_X509 *);
 X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(X509_STORE_CTX *);
 void X509_STORE_CTX_set0_param(X509_STORE_CTX *, X509_VERIFY_PARAM *);
 int X509_STORE_CTX_set_default(X509_STORE_CTX *, const char *);
 void X509_STORE_CTX_set_verify_cb(X509_STORE_CTX *,
                                   int (*)(int, X509_STORE_CTX *));
-Cryptography_STACK_OF_X509 *X509_STORE_CTX_get_chain(X509_STORE_CTX *);
 Cryptography_STACK_OF_X509 *X509_STORE_CTX_get1_chain(X509_STORE_CTX *);
 int X509_STORE_CTX_get_error(X509_STORE_CTX *);
 void X509_STORE_CTX_set_error(X509_STORE_CTX *, int);
@@ -192,9 +190,6 @@ int X509_VERIFY_PARAM_set1_policies(X509_VERIFY_PARAM *,
 void X509_VERIFY_PARAM_set_depth(X509_VERIFY_PARAM *, int);
 int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *);
 void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *);
-/* this CRYPTO_EX_DATA function became a macro in 1.1.0 */
-int X509_STORE_CTX_get_ex_new_index(long, void *, CRYPTO_EX_new *,
-                                    CRYPTO_EX_dup *, CRYPTO_EX_free *);
 
 /* X509_STORE_CTX */
 void X509_STORE_CTX_set0_crls(X509_STORE_CTX *,
@@ -215,7 +210,6 @@ X509_OBJECT *sk_X509_OBJECT_value(Cryptography_STACK_OF_X509_OBJECT *, int);
 X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *);
 Cryptography_STACK_OF_X509_OBJECT *X509_STORE_get0_objects(X509_STORE *);
 X509 *X509_OBJECT_get0_X509(X509_OBJECT *);
-int X509_OBJECT_get_type(const X509_OBJECT *);
 
 /* added in 1.1.0 */
 X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *);
@@ -224,22 +218,7 @@ void X509_STORE_set_get_issuer(X509_STORE *, X509_STORE_CTX_get_issuer_fn);
 """
 
 CUSTOMIZATIONS = """
-#if !CRYPTOGRAPHY_IS_LIBRESSL
-static const long Cryptography_HAS_102_VERIFICATION = 1;
-#else
-static const long Cryptography_HAS_102_VERIFICATION = 0;
-static const long X509_V_ERR_SUITE_B_INVALID_VERSION = 0;
-static const long X509_V_ERR_SUITE_B_INVALID_ALGORITHM = 0;
-static const long X509_V_ERR_SUITE_B_INVALID_CURVE = 0;
-static const long X509_V_ERR_SUITE_B_INVALID_SIGNATURE_ALGORITHM = 0;
-static const long X509_V_ERR_SUITE_B_LOS_NOT_ALLOWED = 0;
-static const long X509_V_ERR_SUITE_B_CANNOT_SIGN_P_384_WITH_P_256 = 0;
-static const long X509_V_FLAG_SUITEB_128_LOS_ONLY = 0;
-static const long X509_V_FLAG_SUITEB_192_LOS = 0;
-static const long X509_V_FLAG_SUITEB_128_LOS = 0;
-#endif
-
-#if CRYPTOGRAPHY_IS_LIBRESSL
+#if CRYPTOGRAPHY_IS_LIBRESSL && CRYPTOGRAPHY_LIBRESSL_LESS_THAN_322
 static const long Cryptography_HAS_110_VERIFICATION_PARAMS = 0;
 #ifndef X509_CHECK_FLAG_NEVER_CHECK_SUBJECT
 static const long X509_CHECK_FLAG_NEVER_CHECK_SUBJECT = 0;

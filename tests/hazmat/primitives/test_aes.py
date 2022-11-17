@@ -8,7 +8,6 @@ import os
 
 import pytest
 
-from cryptography.hazmat.backends.interfaces import CipherBackend
 from cryptography.hazmat.primitives.ciphers import algorithms, base, modes
 
 from .utils import _load_all_params, generate_encrypt_test
@@ -22,8 +21,7 @@ from ...utils import load_nist_vectors
     ),
     skip_message="Does not support AES XTS",
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAESModeXTS(object):
+class TestAESModeXTS:
     def test_xts_vectors(self, backend, subtests):
         # This list comprehension excludes any vector that does not have a
         # data unit length that is divisible by 8. The NIST vectors include
@@ -54,6 +52,34 @@ class TestAESModeXTS(object):
                 computed_pt = dec.update(ct) + dec.finalize()
                 assert computed_pt == pt
 
+    def test_xts_too_short(self, backend):
+        key = b"thirty_two_byte_keys_are_great!!"
+        tweak = b"\x00" * 16
+        cipher = base.Cipher(algorithms.AES(key), modes.XTS(tweak))
+        enc = cipher.encryptor()
+        with pytest.raises(ValueError):
+            enc.update(b"0" * 15)
+
+    @pytest.mark.supported(
+        only_if=lambda backend: (
+            backend._lib.CRYPTOGRAPHY_OPENSSL_111D_OR_GREATER
+        ),
+        skip_message="duplicate key encryption error added in OpenSSL 1.1.1d",
+    )
+    def test_xts_no_duplicate_keys_encryption(self, backend):
+        key = bytes(range(16)) * 2
+        tweak = b"\x00" * 16
+        cipher = base.Cipher(algorithms.AES(key), modes.XTS(tweak))
+        with pytest.raises(ValueError, match="duplicated keys"):
+            cipher.encryptor()
+
+    def test_xts_unsupported_with_aes128_aes256_classes(self):
+        with pytest.raises(TypeError):
+            base.Cipher(algorithms.AES128(b"0" * 16), modes.XTS(b"\x00" * 16))
+
+        with pytest.raises(TypeError):
+            base.Cipher(algorithms.AES256(b"0" * 32), modes.XTS(b"\x00" * 16))
+
 
 @pytest.mark.supported(
     only_if=lambda backend: backend.cipher_supported(
@@ -61,8 +87,7 @@ class TestAESModeXTS(object):
     ),
     skip_message="Does not support AES CBC",
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAESModeCBC(object):
+class TestAESModeCBC:
     test_cbc = generate_encrypt_test(
         load_nist_vectors,
         os.path.join("ciphers", "AES", "CBC"),
@@ -94,8 +119,7 @@ class TestAESModeCBC(object):
     ),
     skip_message="Does not support AES ECB",
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAESModeECB(object):
+class TestAESModeECB:
     test_ecb = generate_encrypt_test(
         load_nist_vectors,
         os.path.join("ciphers", "AES", "ECB"),
@@ -127,8 +151,7 @@ class TestAESModeECB(object):
     ),
     skip_message="Does not support AES OFB",
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAESModeOFB(object):
+class TestAESModeOFB:
     test_ofb = generate_encrypt_test(
         load_nist_vectors,
         os.path.join("ciphers", "AES", "OFB"),
@@ -160,8 +183,7 @@ class TestAESModeOFB(object):
     ),
     skip_message="Does not support AES CFB",
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAESModeCFB(object):
+class TestAESModeCFB:
     test_cfb = generate_encrypt_test(
         load_nist_vectors,
         os.path.join("ciphers", "AES", "CFB"),
@@ -193,8 +215,7 @@ class TestAESModeCFB(object):
     ),
     skip_message="Does not support AES CFB8",
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAESModeCFB8(object):
+class TestAESModeCFB8:
     test_cfb8 = generate_encrypt_test(
         load_nist_vectors,
         os.path.join("ciphers", "AES", "CFB"),
@@ -226,8 +247,7 @@ class TestAESModeCFB8(object):
     ),
     skip_message="Does not support AES CTR",
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
-class TestAESModeCTR(object):
+class TestAESModeCTR:
     test_ctr = generate_encrypt_test(
         load_nist_vectors,
         os.path.join("ciphers", "AES", "CTR"),
@@ -250,13 +270,37 @@ class TestAESModeCTR(object):
         DummyMode(),
     ],
 )
-@pytest.mark.requires_backend_interface(interface=CipherBackend)
 def test_buffer_protocol_alternate_modes(mode, backend):
     data = bytearray(b"sixteen_byte_msg")
     key = algorithms.AES(bytearray(os.urandom(32)))
     if not backend.cipher_supported(key, mode):
         pytest.skip("AES in {} mode not supported".format(mode.name))
     cipher = base.Cipher(key, mode, backend)
+    enc = cipher.encryptor()
+    ct = enc.update(data) + enc.finalize()
+    dec = cipher.decryptor()
+    pt = dec.update(ct) + dec.finalize()
+    assert pt == data
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [
+        modes.ECB(),
+        modes.CBC(bytearray(b"\x00" * 16)),
+        modes.CTR(bytearray(b"\x00" * 16)),
+        modes.OFB(bytearray(b"\x00" * 16)),
+        modes.CFB(bytearray(b"\x00" * 16)),
+        modes.CFB8(bytearray(b"\x00" * 16)),
+    ],
+)
+@pytest.mark.parametrize("alg_cls", [algorithms.AES128, algorithms.AES256])
+def test_alternate_aes_classes(mode, alg_cls, backend):
+    alg = alg_cls(b"0" * (alg_cls.key_size // 8))
+    if not backend.cipher_supported(alg, mode):
+        pytest.skip("AES in {} mode not supported".format(mode.name))
+    data = bytearray(b"sixteen_byte_msg")
+    cipher = base.Cipher(alg, mode, backend)
     enc = cipher.encryptor()
     ct = enc.update(data) + enc.finalize()
     dec = cipher.decryptor()

@@ -33,8 +33,6 @@ void EC_GROUP_free(EC_GROUP *);
 
 EC_GROUP *EC_GROUP_new_by_curve_name(int);
 
-int EC_GROUP_get_degree(const EC_GROUP *);
-
 const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *);
 const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *);
 int EC_GROUP_get_curve_name(const EC_GROUP *);
@@ -67,17 +65,8 @@ int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *, EC_POINT *,
 int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *,
     const EC_POINT *, BIGNUM *, BIGNUM *, BN_CTX *);
 
-int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *, EC_POINT *,
-    const BIGNUM *, int, BN_CTX *);
-
-int EC_POINT_set_affine_coordinates_GF2m(const EC_GROUP *, EC_POINT *,
-    const BIGNUM *, const BIGNUM *, BN_CTX *);
-
 int EC_POINT_get_affine_coordinates_GF2m(const EC_GROUP *,
     const EC_POINT *, BIGNUM *, BIGNUM *, BN_CTX *);
-
-int EC_POINT_set_compressed_coordinates_GF2m(const EC_GROUP *, EC_POINT *,
-    const BIGNUM *, int, BN_CTX *);
 
 size_t EC_POINT_point2oct(const EC_GROUP *, const EC_POINT *,
     point_conversion_form_t,
@@ -111,14 +100,9 @@ CUSTOMIZATIONS = """
 #if defined(OPENSSL_NO_EC2M)
 static const long Cryptography_HAS_EC2M = 0;
 
-int (*EC_POINT_set_affine_coordinates_GF2m)(const EC_GROUP *, EC_POINT *,
-    const BIGNUM *, const BIGNUM *, BN_CTX *) = NULL;
-
 int (*EC_POINT_get_affine_coordinates_GF2m)(const EC_GROUP *,
     const EC_POINT *, BIGNUM *, BIGNUM *, BN_CTX *) = NULL;
 
-int (*EC_POINT_set_compressed_coordinates_GF2m)(const EC_GROUP *, EC_POINT *,
-    const BIGNUM *, int, BN_CTX *) = NULL;
 #else
 static const long Cryptography_HAS_EC2M = 1;
 #endif

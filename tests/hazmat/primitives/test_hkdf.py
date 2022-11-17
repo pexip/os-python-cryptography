@@ -8,20 +8,17 @@ import os
 
 import pytest
 
-from cryptography.exceptions import AlreadyFinalized, InvalidKey, _Reasons
-from cryptography.hazmat.backends.interfaces import HMACBackend
+from cryptography.exceptions import AlreadyFinalized, InvalidKey
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF, HKDFExpand
 
 from ...utils import (
     load_nist_vectors,
     load_vectors_from_file,
-    raises_unsupported_algorithm,
 )
 
 
-@pytest.mark.requires_backend_interface(interface=HMACBackend)
-class TestHKDF(object):
+class TestHKDF:
     def test_length_limit(self, backend):
         big_length = 255 * hashes.SHA256().digest_size + 1
 
@@ -138,8 +135,7 @@ class TestHKDF(object):
         assert hkdf.derive(ikm) == binascii.unhexlify(vector["okm"])
 
 
-@pytest.mark.requires_backend_interface(interface=HMACBackend)
-class TestHKDFExpand(object):
+class TestHKDFExpand:
     def test_derive(self, backend):
         prk = binascii.unhexlify(
             b"077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5"
@@ -214,13 +210,3 @@ class TestHKDFExpand(object):
 
         with pytest.raises(TypeError):
             hkdf.derive("first")  # type: ignore[arg-type]
-
-
-def test_invalid_backend():
-    pretend_backend = object()
-
-    with raises_unsupported_algorithm(_Reasons.BACKEND_MISSING_INTERFACE):
-        HKDF(hashes.SHA256(), 16, None, None, pretend_backend)
-
-    with raises_unsupported_algorithm(_Reasons.BACKEND_MISSING_INTERFACE):
-        HKDFExpand(hashes.SHA256(), 16, None, pretend_backend)
