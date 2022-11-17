@@ -1,7 +1,6 @@
 Use-local-python3-doc-inventory.patch
 Upgrade-to-pyo3-0.16.patch
 Upgrade-to-pyo3-0.17.patch
-ease-asn1-version-from-0.12.1-to-0.12.patch
 allow-pem-version-1.0.patch
 ease-chrono-dependency-from-0.4.22-to-0.4.patch
 drop-cffi-dep.patch
