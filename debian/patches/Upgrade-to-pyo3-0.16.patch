@@ -3,7 +3,6 @@ Date: Wed, 7 Sep 2022 13:28:39 +0200
 Subject: Upgrade to pyo3 0.16
 
 Ported from upstream PR: https://github.com/pyca/cryptography/pull/6935
-
 ---
  MANIFEST.in                      |  2 +
  setup.cfg                        |  1 -
@@ -96,7 +95,7 @@ index 599bf51..32be322 100644
 -        stacklevel=2,
 -    )
 diff --git a/src/rust/Cargo.lock b/src/rust/Cargo.lock
-index e1fd955..65de35b 100644
+index 4a0ecfd..976f865 100644
 --- a/src/rust/Cargo.lock
 +++ b/src/rust/Cargo.lock
 @@ -120,24 +120,10 @@ dependencies = [
@@ -249,7 +248,7 @@ index e1fd955..65de35b 100644
  name = "unicode-ident"
  version = "1.0.3"
 diff --git a/src/rust/Cargo.toml b/src/rust/Cargo.toml
-index 271b290..58ce79e 100644
+index 49e70a3..73347ab 100644
 --- a/src/rust/Cargo.toml
 +++ b/src/rust/Cargo.toml
 @@ -7,7 +7,7 @@ publish = false
@@ -258,7 +257,7 @@ index 271b290..58ce79e 100644
  once_cell = "1"
 -pyo3 = { version = "0.15.2" }
 +pyo3 = { version = "0.16" }
- asn1 = { version = "0.12.1", default-features = false, features = ["derive"] }
+ asn1 = { version = "0.12.2", default-features = false, features = ["derive"] }
  pem = "1.1"
  chrono = { version = "0.4.22", default-features = false, features = ["alloc", "clock"] }
 diff --git a/src/rust/src/asn1.rs b/src/rust/src/asn1.rs

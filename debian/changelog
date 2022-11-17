@@ -1,4 +1,4 @@
-python-cryptography (38.0.0-1) UNRELEASED; urgency=medium
+python-cryptography (38.0.2-1) UNRELEASED; urgency=medium
 
   * New upstream release (Closes: #1011155).
   * Dropped openssl3 patches, no longer required.
