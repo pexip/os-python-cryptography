@@ -19,3 +19,27 @@ index f05d643..68a9084 100644
  ouroboros = "0.15"
  
  [features]
+diff --git a/src/rust/src/x509/common.rs b/src/rust/src/x509/common.rs
+index 5cc833830..fb61b7ae8 100644
+--- a/src/rust/src/x509/common.rs
++++ b/src/rust/src/x509/common.rs
+@@ -683,15 +683,16 @@ pub(crate) fn py_to_chrono(
+     val: &pyo3::PyAny,
+ ) -> pyo3::PyResult<chrono::DateTime<chrono::Utc>> {
+     Ok(chrono::Utc
+-        .with_ymd_and_hms(
++        .ymd(
+             val.getattr(crate::intern!(py, "year"))?.extract()?,
+             val.getattr(crate::intern!(py, "month"))?.extract()?,
+             val.getattr(crate::intern!(py, "day"))?.extract()?,
++        )
++        .and_hms(
+             val.getattr(crate::intern!(py, "hour"))?.extract()?,
+             val.getattr(crate::intern!(py, "minute"))?.extract()?,
+             val.getattr(crate::intern!(py, "second"))?.extract()?,
+-        )
+-        .unwrap())
++        ))
+ }
+ 
+ #[derive(Hash, PartialEq, Clone)]
