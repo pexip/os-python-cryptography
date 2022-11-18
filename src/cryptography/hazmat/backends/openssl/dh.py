@@ -313,5 +313,5 @@ class _DHPublicKey(dh.DHPublicKey):
                 )
 
         return self._backend._public_key_bytes(
-            encoding, format, self, self._evp_pkey, None
+            encoding, format, self, self._evp_pkey
         )

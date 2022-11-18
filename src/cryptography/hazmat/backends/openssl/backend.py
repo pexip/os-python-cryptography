@@ -1658,7 +1658,6 @@ class Backend:
         format: serialization.PublicFormat,
         key,
         evp_pkey,
-        cdata,
     ) -> bytes:
         if not isinstance(encoding, serialization.Encoding):
             raise TypeError("encoding must be an item from the Encoding enum")
@@ -1686,12 +1685,33 @@ class Backend:
             if key_type != self._lib.EVP_PKEY_RSA:
                 raise ValueError("PKCS1 format is supported only for RSA keys")
 
-            if encoding is serialization.Encoding.PEM:
-                write_bio = self._lib.PEM_write_bio_RSAPublicKey
-            elif encoding is serialization.Encoding.DER:
-                write_bio = self._lib.i2d_RSAPublicKey_bio
+            if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+                if encoding is serialization.Encoding.PEM:
+                    output_type = b"PEM"
+                elif encoding is serialization.Encoding.DER:
+                    output_type = b"DER"
+                else:
+                    raise ValueError("PKCS1 works only with PEM or DER encoding")
+
+                cdata = self._lib.OSSL_ENCODER_CTX_new_for_pkey(
+                    evp_pkey,
+                    self._lib.EVP_PKEY_PUBLIC_KEY,
+                    output_type,
+                    b"pkcs1",
+                    self._ffi.NULL
+                )
+                self.openssl_assert(cdata != self._ffi.NULL)
+                cdata = self._ffi.gc(cdata, self._lib.OSSL_ENCODER_CTX_free)
+                write_bio = lambda bio, ctx: self._lib.OSSL_ENCODER_to_bio(ctx, bio)
             else:
-                raise ValueError("PKCS1 works only with PEM or DER encoding")
+                if encoding is serialization.Encoding.PEM:
+                    write_bio = self._lib.PEM_write_bio_RSAPublicKey
+                elif encoding is serialization.Encoding.DER:
+                    write_bio = self._lib.i2d_RSAPublicKey_bio
+                else:
+                    raise ValueError("PKCS1 works only with PEM or DER encoding")
+                cdata = self._lib.EVP_PKEY_get0_RSA(evp_pkey)
+                self.openssl_assert(cdata != self._ffi.NULL)
             return self._bio_func_output(write_bio, cdata)
 
         # OpenSSH + OpenSSH

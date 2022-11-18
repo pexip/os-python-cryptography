@@ -43,7 +43,7 @@ class _Ed448PublicKey(Ed448PublicKey):
             return self._raw_public_bytes()
 
         return self._backend._public_key_bytes(
-            encoding, format, self, self._evp_pkey, None
+            encoding, format, self, self._evp_pkey
         )
 
     def _raw_public_bytes(self) -> bytes:

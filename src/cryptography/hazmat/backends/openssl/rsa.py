@@ -557,7 +557,7 @@ class _RSAPublicKey(RSAPublicKey):
         format: serialization.PublicFormat,
     ) -> bytes:
         return self._backend._public_key_bytes(
-            encoding, format, self, self._evp_pkey, self._rsa_cdata
+            encoding, format, self, self._evp_pkey
         )
 
     def verify(
