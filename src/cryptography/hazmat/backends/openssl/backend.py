@@ -525,22 +525,33 @@ class Backend:
     ) -> rsa.RSAPrivateKey:
         rsa._verify_rsa_parameters(public_exponent, key_size)
 
-        rsa_cdata = self._lib.RSA_new()
-        self.openssl_assert(rsa_cdata != self._ffi.NULL)
-        rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
-
         bn = self._int_to_bn(public_exponent)
         bn = self._ffi.gc(bn, self._lib.BN_free)
 
-        res = self._lib.RSA_generate_key_ex(
-            rsa_cdata, key_size, bn, self._ffi.NULL
+        evp_pkey_ctx = self._lib.EVP_PKEY_CTX_new_id(
+            self._lib.EVP_PKEY_RSA, self._ffi.NULL
+        )
+        self.openssl_assert(evp_pkey_ctx != self._ffi.NULL)
+        evp_pkey_ctx = self._ffi.gc(evp_pkey_ctx, self._lib.EVP_PKEY_CTX_free)
+        res = self._lib.EVP_PKEY_keygen_init(evp_pkey_ctx)
+        self.openssl_assert(res == 1)
+        res = self._lib.EVP_PKEY_CTX_set_rsa_keygen_bits(
+            evp_pkey_ctx, key_size
         )
         self.openssl_assert(res == 1)
-        evp_pkey = self._rsa_cdata_to_evp_pkey(rsa_cdata)
+        res = self._lib.EVP_PKEY_CTX_set1_rsa_keygen_pubexp(
+            evp_pkey_ctx, bn
+        )
+        self.openssl_assert(res == 1)
+        evp_ppkey = self._ffi.new("EVP_PKEY **")
+        res = self._lib.EVP_PKEY_keygen(evp_pkey_ctx, evp_ppkey)
+        self.openssl_assert(res == 1)
+        self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+        evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
 
         # We can skip RSA key validation here since we just generated the key
         return _RSAPrivateKey(
-            self, rsa_cdata, evp_pkey, unsafe_skip_rsa_key_validation=True
+            self, evp_pkey, unsafe_skip_rsa_key_validation=True
         )
 
     def generate_rsa_parameters_supported(
@@ -567,9 +578,6 @@ class Backend:
             numbers.public_numbers.e,
             numbers.public_numbers.n,
         )
-        rsa_cdata = self._lib.RSA_new()
-        self.openssl_assert(rsa_cdata != self._ffi.NULL)
-        rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
         p = self._int_to_bn(numbers.p)
         q = self._int_to_bn(numbers.q)
         d = self._int_to_bn(numbers.d)
@@ -578,17 +586,68 @@ class Backend:
         iqmp = self._int_to_bn(numbers.iqmp)
         e = self._int_to_bn(numbers.public_numbers.e)
         n = self._int_to_bn(numbers.public_numbers.n)
-        res = self._lib.RSA_set0_factors(rsa_cdata, p, q)
-        self.openssl_assert(res == 1)
-        res = self._lib.RSA_set0_key(rsa_cdata, n, e, d)
-        self.openssl_assert(res == 1)
-        res = self._lib.RSA_set0_crt_params(rsa_cdata, dmp1, dmq1, iqmp)
-        self.openssl_assert(res == 1)
-        evp_pkey = self._rsa_cdata_to_evp_pkey(rsa_cdata)
+
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            p = self._ffi.gc(p, self._lib.BN_free)
+            q = self._ffi.gc(q, self._lib.BN_free)
+            d = self._ffi.gc(d, self._lib.BN_free)
+            dmp1 = self._ffi.gc(dmp1, self._lib.BN_free)
+            dmq1 = self._ffi.gc(dmq1, self._lib.BN_free)
+            iqmp = self._ffi.gc(iqmp, self._lib.BN_free)
+            e = self._ffi.gc(e, self._lib.BN_free)
+            n = self._ffi.gc(n, self._lib.BN_free)
+
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
+
+            for key, bn in [
+                (b"n", n),
+                (b"e", e),
+                (b"d", d),
+                (b"rsa-factor1", p),
+                (b"rsa-factor2", q),
+                (b"rsa-exponent1", dmp1),
+                (b"rsa-exponent2", dmq1),
+                (b"rsa-coefficient1", iqmp),
+            ]:
+                res = self._lib.OSSL_PARAM_BLD_push_BN(bld, key, bn)
+                self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(
+                self._lib.EVP_PKEY_RSA, self._ffi.NULL
+            )
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_KEYPAIR, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+        else:
+            rsa_cdata = self._lib.RSA_new()
+            self.openssl_assert(rsa_cdata != self._ffi.NULL)
+            rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
+            res = self._lib.RSA_set0_factors(rsa_cdata, p, q)
+            self.openssl_assert(res == 1)
+            res = self._lib.RSA_set0_key(rsa_cdata, n, e, d)
+            self.openssl_assert(res == 1)
+            res = self._lib.RSA_set0_crt_params(rsa_cdata, dmp1, dmq1, iqmp)
+            self.openssl_assert(res == 1)
+            evp_pkey = self._rsa_cdata_to_evp_pkey(rsa_cdata)
 
         return _RSAPrivateKey(
             self,
-            rsa_cdata,
             evp_pkey,
             unsafe_skip_rsa_key_validation=unsafe_skip_rsa_key_validation,
         )
@@ -597,16 +656,54 @@ class Backend:
         self, numbers: rsa.RSAPublicNumbers
     ) -> rsa.RSAPublicKey:
         rsa._check_public_key_components(numbers.e, numbers.n)
-        rsa_cdata = self._lib.RSA_new()
-        self.openssl_assert(rsa_cdata != self._ffi.NULL)
-        rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
+
         e = self._int_to_bn(numbers.e)
         n = self._int_to_bn(numbers.n)
-        res = self._lib.RSA_set0_key(rsa_cdata, n, e, self._ffi.NULL)
-        self.openssl_assert(res == 1)
-        evp_pkey = self._rsa_cdata_to_evp_pkey(rsa_cdata)
 
-        return _RSAPublicKey(self, rsa_cdata, evp_pkey)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            e = self._ffi.gc(e, self._lib.BN_free)
+            n = self._ffi.gc(n, self._lib.BN_free)
+
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
+
+            for key, bn in [
+                (b"n", n),
+                (b"e", e),
+            ]:
+                res = self._lib.OSSL_PARAM_BLD_push_BN(bld, key, bn)
+                self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(
+                self._lib.EVP_PKEY_RSA, self._ffi.NULL
+            )
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_PUBLIC_KEY, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+        else:
+            rsa_cdata = self._lib.RSA_new()
+            self.openssl_assert(rsa_cdata != self._ffi.NULL)
+            rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
+            res = self._lib.RSA_set0_key(rsa_cdata, n, e, self._ffi.NULL)
+            self.openssl_assert(res == 1)
+            evp_pkey = self._rsa_cdata_to_evp_pkey(rsa_cdata)
+
+        return _RSAPublicKey(self, evp_pkey)
 
     def _create_evp_pkey_gc(self):
         evp_pkey = self._lib.EVP_PKEY_new()
@@ -615,6 +712,7 @@ class Backend:
         return evp_pkey
 
     def _rsa_cdata_to_evp_pkey(self, rsa_cdata):
+        assert not self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
         evp_pkey = self._create_evp_pkey_gc()
         res = self._lib.EVP_PKEY_set1_RSA(evp_pkey, rsa_cdata)
         self.openssl_assert(res == 1)
@@ -695,12 +793,8 @@ class Backend:
         key_type = self._key_type_from_pkey(evp_pkey)
 
         if key_type == self._lib.EVP_PKEY_RSA:
-            rsa_cdata = self._lib.EVP_PKEY_get1_RSA(evp_pkey)
-            self.openssl_assert(rsa_cdata != self._ffi.NULL)
-            rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
             return _RSAPrivateKey(
                 self,
-                rsa_cdata,
                 evp_pkey,
                 unsafe_skip_rsa_key_validation=unsafe_skip_rsa_key_validation,
             )
@@ -714,12 +808,26 @@ class Backend:
             # PSS constraints from them and treat them as normal RSA keys
             # Unfortunately the RSA * itself tracks this data so we need to
             # extract, serialize, and reload it without the constraints.
-            rsa_cdata = self._lib.EVP_PKEY_get1_RSA(evp_pkey)
-            self.openssl_assert(rsa_cdata != self._ffi.NULL)
-            rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
             bio = self._create_mem_bio_gc()
-            res = self._lib.i2d_RSAPrivateKey_bio(bio, rsa_cdata)
-            self.openssl_assert(res == 1)
+            if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+                ctx = self._lib.OSSL_ENCODER_CTX_new_for_pkey(
+                    evp_pkey,
+                    self._lib.EVP_PKEY_KEYPAIR,
+                    b"DER",
+                    b"pkcs1",
+                    self._ffi.NULL
+                )
+                self.openssl_assert(ctx != self._ffi.NULL)
+                ctx = self._ffi.gc(ctx, self._lib.OSSL_ENCODER_CTX_free)
+                res = self._lib.OSSL_ENCODER_to_bio(ctx, bio)
+                self.openssl_assert(res == 1)
+            else:
+                rsa_cdata = self._lib.EVP_PKEY_get1_RSA(evp_pkey)
+                self.openssl_assert(rsa_cdata != self._ffi.NULL)
+                rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
+                res = self._lib.i2d_RSAPrivateKey_bio(bio, rsa_cdata)
+                self.openssl_assert(res == 1)
+
             return self.load_der_private_key(
                 self._read_mem_bio(bio),
                 password=None,
@@ -763,22 +871,32 @@ class Backend:
         key_type = self._key_type_from_pkey(evp_pkey)
 
         if key_type == self._lib.EVP_PKEY_RSA:
-            rsa_cdata = self._lib.EVP_PKEY_get1_RSA(evp_pkey)
-            self.openssl_assert(rsa_cdata != self._ffi.NULL)
-            rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
-            return _RSAPublicKey(self, rsa_cdata, evp_pkey)
+            return _RSAPublicKey(self, evp_pkey)
         elif (
             key_type == self._lib.EVP_PKEY_RSA_PSS
             and not self._lib.CRYPTOGRAPHY_IS_LIBRESSL
             and not self._lib.CRYPTOGRAPHY_IS_BORINGSSL
             and not self._lib.CRYPTOGRAPHY_OPENSSL_LESS_THAN_111E
         ):
-            rsa_cdata = self._lib.EVP_PKEY_get1_RSA(evp_pkey)
-            self.openssl_assert(rsa_cdata != self._ffi.NULL)
-            rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
             bio = self._create_mem_bio_gc()
-            res = self._lib.i2d_RSAPublicKey_bio(bio, rsa_cdata)
-            self.openssl_assert(res == 1)
+            if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+                ctx = self._lib.OSSL_ENCODER_CTX_new_for_pkey(
+                    evp_pkey,
+                    self._lib.EVP_PKEY_PUBLIC_KEY,
+                    b"DER",
+                    b"pkcs1",
+                    self._ffi.NULL
+                )
+                self.openssl_assert(ctx != self._ffi.NULL)
+                ctx = self._ffi.gc(ctx, self._lib.OSSL_ENCODER_CTX_free)
+                res = self._lib.OSSL_ENCODER_to_bio(ctx, bio)
+                self.openssl_assert(res == 1)
+            else:
+                rsa_cdata = self._lib.EVP_PKEY_get1_RSA(evp_pkey)
+                self.openssl_assert(rsa_cdata != self._ffi.NULL)
+                rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
+                res = self._lib.i2d_RSAPublicKey_bio(bio, rsa_cdata)
+                self.openssl_assert(res == 1)
             return self.load_der_public_key(self._read_mem_bio(bio))
         elif key_type == self._lib.EVP_PKEY_DSA:
             dsa_cdata = self._lib.EVP_PKEY_get1_DSA(evp_pkey)
@@ -1009,20 +1127,36 @@ class Backend:
             self._consume_errors()
             res = self._lib.BIO_reset(mem_bio.bio)
             self.openssl_assert(res == 1)
-            rsa_cdata = self._lib.PEM_read_bio_RSAPublicKey(
-                mem_bio.bio,
-                self._ffi.NULL,
-                self._ffi.addressof(
-                    self._lib._original_lib, "Cryptography_pem_password_cb"
-                ),
-                userdata,
-            )
-            if rsa_cdata != self._ffi.NULL:
-                rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
-                evp_pkey = self._rsa_cdata_to_evp_pkey(rsa_cdata)
-                return _RSAPublicKey(self, rsa_cdata, evp_pkey)
+
+            if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+                ppkey = self._ffi.new("EVP_PKEY **")
+                ctx = self._lib.OSSL_DECODER_CTX_new_for_pkey(
+                    ppkey, b"PEM", b"pkcs1", b"RSA",
+                    self._lib.EVP_PKEY_PUBLIC_KEY, self._ffi.NULL,
+                    self._ffi.NULL
+                )
+                self.openssl_assert(ctx != self._ffi.NULL)
+                res = self._lib.OSSL_DECODER_from_bio(ctx, mem_bio.bio)
+                if res == 1:
+                    evp_pkey = self._ffi.gc(ppkey[0], self._lib.EVP_PKEY_free)
+                    return _RSAPublicKey(self, evp_pkey)
+                else:
+                    self._handle_key_loading_error()
             else:
-                self._handle_key_loading_error()
+                rsa_cdata = self._lib.PEM_read_bio_RSAPublicKey(
+                    mem_bio.bio,
+                    self._ffi.NULL,
+                    self._ffi.addressof(
+                        self._lib._original_lib, "Cryptography_pem_password_cb"
+                    ),
+                    userdata,
+                )
+                if rsa_cdata != self._ffi.NULL:
+                    rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
+                    evp_pkey = self._rsa_cdata_to_evp_pkey(rsa_cdata)
+                    return _RSAPublicKey(self, evp_pkey)
+                else:
+                    self._handle_key_loading_error()
 
     def load_pem_parameters(self, data: bytes) -> dh.DHParameters:
         mem_bio = self._bytes_to_bio(data)
@@ -1089,15 +1223,31 @@ class Backend:
             self._consume_errors()
             res = self._lib.BIO_reset(mem_bio.bio)
             self.openssl_assert(res == 1)
-            rsa_cdata = self._lib.d2i_RSAPublicKey_bio(
-                mem_bio.bio, self._ffi.NULL
-            )
-            if rsa_cdata != self._ffi.NULL:
-                rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
-                evp_pkey = self._rsa_cdata_to_evp_pkey(rsa_cdata)
-                return _RSAPublicKey(self, rsa_cdata, evp_pkey)
+
+            if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+                ppkey = self._ffi.new("EVP_PKEY **")
+                ctx = self._lib.OSSL_DECODER_CTX_new_for_pkey(
+                    ppkey, b"DER", b"pkcs1", b"RSA",
+                    self._lib.EVP_PKEY_PUBLIC_KEY, self._ffi.NULL,
+                    self._ffi.NULL
+                )
+                self.openssl_assert(ctx != self._ffi.NULL)
+                res = self._lib.OSSL_DECODER_from_bio(ctx, mem_bio.bio)
+                if res == 1:
+                    evp_pkey = self._ffi.gc(ppkey[0], self._lib.EVP_PKEY_free)
+                    return _RSAPublicKey(self, evp_pkey)
+                else:
+                    self._handle_key_loading_error()
             else:
-                self._handle_key_loading_error()
+                rsa_cdata = self._lib.d2i_RSAPublicKey_bio(
+                    mem_bio.bio, self._ffi.NULL
+                )
+                if rsa_cdata != self._ffi.NULL:
+                    rsa_cdata = self._ffi.gc(rsa_cdata, self._lib.RSA_free)
+                    evp_pkey = self._rsa_cdata_to_evp_pkey(rsa_cdata)
+                    return _RSAPublicKey(self, evp_pkey)
+                else:
+                    self._handle_key_loading_error()
 
     def load_der_parameters(self, data: bytes) -> dh.DHParameters:
         mem_bio = self._bytes_to_bio(data)

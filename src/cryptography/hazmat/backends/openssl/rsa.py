@@ -360,13 +360,11 @@ def _rsa_sig_recover(
 
 class _RSAPrivateKey(RSAPrivateKey):
     _evp_pkey: object
-    _rsa_cdata: object
     _key_size: int
 
     def __init__(
         self,
         backend: "Backend",
-        rsa_cdata,
         evp_pkey,
         *,
         unsafe_skip_rsa_key_validation: bool,
@@ -378,7 +376,10 @@ class _RSAPrivateKey(RSAPrivateKey):
         # added an init arg that allows skipping the checks. You should not
         # use this in production code unless you understand the consequences.
         if not unsafe_skip_rsa_key_validation:
-            res = backend._lib.RSA_check_key(rsa_cdata)
+            pkey_ctx = backend._lib.EVP_PKEY_CTX_new(evp_pkey, backend._ffi.NULL)
+            backend.openssl_assert(pkey_ctx != backend._ffi.NULL)
+            pkey_ctx = backend._ffi.gc(pkey_ctx, backend._lib.EVP_PKEY_CTX_free)
+            res = backend._lib.EVP_PKEY_check(pkey_ctx)
             if res != 1:
                 errors = backend._consume_errors_with_text()
                 raise ValueError("Invalid private key", errors)
@@ -386,31 +387,28 @@ class _RSAPrivateKey(RSAPrivateKey):
             # if p and q are odd just to be safe.
             p = backend._ffi.new("BIGNUM **")
             q = backend._ffi.new("BIGNUM **")
-            backend._lib.RSA_get0_factors(rsa_cdata, p, q)
+            p[0] = backend._ffi.NULL
+            q[0] = backend._ffi.NULL
+            res = backend._lib.EVP_PKEY_get_bn_param(evp_pkey, b"rsa-factor1", p)
+            backend.openssl_assert(res == 1)
+            res = backend._lib.EVP_PKEY_get_bn_param(evp_pkey, b"rsa-factor2", q)
+            backend.openssl_assert(res == 1)
             backend.openssl_assert(p[0] != backend._ffi.NULL)
             backend.openssl_assert(q[0] != backend._ffi.NULL)
-            p_odd = backend._lib.BN_is_odd(p[0])
-            q_odd = backend._lib.BN_is_odd(q[0])
+            p_val = backend._ffi.gc(p[0], backend._lib.BN_free)
+            q_val = backend._ffi.gc(q[0], backend._lib.BN_free)
+            p_odd = backend._lib.BN_is_odd(p_val)
+            q_odd = backend._lib.BN_is_odd(q_val)
             if p_odd != 1 or q_odd != 1:
                 errors = backend._consume_errors_with_text()
                 raise ValueError("Invalid private key", errors)
 
         self._backend = backend
-        self._rsa_cdata = rsa_cdata
         self._evp_pkey = evp_pkey
         # Used for lazy blinding
         self._blinded = False
         self._blinding_lock = threading.Lock()
-
-        n = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.RSA_get0_key(
-            self._rsa_cdata,
-            n,
-            self._backend._ffi.NULL,
-            self._backend._ffi.NULL,
-        )
-        self._backend.openssl_assert(n[0] != self._backend._ffi.NULL)
-        self._key_size = self._backend._lib.BN_num_bits(n[0])
+        self._key_size = self._backend._lib.EVP_PKEY_bits(evp_pkey)
 
     def _enable_blinding(self) -> None:
         # If you call blind on an already blinded RSA key OpenSSL will turn
@@ -425,10 +423,15 @@ class _RSAPrivateKey(RSAPrivateKey):
         # Check if it's not True again in case another thread raced past the
         # first non-locked check.
         if not self._blinded:
-            res = self._backend._lib.RSA_blinding_on(
-                self._rsa_cdata, self._backend._ffi.NULL
-            )
-            self._backend.openssl_assert(res == 1)
+            if not self._backend._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+                rsa_cdata = self._backend.EVP_PKEY_get0_RSA(self._evp_pkey)
+                self._backend.openssl_assert(
+                    rsa_cdata != self._backend._ffi.NULL
+                )
+                res = self._backend._lib.RSA_blinding_on(
+                    rsa_cdata, self._backend._ffi.NULL
+                )
+                self._backend.openssl_assert(res == 1)
             self._blinded = True
 
     @property
@@ -444,44 +447,84 @@ class _RSAPrivateKey(RSAPrivateKey):
         return _enc_dec_rsa(self._backend, self, ciphertext, padding)
 
     def public_key(self) -> RSAPublicKey:
-        ctx = self._backend._lib.RSAPublicKey_dup(self._rsa_cdata)
+        pparams = self._backend._ffi.new("OSSL_PARAM **")
+        res = self._backend._lib.EVP_PKEY_todata(
+            self._evp_pkey, self._backend._lib.EVP_PKEY_PUBLIC_KEY, pparams
+        )
+        self._backend.openssl_assert(res == 1)
+        self._backend.openssl_assert(pparams[0] != self._backend._ffi.NULL)
+
+        params = self._backend._ffi.gc(
+            pparams[0], self._backend._lib.OSSL_PARAM_free
+        )
+
+        ctx = self._backend._lib.EVP_PKEY_CTX_new_id(
+            self._backend._lib.EVP_PKEY_RSA, self._backend._ffi.NULL
+        )
         self._backend.openssl_assert(ctx != self._backend._ffi.NULL)
-        ctx = self._backend._ffi.gc(ctx, self._backend._lib.RSA_free)
-        evp_pkey = self._backend._rsa_cdata_to_evp_pkey(ctx)
-        return _RSAPublicKey(self._backend, ctx, evp_pkey)
+        ctx = self._backend._ffi.gc(ctx, self._backend._lib.EVP_PKEY_CTX_free)
+
+        res = self._backend._lib.EVP_PKEY_fromdata_init(ctx)
+        self._backend.openssl_assert(res == 1)
+
+        ppub_key = self._backend._ffi.new("EVP_PKEY **")
+        res = self._backend._lib.EVP_PKEY_fromdata(
+            ctx, ppub_key, self._backend._lib.EVP_PKEY_PUBLIC_KEY, params
+        )
+        self._backend.openssl_assert(res == 1)
+        self._backend.openssl_assert(ppub_key[0] != self._backend._ffi.NULL)
+
+        pub_key = self._backend._ffi.gc(
+            ppub_key[0], self._backend._lib.EVP_PKEY_free
+        )
+
+        return _RSAPublicKey(self._backend, pub_key)
 
     def private_numbers(self) -> RSAPrivateNumbers:
-        n = self._backend._ffi.new("BIGNUM **")
-        e = self._backend._ffi.new("BIGNUM **")
-        d = self._backend._ffi.new("BIGNUM **")
-        p = self._backend._ffi.new("BIGNUM **")
-        q = self._backend._ffi.new("BIGNUM **")
-        dmp1 = self._backend._ffi.new("BIGNUM **")
-        dmq1 = self._backend._ffi.new("BIGNUM **")
-        iqmp = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.RSA_get0_key(self._rsa_cdata, n, e, d)
-        self._backend.openssl_assert(n[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(e[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(d[0] != self._backend._ffi.NULL)
-        self._backend._lib.RSA_get0_factors(self._rsa_cdata, p, q)
-        self._backend.openssl_assert(p[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(q[0] != self._backend._ffi.NULL)
-        self._backend._lib.RSA_get0_crt_params(
-            self._rsa_cdata, dmp1, dmq1, iqmp
-        )
-        self._backend.openssl_assert(dmp1[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(dmq1[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(iqmp[0] != self._backend._ffi.NULL)
+        pn = self._backend._ffi.new("BIGNUM **")
+        pe = self._backend._ffi.new("BIGNUM **")
+        pd = self._backend._ffi.new("BIGNUM **")
+        pp = self._backend._ffi.new("BIGNUM **")
+        pq = self._backend._ffi.new("BIGNUM **")
+        pdmp1 = self._backend._ffi.new("BIGNUM **")
+        pdmq1 = self._backend._ffi.new("BIGNUM **")
+        piqmp = self._backend._ffi.new("BIGNUM **")
+
+        for key, pbn in [
+            (b"n", pn),
+            (b"e", pe),
+            (b"d", pd),
+            (b"rsa-factor1", pp),
+            (b"rsa-factor2", pq),
+            (b"rsa-exponent1", pdmp1),
+            (b"rsa-exponent2", pdmq1),
+            (b"rsa-coefficient1", piqmp),
+        ]:
+            pbn[0] = self._backend._ffi.NULL
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, key, pbn
+            )
+            self._backend.openssl_assert(res == 1)
+            self._backend.openssl_assert(pbn[0] != self._backend._ffi.NULL)
+
+        n = self._backend._ffi.gc(pn[0], self._backend._lib.BN_free)
+        e = self._backend._ffi.gc(pe[0], self._backend._lib.BN_free)
+        d = self._backend._ffi.gc(pd[0], self._backend._lib.BN_free)
+        p = self._backend._ffi.gc(pp[0], self._backend._lib.BN_free)
+        q = self._backend._ffi.gc(pq[0], self._backend._lib.BN_free)
+        dmp1 = self._backend._ffi.gc(pdmp1[0], self._backend._lib.BN_free)
+        dmq1 = self._backend._ffi.gc(pdmq1[0], self._backend._lib.BN_free)
+        iqmp = self._backend._ffi.gc(piqmp[0], self._backend._lib.BN_free)
         return RSAPrivateNumbers(
-            p=self._backend._bn_to_int(p[0]),
-            q=self._backend._bn_to_int(q[0]),
-            d=self._backend._bn_to_int(d[0]),
-            dmp1=self._backend._bn_to_int(dmp1[0]),
-            dmq1=self._backend._bn_to_int(dmq1[0]),
-            iqmp=self._backend._bn_to_int(iqmp[0]),
+            p=self._backend._bn_to_int(p),
+            q=self._backend._bn_to_int(q),
+            d=self._backend._bn_to_int(d),
+            dmp1=self._backend._bn_to_int(dmp1),
+            dmq1=self._backend._bn_to_int(dmq1),
+            iqmp=self._backend._bn_to_int(iqmp),
             public_numbers=RSAPublicNumbers(
-                e=self._backend._bn_to_int(e[0]),
-                n=self._backend._bn_to_int(n[0]),
+                e=self._backend._bn_to_int(e),
+                n=self._backend._bn_to_int(n),
             ),
         )
 
@@ -512,23 +555,12 @@ class _RSAPrivateKey(RSAPrivateKey):
 
 class _RSAPublicKey(RSAPublicKey):
     _evp_pkey: object
-    _rsa_cdata: object
     _key_size: int
 
-    def __init__(self, backend: "Backend", rsa_cdata, evp_pkey):
+    def __init__(self, backend: "Backend", evp_pkey):
         self._backend = backend
-        self._rsa_cdata = rsa_cdata
         self._evp_pkey = evp_pkey
-
-        n = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.RSA_get0_key(
-            self._rsa_cdata,
-            n,
-            self._backend._ffi.NULL,
-            self._backend._ffi.NULL,
-        )
-        self._backend.openssl_assert(n[0] != self._backend._ffi.NULL)
-        self._key_size = self._backend._lib.BN_num_bits(n[0])
+        self._key_size = self._backend._lib.EVP_PKEY_bits(evp_pkey)
 
     @property
     def key_size(self) -> int:
@@ -538,16 +570,21 @@ class _RSAPublicKey(RSAPublicKey):
         return _enc_dec_rsa(self._backend, self, plaintext, padding)
 
     def public_numbers(self) -> RSAPublicNumbers:
-        n = self._backend._ffi.new("BIGNUM **")
-        e = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.RSA_get0_key(
-            self._rsa_cdata, n, e, self._backend._ffi.NULL
-        )
-        self._backend.openssl_assert(n[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(e[0] != self._backend._ffi.NULL)
+        pn = self._backend._ffi.new("BIGNUM **")
+        pe = self._backend._ffi.new("BIGNUM **")
+
+        for key, pbn in [(b"n", pn), (b"e", pe)]:
+            pbn[0] = self._backend._ffi.NULL
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, key, pbn
+            )
+            self._backend.openssl_assert(res == 1)
+            self._backend.openssl_assert(pbn[0] != self._backend._ffi.NULL)
+        n = self._backend._ffi.gc(pn[0], self._backend._lib.BN_free)
+        e = self._backend._ffi.gc(pe[0], self._backend._lib.BN_free)
         return RSAPublicNumbers(
-            e=self._backend._bn_to_int(e[0]),
-            n=self._backend._bn_to_int(n[0]),
+            e=self._backend._bn_to_int(e),
+            n=self._backend._bn_to_int(n),
         )
 
     def public_bytes(
