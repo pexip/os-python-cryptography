@@ -1514,7 +1514,6 @@ class Backend:
         encryption_algorithm: serialization.KeySerializationEncryption,
         key,
         evp_pkey,
-        cdata,
     ) -> bytes:
         # validate argument types
         if not isinstance(encoding, serialization.Encoding):
@@ -1578,17 +1577,67 @@ class Backend:
                 )
             key_type = self._lib.EVP_PKEY_id(evp_pkey)
 
+            if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+                if key_type not in (
+                    self._lib.EVP_PKEY_DSA,
+                    self._lib.EVP_PKEY_EC,
+                    self._lib.EVP_PKEY_RSA
+                ):
+                    raise ValueError(
+                        "Unsupported key type for TraditionalOpenSSL"
+                    )
+
+                if encoding is serialization.Encoding.PEM:
+                    output_type = b"PEM"
+                elif encoding is serialization.Encoding.DER:
+                    if password:
+                        raise ValueError(
+                            "Encryption is not supported for DER encoded "
+                            "traditional OpenSSL keys"
+                        )
+                    output_type = b"DER"
+                else:
+                    raise ValueError("Unsupported encoding for TraditionalOpenSSL")
+
+                ctx = self._lib.OSSL_ENCODER_CTX_new_for_pkey(
+                    evp_pkey,
+                    self._lib.EVP_PKEY_KEYPAIR,
+                    output_type,
+                    b"type-specific",
+                    self._ffi.NULL
+                )
+                self.openssl_assert(ctx != self._ffi.NULL)
+                ctx = self._ffi.gc(ctx, self._lib.OSSL_ENCODER_CTX_free)
+                if password:
+                    # This is a curated value that we will update over time.
+                    res = self._lib.OSSL_ENCODER_CTX_set_cipher(
+                        ctx, b"aes-256-cbc", self._ffi.NULL
+                    )
+                    self.openssl_assert(res == 1)
+                    res = self._lib.OSSL_ENCODER_CTX_set_passphrase(
+                        ctx, password, len(password)
+                    )
+                    self.openssl_assert(res == 1)
+                return self._bio_func_output(
+                    lambda b, c: self._lib.OSSL_ENCODER_to_bio(c, b),
+                    ctx
+                )
+
             if encoding is serialization.Encoding.PEM:
                 if key_type == self._lib.EVP_PKEY_RSA:
                     write_bio = self._lib.PEM_write_bio_RSAPrivateKey
+                    cdata = self._lib.EVP_PKEY_get0_RSA(evp_pkey)
                 elif key_type == self._lib.EVP_PKEY_DSA:
                     write_bio = self._lib.PEM_write_bio_DSAPrivateKey
+                    cdata = self._lib.EVP_PKEY_get0_DSA(evp_pkey)
                 elif key_type == self._lib.EVP_PKEY_EC:
                     write_bio = self._lib.PEM_write_bio_ECPrivateKey
+                    cdata = self._lib.EVP_PKEY_get0_EC(evp_pkey)
                 else:
                     raise ValueError(
                         "Unsupported key type for TraditionalOpenSSL"
                     )
+                self.openssl_assert(cdata != self._ffi.NULL)
                 return self._private_key_bytes_via_bio(
                     write_bio, cdata, password
                 )
@@ -1601,14 +1650,18 @@ class Backend:
                     )
                 if key_type == self._lib.EVP_PKEY_RSA:
                     write_bio = self._lib.i2d_RSAPrivateKey_bio
+                    cdata = self._lib.EVP_PKEY_get0_RSA(evp_pkey)
                 elif key_type == self._lib.EVP_PKEY_EC:
                     write_bio = self._lib.i2d_ECPrivateKey_bio
+                    cdata = self._lib.EVP_PKEY_get0_EC(evp_pkey)
                 elif key_type == self._lib.EVP_PKEY_DSA:
                     write_bio = self._lib.i2d_DSAPrivateKey_bio
+                    cdata = self._lib.EVP_PKEY_get0_DSA(evp_pkey)
                 else:
                     raise ValueError(
                         "Unsupported key type for TraditionalOpenSSL"
                     )
+                self.openssl_assert(cdata != self._ffi.NULL)
                 return self._bio_func_output(write_bio, cdata)
 
             raise ValueError("Unsupported encoding for TraditionalOpenSSL")

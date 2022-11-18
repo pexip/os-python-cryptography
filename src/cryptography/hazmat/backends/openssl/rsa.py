@@ -497,7 +497,6 @@ class _RSAPrivateKey(RSAPrivateKey):
             encryption_algorithm,
             self,
             self._evp_pkey,
-            self._rsa_cdata,
         )
 
     def sign(

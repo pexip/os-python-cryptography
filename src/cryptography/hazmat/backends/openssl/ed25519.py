@@ -141,7 +141,7 @@ class _Ed25519PrivateKey(Ed25519PrivateKey):
             return self._raw_private_bytes()
 
         return self._backend._private_key_bytes(
-            encoding, format, encryption_algorithm, self, self._evp_pkey, None
+            encoding, format, encryption_algorithm, self, self._evp_pkey
         )
 
     def _raw_private_bytes(self) -> bytes:

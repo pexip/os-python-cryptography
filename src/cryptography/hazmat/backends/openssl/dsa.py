@@ -158,7 +158,6 @@ class _DSAPrivateKey(dsa.DSAPrivateKey):
             encryption_algorithm,
             self,
             self._evp_pkey,
-            self._dsa_cdata,
         )
 
     def sign(
