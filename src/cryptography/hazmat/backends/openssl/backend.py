@@ -655,6 +655,35 @@ class Backend:
         bio_data = self._ffi.buffer(buf[0], buf_len)[:]
         return bio_data
 
+    def _key_type_from_pkey(self, evp_pkey):
+        """Extract the key type from an EVP_PKEY"""
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            if self._lib.EVP_PKEY_is_a(evp_pkey, b"RSA-PSS"):
+                key_type = self._lib.EVP_PKEY_RSA_PSS
+            elif self._lib.EVP_PKEY_is_a(evp_pkey, b"RSA"):
+                key_type = self._lib.EVP_PKEY_RSA
+            elif self._lib.EVP_PKEY_is_a(evp_pkey, b"DSA"):
+                key_type = self._lib.EVP_PKEY_DSA
+            elif self._lib.EVP_PKEY_is_a(evp_pkey, b"EC"):
+                key_type = self._lib.EVP_PKEY_EC
+            elif self._lib.EVP_PKEY_is_a(evp_pkey, b"ED25519"):
+                key_type = self._lib.EVP_PKEY_ED25519
+            elif self._lib.EVP_PKEY_is_a(evp_pkey, b"ED448"):
+                key_type = self._lib.EVP_PKEY_ED448
+            elif self._lib.EVP_PKEY_is_a(evp_pkey, b"X448"):
+                key_type = self._lib.EVP_PKEY_X448
+            elif self._lib.EVP_PKEY_is_a(evp_pkey, b"X25519"):
+                key_type = self._lib.EVP_PKEY_X25519
+            elif self._lib.EVP_PKEY_is_a(evp_pkey, b"DH"):
+                key_type = self._lib.EVP_PKEY_DH
+            elif self._lib.EVP_PKEY_is_a(evp_pkey, b"DHX"):
+                key_type = self._lib.EVP_PKEY_DHX
+            else:
+                key_type = self._lib.EVP_PKEY_NONE
+        else:
+            key_type = self._lib.EVP_PKEY_id(evp_pkey)
+        return key_type
+
     def _evp_pkey_to_private_key(
         self, evp_pkey, unsafe_skip_rsa_key_validation: bool
     ) -> PRIVATE_KEY_TYPES:
@@ -663,7 +692,7 @@ class Backend:
         pointer.
         """
 
-        key_type = self._lib.EVP_PKEY_id(evp_pkey)
+        key_type = self._key_type_from_pkey(evp_pkey)
 
         if key_type == self._lib.EVP_PKEY_RSA:
             rsa_cdata = self._lib.EVP_PKEY_get1_RSA(evp_pkey)
@@ -731,7 +760,7 @@ class Backend:
         pointer.
         """
 
-        key_type = self._lib.EVP_PKEY_id(evp_pkey)
+        key_type = self._key_type_from_pkey(evp_pkey)
 
         if key_type == self._lib.EVP_PKEY_RSA:
             rsa_cdata = self._lib.EVP_PKEY_get1_RSA(evp_pkey)
@@ -1575,7 +1604,7 @@ class Backend:
                     "Encrypted traditional OpenSSL format is not "
                     "supported in FIPS mode."
                 )
-            key_type = self._lib.EVP_PKEY_id(evp_pkey)
+            key_type = self._key_type_from_pkey(evp_pkey)
 
             if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
                 if key_type not in (
@@ -1734,7 +1763,7 @@ class Backend:
         # PKCS1 + PEM/DER
         if format is serialization.PublicFormat.PKCS1:
             # Only RSA is supported here.
-            key_type = self._lib.EVP_PKEY_id(evp_pkey)
+            key_type = self._key_type_from_pkey(evp_pkey)
             if key_type != self._lib.EVP_PKEY_RSA:
                 raise ValueError("PKCS1 format is supported only for RSA keys")
 
@@ -2007,7 +2036,7 @@ class Backend:
         self.openssl_assert(evp_pkey != self._ffi.NULL)
         evp_pkey = self._ffi.gc(evp_pkey, self._lib.EVP_PKEY_free)
         self.openssl_assert(
-            self._lib.EVP_PKEY_id(evp_pkey) == self._lib.EVP_PKEY_X25519
+            self._key_type_from_pkey(evp_pkey) == self._lib.EVP_PKEY_X25519
         )
         return _X25519PrivateKey(self, evp_pkey)
 
