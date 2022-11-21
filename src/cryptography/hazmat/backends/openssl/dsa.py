@@ -20,19 +20,29 @@ if typing.TYPE_CHECKING:
 def _dsa_sig_sign(
     backend: "Backend", private_key: "_DSAPrivateKey", data: bytes
 ) -> bytes:
-    sig_buf_len = backend._lib.DSA_size(private_key._dsa_cdata)
-    sig_buf = backend._ffi.new("unsigned char[]", sig_buf_len)
-    buflen = backend._ffi.new("unsigned int *")
 
-    # The first parameter passed to DSA_sign is unused by OpenSSL but
-    # must be an integer.
-    res = backend._lib.DSA_sign(
-        0, data, len(data), sig_buf, buflen, private_key._dsa_cdata
+    pctx = backend._lib.EVP_PKEY_CTX_new(
+        private_key._evp_pkey, backend._ffi.NULL
+    )
+    backend.openssl_assert(pctx != backend._ffi.NULL)
+    pctx = backend._ffi.gc(pctx, backend._lib.EVP_PKEY_CTX_free)
+    res = backend._lib.EVP_PKEY_sign_init(pctx)
+    if res != 1:
+        errors = backend._consume_errors()
+        raise ValueError("Unable to sign with this key", errors)
+
+    buflen = backend._ffi.new("size_t *")
+    res = backend._lib.EVP_PKEY_sign(
+        pctx, backend._ffi.NULL, buflen, data, len(data)
     )
     backend.openssl_assert(res == 1)
-    backend.openssl_assert(buflen[0])
+    buf = backend._ffi.new("unsigned char[]", buflen[0])
+    res = backend._lib.EVP_PKEY_sign(pctx, buf, buflen, data, len(data))
+    if res != 1:
+        errors = backend._consume_errors_with_text()
+        raise ValueError("Signing with DSA key failed", errors)
 
-    return backend._ffi.buffer(sig_buf)[: buflen[0]]
+    return backend._ffi.buffer(buf)[:buflen[0]]
 
 
 def _dsa_sig_verify(
@@ -41,34 +51,54 @@ def _dsa_sig_verify(
     signature: bytes,
     data: bytes,
 ) -> None:
-    # The first parameter passed to DSA_verify is unused by OpenSSL but
-    # must be an integer.
-    res = backend._lib.DSA_verify(
-        0, data, len(data), signature, len(signature), public_key._dsa_cdata
+    pctx = backend._lib.EVP_PKEY_CTX_new(
+        public_key._evp_pkey, backend._ffi.NULL
     )
+    backend.openssl_assert(pctx != backend._ffi.NULL)
+    pctx = backend._ffi.gc(pctx, backend._lib.EVP_PKEY_CTX_free)
+    res = backend._lib.EVP_PKEY_verify_init(pctx)
+    if res != 1:
+        errors = backend._consume_errors()
+        raise ValueError("Unable to verify with this key", errors)
 
+    res = backend._lib.EVP_PKEY_verify(
+        pctx, signature, len(signature), data, len(data)
+    )
     if res != 1:
         backend._consume_errors()
         raise InvalidSignature
 
 
 class _DSAParameters(dsa.DSAParameters):
-    def __init__(self, backend: "Backend", dsa_cdata):
+    def __init__(self, backend: "Backend", evp_pkey):
         self._backend = backend
-        self._dsa_cdata = dsa_cdata
+        self._evp_pkey = evp_pkey
 
     def parameter_numbers(self) -> dsa.DSAParameterNumbers:
-        p = self._backend._ffi.new("BIGNUM **")
-        q = self._backend._ffi.new("BIGNUM **")
-        g = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DSA_get0_pqg(self._dsa_cdata, p, q, g)
-        self._backend.openssl_assert(p[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(q[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(g[0] != self._backend._ffi.NULL)
+        pp = self._backend._ffi.new("BIGNUM **")
+        pq = self._backend._ffi.new("BIGNUM **")
+        pg = self._backend._ffi.new("BIGNUM **")
+
+        for key, pbn in [
+            (b"p", pp),
+            (b"q", pq),
+            (b"g", pg),
+        ]:
+            pbn[0] = self._backend._ffi.NULL
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, key, pbn
+            )
+            self._backend.openssl_assert(res == 1)
+            self._backend.openssl_assert(pbn[0] != self._backend._ffi.NULL)
+
+        p = self._backend._ffi.gc(pp[0], self._backend._lib.BN_free)
+        q = self._backend._ffi.gc(pq[0], self._backend._lib.BN_free)
+        g = self._backend._ffi.gc(pg[0], self._backend._lib.BN_free)
+
         return dsa.DSAParameterNumbers(
-            p=self._backend._bn_to_int(p[0]),
-            q=self._backend._bn_to_int(q[0]),
-            g=self._backend._bn_to_int(g[0]),
+            p=self._backend._bn_to_int(p),
+            q=self._backend._bn_to_int(q),
+            g=self._backend._bn_to_int(g),
         )
 
     def generate_private_key(self) -> dsa.DSAPrivateKey:
@@ -78,73 +108,120 @@ class _DSAParameters(dsa.DSAParameters):
 class _DSAPrivateKey(dsa.DSAPrivateKey):
     _key_size: int
 
-    def __init__(self, backend: "Backend", dsa_cdata, evp_pkey):
+    def __init__(self, backend: "Backend", evp_pkey):
         self._backend = backend
-        self._dsa_cdata = dsa_cdata
         self._evp_pkey = evp_pkey
-
-        p = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DSA_get0_pqg(
-            dsa_cdata, p, self._backend._ffi.NULL, self._backend._ffi.NULL
-        )
-        self._backend.openssl_assert(p[0] != backend._ffi.NULL)
-        self._key_size = self._backend._lib.BN_num_bits(p[0])
+        self._key_size = self._backend._lib.EVP_PKEY_bits(evp_pkey)
 
     @property
     def key_size(self) -> int:
         return self._key_size
 
     def private_numbers(self) -> dsa.DSAPrivateNumbers:
-        p = self._backend._ffi.new("BIGNUM **")
-        q = self._backend._ffi.new("BIGNUM **")
-        g = self._backend._ffi.new("BIGNUM **")
-        pub_key = self._backend._ffi.new("BIGNUM **")
-        priv_key = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DSA_get0_pqg(self._dsa_cdata, p, q, g)
-        self._backend.openssl_assert(p[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(q[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(g[0] != self._backend._ffi.NULL)
-        self._backend._lib.DSA_get0_key(self._dsa_cdata, pub_key, priv_key)
-        self._backend.openssl_assert(pub_key[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(priv_key[0] != self._backend._ffi.NULL)
+        pp = self._backend._ffi.new("BIGNUM **")
+        pq = self._backend._ffi.new("BIGNUM **")
+        pg = self._backend._ffi.new("BIGNUM **")
+        ppub_key = self._backend._ffi.new("BIGNUM **")
+        ppriv_key = self._backend._ffi.new("BIGNUM **")
+
+        for key, pbn in [
+            (b"p", pp),
+            (b"q", pq),
+            (b"g", pg),
+            (b"pub", ppub_key),
+            (b"priv", ppriv_key),
+        ]:
+            pbn[0] = self._backend._ffi.NULL
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, key, pbn
+            )
+            self._backend.openssl_assert(res == 1)
+            self._backend.openssl_assert(pbn[0] != self._backend._ffi.NULL)
+
+        p = self._backend._ffi.gc(pp[0], self._backend._lib.BN_free)
+        q = self._backend._ffi.gc(pq[0], self._backend._lib.BN_free)
+        g = self._backend._ffi.gc(pg[0], self._backend._lib.BN_free)
+        pub_key = self._backend._ffi.gc(ppub_key[0], self._backend._lib.BN_free)
+        priv_key = self._backend._ffi.gc(ppriv_key[0], self._backend._lib.BN_free)
         return dsa.DSAPrivateNumbers(
             public_numbers=dsa.DSAPublicNumbers(
                 parameter_numbers=dsa.DSAParameterNumbers(
-                    p=self._backend._bn_to_int(p[0]),
-                    q=self._backend._bn_to_int(q[0]),
-                    g=self._backend._bn_to_int(g[0]),
+                    p=self._backend._bn_to_int(p),
+                    q=self._backend._bn_to_int(q),
+                    g=self._backend._bn_to_int(g),
                 ),
-                y=self._backend._bn_to_int(pub_key[0]),
+                y=self._backend._bn_to_int(pub_key),
             ),
-            x=self._backend._bn_to_int(priv_key[0]),
+            x=self._backend._bn_to_int(priv_key),
         )
 
     def public_key(self) -> dsa.DSAPublicKey:
-        dsa_cdata = self._backend._lib.DSAparams_dup(self._dsa_cdata)
-        self._backend.openssl_assert(dsa_cdata != self._backend._ffi.NULL)
-        dsa_cdata = self._backend._ffi.gc(
-            dsa_cdata, self._backend._lib.DSA_free
-        )
-        pub_key = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DSA_get0_key(
-            self._dsa_cdata, pub_key, self._backend._ffi.NULL
-        )
-        self._backend.openssl_assert(pub_key[0] != self._backend._ffi.NULL)
-        pub_key_dup = self._backend._lib.BN_dup(pub_key[0])
-        res = self._backend._lib.DSA_set0_key(
-            dsa_cdata, pub_key_dup, self._backend._ffi.NULL
+        pparams = self._backend._ffi.new("OSSL_PARAM **")
+        res = self._backend._lib.EVP_PKEY_todata(
+            self._evp_pkey, self._backend._lib.EVP_PKEY_PUBLIC_KEY, pparams
         )
         self._backend.openssl_assert(res == 1)
-        evp_pkey = self._backend._dsa_cdata_to_evp_pkey(dsa_cdata)
-        return _DSAPublicKey(self._backend, dsa_cdata, evp_pkey)
+        self._backend.openssl_assert(pparams[0] != self._backend._ffi.NULL)
+
+        params = self._backend._ffi.gc(
+            pparams[0], self._backend._lib.OSSL_PARAM_free
+        )
+
+        ctx = self._backend._lib.EVP_PKEY_CTX_new_id(
+            self._backend._lib.EVP_PKEY_DSA, self._backend._ffi.NULL
+        )
+        self._backend.openssl_assert(ctx != self._backend._ffi.NULL)
+        ctx = self._backend._ffi.gc(ctx, self._backend._lib.EVP_PKEY_CTX_free)
+
+        res = self._backend._lib.EVP_PKEY_fromdata_init(ctx)
+        self._backend.openssl_assert(res == 1)
+
+        ppub_key = self._backend._ffi.new("EVP_PKEY **")
+        res = self._backend._lib.EVP_PKEY_fromdata(
+            ctx, ppub_key, self._backend._lib.EVP_PKEY_PUBLIC_KEY, params
+        )
+        self._backend.openssl_assert(res == 1)
+        self._backend.openssl_assert(ppub_key[0] != self._backend._ffi.NULL)
+
+        pub_key = self._backend._ffi.gc(
+            ppub_key[0], self._backend._lib.EVP_PKEY_free
+        )
+
+        return _DSAPublicKey(self._backend, pub_key)
 
     def parameters(self) -> dsa.DSAParameters:
-        dsa_cdata = self._backend._lib.DSAparams_dup(self._dsa_cdata)
-        self._backend.openssl_assert(dsa_cdata != self._backend._ffi.NULL)
-        dsa_cdata = self._backend._ffi.gc(
-            dsa_cdata, self._backend._lib.DSA_free
+        pparams = self._backend._ffi.new("OSSL_PARAM **")
+        res = self._backend._lib.EVP_PKEY_todata(
+            self._evp_pkey, self._backend._lib.EVP_PKEY_KEY_PARAMETERS, pparams
         )
-        return _DSAParameters(self._backend, dsa_cdata)
+        self._backend.openssl_assert(res == 1)
+        self._backend.openssl_assert(pparams[0] != self._backend._ffi.NULL)
+
+        params = self._backend._ffi.gc(
+            pparams[0], self._backend._lib.OSSL_PARAM_free
+        )
+
+        ctx = self._backend._lib.EVP_PKEY_CTX_new_id(
+            self._backend._lib.EVP_PKEY_DSA, self._backend._ffi.NULL
+        )
+        self._backend.openssl_assert(ctx != self._backend._ffi.NULL)
+        ctx = self._backend._ffi.gc(ctx, self._backend._lib.EVP_PKEY_CTX_free)
+
+        res = self._backend._lib.EVP_PKEY_fromdata_init(ctx)
+        self._backend.openssl_assert(res == 1)
+
+        evp_ppkey = self._backend._ffi.new("EVP_PKEY **")
+        res = self._backend._lib.EVP_PKEY_fromdata(
+            ctx, evp_ppkey, self._backend._lib.EVP_PKEY_KEY_PARAMETERS, params
+        )
+        self._backend.openssl_assert(res == 1)
+        self._backend.openssl_assert(evp_ppkey[0] != self._backend._ffi.NULL)
+
+        evp_pkey = self._backend._ffi.gc(
+            evp_ppkey[0], self._backend._lib.EVP_PKEY_free
+        )
+
+        return _DSAParameters(self._backend, evp_pkey)
 
     def private_bytes(
         self,
@@ -172,49 +249,81 @@ class _DSAPrivateKey(dsa.DSAPrivateKey):
 class _DSAPublicKey(dsa.DSAPublicKey):
     _key_size: int
 
-    def __init__(self, backend: "Backend", dsa_cdata, evp_pkey):
+    def __init__(self, backend: "Backend", evp_pkey):
         self._backend = backend
-        self._dsa_cdata = dsa_cdata
         self._evp_pkey = evp_pkey
-        p = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DSA_get0_pqg(
-            dsa_cdata, p, self._backend._ffi.NULL, self._backend._ffi.NULL
-        )
-        self._backend.openssl_assert(p[0] != backend._ffi.NULL)
-        self._key_size = self._backend._lib.BN_num_bits(p[0])
+        self._key_size = self._backend._lib.EVP_PKEY_bits(evp_pkey)
 
     @property
     def key_size(self) -> int:
         return self._key_size
 
     def public_numbers(self) -> dsa.DSAPublicNumbers:
-        p = self._backend._ffi.new("BIGNUM **")
-        q = self._backend._ffi.new("BIGNUM **")
-        g = self._backend._ffi.new("BIGNUM **")
-        pub_key = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DSA_get0_pqg(self._dsa_cdata, p, q, g)
-        self._backend.openssl_assert(p[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(q[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(g[0] != self._backend._ffi.NULL)
-        self._backend._lib.DSA_get0_key(
-            self._dsa_cdata, pub_key, self._backend._ffi.NULL
-        )
-        self._backend.openssl_assert(pub_key[0] != self._backend._ffi.NULL)
+        pp = self._backend._ffi.new("BIGNUM **")
+        pq = self._backend._ffi.new("BIGNUM **")
+        pg = self._backend._ffi.new("BIGNUM **")
+        ppub_key = self._backend._ffi.new("BIGNUM **")
+
+        for key, pbn in [
+            (b"p", pp),
+            (b"q", pq),
+            (b"g", pg),
+            (b"pub", ppub_key),
+        ]:
+            pbn[0] = self._backend._ffi.NULL
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, key, pbn
+            )
+            self._backend.openssl_assert(res == 1)
+            self._backend.openssl_assert(pbn[0] != self._backend._ffi.NULL)
+
+        p = self._backend._ffi.gc(pp[0], self._backend._lib.BN_free)
+        q = self._backend._ffi.gc(pq[0], self._backend._lib.BN_free)
+        g = self._backend._ffi.gc(pg[0], self._backend._lib.BN_free)
+        pub_key = self._backend._ffi.gc(ppub_key[0], self._backend._lib.BN_free)
+
         return dsa.DSAPublicNumbers(
             parameter_numbers=dsa.DSAParameterNumbers(
-                p=self._backend._bn_to_int(p[0]),
-                q=self._backend._bn_to_int(q[0]),
-                g=self._backend._bn_to_int(g[0]),
+                p=self._backend._bn_to_int(p),
+                q=self._backend._bn_to_int(q),
+                g=self._backend._bn_to_int(g),
             ),
-            y=self._backend._bn_to_int(pub_key[0]),
+            y=self._backend._bn_to_int(pub_key),
         )
 
     def parameters(self) -> dsa.DSAParameters:
-        dsa_cdata = self._backend._lib.DSAparams_dup(self._dsa_cdata)
-        dsa_cdata = self._backend._ffi.gc(
-            dsa_cdata, self._backend._lib.DSA_free
+        pparams = self._backend._ffi.new("OSSL_PARAM **")
+        res = self._backend._lib.EVP_PKEY_todata(
+            self._evp_pkey, self._backend._lib.EVP_PKEY_KEY_PARAMETERS, pparams
         )
-        return _DSAParameters(self._backend, dsa_cdata)
+        self._backend.openssl_assert(res == 1)
+        self._backend.openssl_assert(pparams[0] != self._backend._ffi.NULL)
+
+        params = self._backend._ffi.gc(
+            pparams[0], self._backend._lib.OSSL_PARAM_free
+        )
+
+        ctx = self._backend._lib.EVP_PKEY_CTX_new_id(
+            self._backend._lib.EVP_PKEY_DSA, self._backend._ffi.NULL
+        )
+        self._backend.openssl_assert(ctx != self._backend._ffi.NULL)
+        ctx = self._backend._ffi.gc(ctx, self._backend._lib.EVP_PKEY_CTX_free)
+
+        res = self._backend._lib.EVP_PKEY_fromdata_init(ctx)
+        self._backend.openssl_assert(res == 1)
+
+        evp_ppkey = self._backend._ffi.new("EVP_PKEY **")
+        res = self._backend._lib.EVP_PKEY_fromdata(
+            ctx, evp_ppkey, self._backend._lib.EVP_PKEY_KEY_PARAMETERS, params
+        )
+        self._backend.openssl_assert(res == 1)
+        self._backend.openssl_assert(evp_ppkey[0] != self._backend._ffi.NULL)
+
+        evp_pkey = self._backend._ffi.gc(
+            evp_ppkey[0], self._backend._lib.EVP_PKEY_free
+        )
+
+        return _DSAParameters(self._backend, evp_pkey)
 
     def public_bytes(
         self,

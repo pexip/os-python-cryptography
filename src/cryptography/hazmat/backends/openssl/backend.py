@@ -834,10 +834,7 @@ class Backend:
                 unsafe_skip_rsa_key_validation=unsafe_skip_rsa_key_validation,
             )
         elif key_type == self._lib.EVP_PKEY_DSA:
-            dsa_cdata = self._lib.EVP_PKEY_get1_DSA(evp_pkey)
-            self.openssl_assert(dsa_cdata != self._ffi.NULL)
-            dsa_cdata = self._ffi.gc(dsa_cdata, self._lib.DSA_free)
-            return _DSAPrivateKey(self, dsa_cdata, evp_pkey)
+            return _DSAPrivateKey(self, evp_pkey)
         elif key_type == self._lib.EVP_PKEY_EC:
             ec_cdata = self._lib.EVP_PKEY_get1_EC_KEY(evp_pkey)
             self.openssl_assert(ec_cdata != self._ffi.NULL)
@@ -899,10 +896,7 @@ class Backend:
                 self.openssl_assert(res == 1)
             return self.load_der_public_key(self._read_mem_bio(bio))
         elif key_type == self._lib.EVP_PKEY_DSA:
-            dsa_cdata = self._lib.EVP_PKEY_get1_DSA(evp_pkey)
-            self.openssl_assert(dsa_cdata != self._ffi.NULL)
-            dsa_cdata = self._ffi.gc(dsa_cdata, self._lib.DSA_free)
-            return _DSAPublicKey(self, dsa_cdata, evp_pkey)
+            return _DSAPublicKey(self, evp_pkey)
         elif key_type == self._lib.EVP_PKEY_EC:
             ec_cdata = self._lib.EVP_PKEY_get1_EC_KEY(evp_pkey)
             if ec_cdata == self._ffi.NULL:
@@ -966,36 +960,42 @@ class Backend:
                 "Key size must be 1024, 2048, 3072, or 4096 bits."
             )
 
-        ctx = self._lib.DSA_new()
-        self.openssl_assert(ctx != self._ffi.NULL)
-        ctx = self._ffi.gc(ctx, self._lib.DSA_free)
-
-        res = self._lib.DSA_generate_parameters_ex(
-            ctx,
-            key_size,
-            self._ffi.NULL,
-            0,
-            self._ffi.NULL,
-            self._ffi.NULL,
-            self._ffi.NULL,
+        evp_pkey_ctx = self._lib.EVP_PKEY_CTX_new_id(
+            self._lib.EVP_PKEY_DSA, self._ffi.NULL
         )
-
+        self.openssl_assert(evp_pkey_ctx != self._ffi.NULL)
+        evp_pkey_ctx = self._ffi.gc(evp_pkey_ctx, self._lib.EVP_PKEY_CTX_free)
+        res = self._lib.EVP_PKEY_paramgen_init(evp_pkey_ctx)
         self.openssl_assert(res == 1)
+        res = self._lib.EVP_PKEY_CTX_set_dsa_paramgen_bits(
+            evp_pkey_ctx, key_size
+        )
+        self.openssl_assert(res == 1)
+        evp_ppkey = self._ffi.new("EVP_PKEY **")
+        res = self._lib.EVP_PKEY_paramgen(evp_pkey_ctx, evp_ppkey)
+        self.openssl_assert(res == 1)
+        self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+        evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
 
-        return _DSAParameters(self, ctx)
+        return _DSAParameters(self, evp_pkey)
 
     def generate_dsa_private_key(
         self, parameters: dsa.DSAParameters
     ) -> dsa.DSAPrivateKey:
-        ctx = self._lib.DSAparams_dup(
-            parameters._dsa_cdata  # type: ignore[attr-defined]
+        evp_pkey_ctx = self._lib.EVP_PKEY_CTX_new(
+            parameters._evp_pkey, self._ffi.NULL
         )
-        self.openssl_assert(ctx != self._ffi.NULL)
-        ctx = self._ffi.gc(ctx, self._lib.DSA_free)
-        self._lib.DSA_generate_key(ctx)
-        evp_pkey = self._dsa_cdata_to_evp_pkey(ctx)
+        self.openssl_assert(evp_pkey_ctx != self._ffi.NULL)
+        evp_pkey_ctx = self._ffi.gc(evp_pkey_ctx, self._lib.EVP_PKEY_CTX_free)
+        res = self._lib.EVP_PKEY_keygen_init(evp_pkey_ctx)
+        self.openssl_assert(res == 1)
+        evp_ppkey = self._ffi.new("EVP_PKEY **")
+        res = self._lib.EVP_PKEY_keygen(evp_pkey_ctx, evp_ppkey)
+        self.openssl_assert(res == 1)
+        self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+        evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
 
-        return _DSAPrivateKey(self, ctx, evp_pkey)
+        return _DSAPrivateKey(self, evp_pkey)
 
     def generate_dsa_private_key_and_parameters(
         self, key_size: int
@@ -1004,6 +1004,7 @@ class Backend:
         return self.generate_dsa_private_key(parameters)
 
     def _dsa_cdata_set_values(self, dsa_cdata, p, q, g, pub_key, priv_key):
+        assert not self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
         res = self._lib.DSA_set0_pqg(dsa_cdata, p, q, g)
         self.openssl_assert(res == 1)
         res = self._lib.DSA_set0_key(dsa_cdata, pub_key, priv_key)
@@ -1015,57 +1016,179 @@ class Backend:
         dsa._check_dsa_private_numbers(numbers)
         parameter_numbers = numbers.public_numbers.parameter_numbers
 
-        dsa_cdata = self._lib.DSA_new()
-        self.openssl_assert(dsa_cdata != self._ffi.NULL)
-        dsa_cdata = self._ffi.gc(dsa_cdata, self._lib.DSA_free)
-
         p = self._int_to_bn(parameter_numbers.p)
         q = self._int_to_bn(parameter_numbers.q)
         g = self._int_to_bn(parameter_numbers.g)
         pub_key = self._int_to_bn(numbers.public_numbers.y)
         priv_key = self._int_to_bn(numbers.x)
-        self._dsa_cdata_set_values(dsa_cdata, p, q, g, pub_key, priv_key)
 
-        evp_pkey = self._dsa_cdata_to_evp_pkey(dsa_cdata)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            p = self._ffi.gc(p, self._lib.BN_free)
+            q = self._ffi.gc(q, self._lib.BN_free)
+            g = self._ffi.gc(g, self._lib.BN_free)
+            pub_key = self._ffi.gc(pub_key, self._lib.BN_free)
+            priv_key = self._ffi.gc(priv_key, self._lib.BN_free)
 
-        return _DSAPrivateKey(self, dsa_cdata, evp_pkey)
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
+
+            for key, bn in [
+                (b"p", p),
+                (b"q", q),
+                (b"g", g),
+                (b"pub", pub_key),
+                (b"priv", priv_key),
+            ]:
+                res = self._lib.OSSL_PARAM_BLD_push_BN(bld, key, bn)
+                self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(
+                self._lib.EVP_PKEY_DSA, self._ffi.NULL
+            )
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_KEYPAIR, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+        else:
+            dsa_cdata = self._lib.DSA_new()
+            self.openssl_assert(dsa_cdata != self._ffi.NULL)
+            dsa_cdata = self._ffi.gc(dsa_cdata, self._lib.DSA_free)
+            self._dsa_cdata_set_values(dsa_cdata, p, q, g, pub_key, priv_key)
+            evp_pkey = self._dsa_cdata_to_evp_pkey(dsa_cdata)
+
+        return _DSAPrivateKey(self, evp_pkey)
 
     def load_dsa_public_numbers(
         self, numbers: dsa.DSAPublicNumbers
     ) -> dsa.DSAPublicKey:
         dsa._check_dsa_parameters(numbers.parameter_numbers)
-        dsa_cdata = self._lib.DSA_new()
-        self.openssl_assert(dsa_cdata != self._ffi.NULL)
-        dsa_cdata = self._ffi.gc(dsa_cdata, self._lib.DSA_free)
 
         p = self._int_to_bn(numbers.parameter_numbers.p)
         q = self._int_to_bn(numbers.parameter_numbers.q)
         g = self._int_to_bn(numbers.parameter_numbers.g)
         pub_key = self._int_to_bn(numbers.y)
-        priv_key = self._ffi.NULL
-        self._dsa_cdata_set_values(dsa_cdata, p, q, g, pub_key, priv_key)
 
-        evp_pkey = self._dsa_cdata_to_evp_pkey(dsa_cdata)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            p = self._ffi.gc(p, self._lib.BN_free)
+            q = self._ffi.gc(q, self._lib.BN_free)
+            g = self._ffi.gc(g, self._lib.BN_free)
+            pub_key = self._ffi.gc(pub_key, self._lib.BN_free)
 
-        return _DSAPublicKey(self, dsa_cdata, evp_pkey)
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
+
+            for key, bn in [
+                (b"p", p),
+                (b"q", q),
+                (b"g", g),
+                (b"pub", pub_key),
+            ]:
+                res = self._lib.OSSL_PARAM_BLD_push_BN(bld, key, bn)
+                self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(
+                self._lib.EVP_PKEY_DSA, self._ffi.NULL
+            )
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_PUBLIC_KEY, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+        else:
+            dsa_cdata = self._lib.DSA_new()
+            self.openssl_assert(dsa_cdata != self._ffi.NULL)
+            dsa_cdata = self._ffi.gc(dsa_cdata, self._lib.DSA_free)
+            priv_key = self._ffi.NULL
+            self._dsa_cdata_set_values(dsa_cdata, p, q, g, pub_key, priv_key)
+            evp_pkey = self._dsa_cdata_to_evp_pkey(dsa_cdata)
+
+        return _DSAPublicKey(self, evp_pkey)
 
     def load_dsa_parameter_numbers(
         self, numbers: dsa.DSAParameterNumbers
     ) -> dsa.DSAParameters:
         dsa._check_dsa_parameters(numbers)
-        dsa_cdata = self._lib.DSA_new()
-        self.openssl_assert(dsa_cdata != self._ffi.NULL)
-        dsa_cdata = self._ffi.gc(dsa_cdata, self._lib.DSA_free)
 
         p = self._int_to_bn(numbers.p)
         q = self._int_to_bn(numbers.q)
         g = self._int_to_bn(numbers.g)
-        res = self._lib.DSA_set0_pqg(dsa_cdata, p, q, g)
-        self.openssl_assert(res == 1)
 
-        return _DSAParameters(self, dsa_cdata)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            p = self._ffi.gc(p, self._lib.BN_free)
+            q = self._ffi.gc(q, self._lib.BN_free)
+            g = self._ffi.gc(g, self._lib.BN_free)
+
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
+
+            for key, bn in [
+                (b"p", p),
+                (b"q", q),
+                (b"g", g),
+            ]:
+                res = self._lib.OSSL_PARAM_BLD_push_BN(bld, key, bn)
+                self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(
+                self._lib.EVP_PKEY_DSA, self._ffi.NULL
+            )
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_KEY_PARAMETERS, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+        else:
+            dsa_cdata = self._lib.DSA_new()
+            self.openssl_assert(dsa_cdata != self._ffi.NULL)
+            dsa_cdata = self._ffi.gc(dsa_cdata, self._lib.DSA_free)
+            res = self._lib.DSA_set0_pqg(dsa_cdata, p, q, g)
+            self.openssl_assert(res == 1)
+            evp_pkey = self._dsa_cdata_to_evp_pkey(dsa_cdata)
+
+        return _DSAParameters(self, evp_pkey)
 
     def _dsa_cdata_to_evp_pkey(self, dsa_cdata):
+        assert not self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
         evp_pkey = self._create_evp_pkey_gc()
         res = self._lib.EVP_PKEY_set1_DSA(evp_pkey, dsa_cdata)
         self.openssl_assert(res == 1)
