@@ -2848,7 +2848,7 @@ class Backend:
         evp_pkey = self._create_evp_pkey_gc()
         res = self._lib.EVP_PKEY_set_type(evp_pkey, self._lib.NID_X25519)
         self.openssl_assert(res == 1)
-        res = self._lib.EVP_PKEY_set1_tls_encodedpoint(
+        res = self._lib.EVP_PKEY_set1_encoded_public_key(
             evp_pkey, data, len(data)
         )
         self.openssl_assert(res == 1)

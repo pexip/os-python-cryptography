@@ -103,8 +103,8 @@ def cryptography_has_evp_digestfinal_xof() -> typing.List[str]:
 
 def cryptography_has_evp_pkey_get_set_tls_encodedpoint() -> typing.List[str]:
     return [
-        "EVP_PKEY_get1_tls_encodedpoint",
-        "EVP_PKEY_set1_tls_encodedpoint",
+        "EVP_PKEY_get1_encoded_public_key",
+        "EVP_PKEY_set1_encoded_public_key",
     ]
 
 

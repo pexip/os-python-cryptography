@@ -48,7 +48,7 @@ class _X25519PublicKey(X25519PublicKey):
 
     def _raw_public_bytes(self) -> bytes:
         ucharpp = self._backend._ffi.new("unsigned char **")
-        res = self._backend._lib.EVP_PKEY_get1_tls_encodedpoint(
+        res = self._backend._lib.EVP_PKEY_get1_encoded_public_key(
             self._evp_pkey, ucharpp
         )
         self._backend.openssl_assert(res == 32)
