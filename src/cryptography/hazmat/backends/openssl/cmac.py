@@ -40,45 +40,67 @@ class _CMACContext:
             adapter = registry[type(algorithm), CBC]
 
             evp_cipher = adapter(self._backend, algorithm, CBC)
+            cipher_name = self._backend._lib.EVP_CIPHER_name(evp_cipher)
 
-            ctx = self._backend._lib.CMAC_CTX_new()
+            evp_mac = self._backend._lib.EVP_MAC_fetch(
+                self._backend._ffi.NULL,
+                b"CMAC",
+                self._backend._ffi.NULL
+            )
+            self._backend.openssl_assert(evp_mac != self._backend._ffi.NULL)
+            evp_mac = self._backend._ffi.gc(
+                evp_mac, self._backend._lib.EVP_MAC_free
+            )
 
+            ctx = self._backend._lib.EVP_MAC_CTX_new(evp_mac)
             self._backend.openssl_assert(ctx != self._backend._ffi.NULL)
-            ctx = self._backend._ffi.gc(ctx, self._backend._lib.CMAC_CTX_free)
+            ctx = self._backend._ffi.gc(ctx, self._backend._lib.EVP_MAC_CTX_free)
+
+            bld = self._backend._lib.OSSL_PARAM_BLD_new();
+            self._backend.openssl_assert(bld != self._backend._ffi.NULL)
+            bld = self._backend._ffi.gc(bld, self._backend._lib.OSSL_PARAM_BLD_free)
+
+            res = self._backend._lib.OSSL_PARAM_BLD_push_utf8_string(
+                bld, b"cipher", cipher_name, 0
+            )
+            self._backend.openssl_assert(res == 1);
+
+            params = self._backend._lib.OSSL_PARAM_BLD_to_param(bld)
+            self._backend.openssl_assert(params != self._backend._ffi.NULL)
+            params = self._backend._ffi.gc(
+                params, self._backend._lib.OSSL_PARAM_free
+            )
 
             key_ptr = self._backend._ffi.from_buffer(self._key)
-            res = self._backend._lib.CMAC_Init(
-                ctx,
-                key_ptr,
-                len(self._key),
-                evp_cipher,
-                self._backend._ffi.NULL,
+            res = self._backend._lib.EVP_MAC_init(
+                ctx, key_ptr, len(self._key), params
             )
             self._backend.openssl_assert(res == 1)
 
         self._ctx = ctx
 
     def update(self, data: bytes) -> None:
-        res = self._backend._lib.CMAC_Update(self._ctx, data, len(data))
+        res = self._backend._lib.EVP_MAC_update(self._ctx, data, len(data))
         self._backend.openssl_assert(res == 1)
 
     def finalize(self) -> bytes:
         buf = self._backend._ffi.new("unsigned char[]", self._output_length)
         length = self._backend._ffi.new("size_t *", self._output_length)
-        res = self._backend._lib.CMAC_Final(self._ctx, buf, length)
+        res = self._backend._lib.EVP_MAC_final(
+            self._ctx, buf, length, self._output_length
+        )
         self._backend.openssl_assert(res == 1)
 
         self._ctx = None
 
-        return self._backend._ffi.buffer(buf)[:]
+        return self._backend._ffi.buffer(buf)[:length[0]]
 
     def copy(self) -> "_CMACContext":
-        copied_ctx = self._backend._lib.CMAC_CTX_new()
+        copied_ctx = self._backend._lib.EVP_MAC_CTX_dup(self._ctx)
+        self._backend.openssl_assert(copied_ctx != self._backend._ffi.NULL)
         copied_ctx = self._backend._ffi.gc(
-            copied_ctx, self._backend._lib.CMAC_CTX_free
+            copied_ctx, self._backend._lib.EVP_MAC_CTX_free
         )
-        res = self._backend._lib.CMAC_CTX_copy(copied_ctx, self._ctx)
-        self._backend.openssl_assert(res == 1)
         return _CMACContext(self._backend, self._algorithm, ctx=copied_ctx)
 
     def verify(self, signature: bytes) -> None:
