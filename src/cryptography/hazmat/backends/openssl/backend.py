@@ -836,10 +836,7 @@ class Backend:
         elif key_type == self._lib.EVP_PKEY_DSA:
             return _DSAPrivateKey(self, evp_pkey)
         elif key_type == self._lib.EVP_PKEY_EC:
-            ec_cdata = self._lib.EVP_PKEY_get1_EC_KEY(evp_pkey)
-            self.openssl_assert(ec_cdata != self._ffi.NULL)
-            ec_cdata = self._ffi.gc(ec_cdata, self._lib.EC_KEY_free)
-            return _EllipticCurvePrivateKey(self, ec_cdata, evp_pkey)
+            return _EllipticCurvePrivateKey(self, evp_pkey)
         elif key_type in self._dh_types:
             dh_cdata = self._lib.EVP_PKEY_get1_DH(evp_pkey)
             self.openssl_assert(dh_cdata != self._ffi.NULL)
@@ -898,12 +895,7 @@ class Backend:
         elif key_type == self._lib.EVP_PKEY_DSA:
             return _DSAPublicKey(self, evp_pkey)
         elif key_type == self._lib.EVP_PKEY_EC:
-            ec_cdata = self._lib.EVP_PKEY_get1_EC_KEY(evp_pkey)
-            if ec_cdata == self._ffi.NULL:
-                errors = self._consume_errors_with_text()
-                raise ValueError("Unable to load EC key", errors)
-            ec_cdata = self._ffi.gc(ec_cdata, self._lib.EC_KEY_free)
-            return _EllipticCurvePublicKey(self, ec_cdata, evp_pkey)
+            return _EllipticCurvePublicKey(self, evp_pkey)
         elif key_type in self._dh_types:
             dh_cdata = self._lib.EVP_PKEY_get1_DH(evp_pkey)
             self.openssl_assert(dh_cdata != self._ffi.NULL)
@@ -1599,14 +1591,21 @@ class Backend:
         """
 
         if self.elliptic_curve_supported(curve):
-            ec_cdata = self._ec_key_new_by_curve(curve)
+            if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+                curve_nid = self._elliptic_curve_to_nid(curve)
+                sn = self._lib.OBJ_nid2sn(curve_nid)
+                evp_pkey = self._lib.EVP_PKEY_Q_keygen(
+                    self._ffi.NULL, self._ffi.NULL, b"EC", sn
+                )
+                self.openssl_assert(evp_pkey != self._ffi.NULL)
+                evp_pkey = self._ffi.gc(evp_pkey, self._lib.EVP_PKEY_free)
+            else:
+                ec_cdata = self._ec_key_new_by_curve(curve)
+                res = self._lib.EC_KEY_generate_key(ec_cdata)
+                self.openssl_assert(res == 1)
+                evp_pkey = self._ec_cdata_to_evp_pkey(ec_data)
 
-            res = self._lib.EC_KEY_generate_key(ec_cdata)
-            self.openssl_assert(res == 1)
-
-            evp_pkey = self._ec_cdata_to_evp_pkey(ec_cdata)
-
-            return _EllipticCurvePrivateKey(self, ec_cdata, evp_pkey)
+            return _EllipticCurvePrivateKey(self, evp_pkey)
         else:
             raise UnsupportedAlgorithm(
                 "Backend object does not support {}.".format(curve.name),
@@ -1618,67 +1617,219 @@ class Backend:
     ) -> ec.EllipticCurvePrivateKey:
         public = numbers.public_numbers
 
-        ec_cdata = self._ec_key_new_by_curve(public.curve)
-
         private_value = self._ffi.gc(
             self._int_to_bn(numbers.private_value), self._lib.BN_clear_free
         )
-        res = self._lib.EC_KEY_set_private_key(ec_cdata, private_value)
-        if res != 1:
-            self._consume_errors()
-            raise ValueError("Invalid EC key.")
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
 
-        self._ec_key_set_public_key_affine_coordinates(
-            ec_cdata, public.x, public.y
-        )
+            curve_nid = self._elliptic_curve_to_nid(public.curve)
+            sn = self._lib.OBJ_nid2sn(curve_nid)
 
-        evp_pkey = self._ec_cdata_to_evp_pkey(ec_cdata)
+            res = self._lib.OSSL_PARAM_BLD_push_utf8_string(
+                bld, b"group", sn, 0
+            )
+            self.openssl_assert(res == 1)
 
-        return _EllipticCurvePrivateKey(self, ec_cdata, evp_pkey)
+            point = self._ec_key_affine_coordinates_to_encoded_point(
+                public.curve, public.x, public.y
+            )
+            res = self._lib.OSSL_PARAM_BLD_push_octet_string(
+                bld, b"pub", point, len(point)
+            )
+            self.openssl_assert(res == 1)
+
+            res = self._lib.OSSL_PARAM_BLD_push_BN(bld, b"priv", private_value)
+            self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(
+                self._lib.EVP_PKEY_EC, self._ffi.NULL
+            )
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_KEYPAIR, params
+            )
+            if res != 1:
+                self._consume_errors()
+                raise ValueError("Invalid EC key.")
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+
+            check_ctx = self._lib.EVP_PKEY_CTX_new(evp_pkey, self._ffi.NULL)
+            self.openssl_assert(check_ctx != self._ffi.NULL)
+            check_ctx = self._ffi.gc(check_ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_check(check_ctx)
+            if res != 1:
+                self._consume_errors()
+                raise ValueError("Invalid EC key.")
+        else:
+            ec_cdata = self._ec_key_new_by_curve(public.curve)
+            res = self._lib.EC_KEY_set_private_key(ec_cdata, private_value)
+            if res != 1:
+                self._consume_errors()
+                raise ValueError("Invalid EC key.")
+            self._ec_key_set_public_key_affine_coordinates(
+                ec_cdata, public.x, public.y
+            )
+            evp_pkey = self._ec_cdata_to_evp_pkey(ec_cdata)
+
+        return _EllipticCurvePrivateKey(self, evp_pkey)
 
     def load_elliptic_curve_public_numbers(
         self, numbers: ec.EllipticCurvePublicNumbers
     ) -> ec.EllipticCurvePublicKey:
-        ec_cdata = self._ec_key_new_by_curve(numbers.curve)
-        self._ec_key_set_public_key_affine_coordinates(
-            ec_cdata, numbers.x, numbers.y
-        )
-        evp_pkey = self._ec_cdata_to_evp_pkey(ec_cdata)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
 
-        return _EllipticCurvePublicKey(self, ec_cdata, evp_pkey)
+            curve_nid = self._elliptic_curve_to_nid(numbers.curve)
+            sn = self._lib.OBJ_nid2sn(curve_nid)
+
+            res = self._lib.OSSL_PARAM_BLD_push_utf8_string(
+                bld, b"group", sn, 0
+            )
+            self.openssl_assert(res == 1)
+
+            point = self._ec_key_affine_coordinates_to_encoded_point(
+                numbers.curve, numbers.x, numbers.y
+            )
+            res = self._lib.OSSL_PARAM_BLD_push_octet_string(
+                bld, b"pub", point, len(point)
+            )
+            self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(
+                self._lib.EVP_PKEY_EC, self._ffi.NULL
+            )
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_PUBLIC_KEY, params
+            )
+            if res != 1:
+                self._consume_errors()
+                raise ValueError("Invalid EC key.")
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+
+            check_ctx = self._lib.EVP_PKEY_CTX_new(evp_pkey, self._ffi.NULL)
+            self.openssl_assert(check_ctx != self._ffi.NULL)
+            check_ctx = self._ffi.gc(check_ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_public_check(check_ctx)
+            if res != 1:
+                self._consume_errors()
+                raise ValueError("Invalid EC key.")
+        else:
+            ec_cdata = self._ec_key_new_by_curve(numbers.curve)
+            self._ec_key_set_public_key_affine_coordinates(
+                ec_cdata, numbers.x, numbers.y
+            )
+            evp_pkey = self._ec_cdata_to_evp_pkey(ec_cdata)
+
+        return _EllipticCurvePublicKey(self, evp_pkey)
 
     def load_elliptic_curve_public_bytes(
         self, curve: ec.EllipticCurve, point_bytes: bytes
     ) -> ec.EllipticCurvePublicKey:
-        ec_cdata = self._ec_key_new_by_curve(curve)
-        group = self._lib.EC_KEY_get0_group(ec_cdata)
-        self.openssl_assert(group != self._ffi.NULL)
-        point = self._lib.EC_POINT_new(group)
-        self.openssl_assert(point != self._ffi.NULL)
-        point = self._ffi.gc(point, self._lib.EC_POINT_free)
-        with self._tmp_bn_ctx() as bn_ctx:
-            res = self._lib.EC_POINT_oct2point(
-                group, point, point_bytes, len(point_bytes), bn_ctx
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
+
+            curve_nid = self._elliptic_curve_to_nid(curve)
+            sn = self._lib.OBJ_nid2sn(curve_nid)
+
+            res = self._lib.OSSL_PARAM_BLD_push_utf8_string(
+                bld, b"group", sn, 0
+            )
+            self.openssl_assert(res == 1)
+
+            res = self._lib.OSSL_PARAM_BLD_push_octet_string(
+                bld, b"pub", point_bytes, len(point_bytes)
+            )
+            self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(
+                self._lib.EVP_PKEY_EC, self._ffi.NULL
+            )
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_PUBLIC_KEY, params
             )
             if res != 1:
                 self._consume_errors()
-                raise ValueError("Invalid public bytes for the given curve")
+                raise ValueError("Invalid EC key.")
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
 
-        res = self._lib.EC_KEY_set_public_key(ec_cdata, point)
-        self.openssl_assert(res == 1)
-        evp_pkey = self._ec_cdata_to_evp_pkey(ec_cdata)
-        return _EllipticCurvePublicKey(self, ec_cdata, evp_pkey)
+            check_ctx = self._lib.EVP_PKEY_CTX_new(evp_pkey, self._ffi.NULL)
+            self.openssl_assert(check_ctx != self._ffi.NULL)
+            check_ctx = self._ffi.gc(check_ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_public_check(check_ctx)
+            if res != 1:
+                self._consume_errors()
+                raise ValueError("Invalid EC key.")
+        else:
+            ec_cdata = self._ec_key_new_by_curve(curve)
+            group = self._lib.EC_KEY_get0_group(ec_cdata)
+            self.openssl_assert(group != self._ffi.NULL)
+            point = self._lib.EC_POINT_new(group)
+            self.openssl_assert(point != self._ffi.NULL)
+            point = self._ffi.gc(point, self._lib.EC_POINT_free)
+            with self._tmp_bn_ctx() as bn_ctx:
+                res = self._lib.EC_POINT_oct2point(
+                    group, point, point_bytes, len(point_bytes), bn_ctx
+                )
+                if res != 1:
+                    self._consume_errors()
+                    raise ValueError("Invalid public bytes for the given curve")
+            res = self._lib.EC_KEY_set_public_key(ec_cdata, point)
+            self.openssl_assert(res == 1)
+            evp_pkey = self._ec_cdata_to_evp_pkey(ec_cdata)
+
+        return _EllipticCurvePublicKey(self, evp_pkey)
 
     def derive_elliptic_curve_private_key(
         self, private_value: int, curve: ec.EllipticCurve
     ) -> ec.EllipticCurvePrivateKey:
-        ec_cdata = self._ec_key_new_by_curve(curve)
+        group, point = self._ec_key_point_for_curve(curve)
 
-        get_func, group = self._ec_key_determine_group_get_func(ec_cdata)
-
-        point = self._lib.EC_POINT_new(group)
-        self.openssl_assert(point != self._ffi.NULL)
-        point = self._ffi.gc(point, self._lib.EC_POINT_free)
+        get_func = self._ec_key_get_func_for_group(group)
 
         value = self._int_to_bn(private_value)
         value = self._ffi.gc(value, self._lib.BN_clear_free)
@@ -1697,25 +1848,71 @@ class Backend:
                 self._consume_errors()
                 raise ValueError("Unable to derive key from private_value")
 
-        res = self._lib.EC_KEY_set_public_key(ec_cdata, point)
-        self.openssl_assert(res == 1)
-        private = self._int_to_bn(private_value)
-        private = self._ffi.gc(private, self._lib.BN_clear_free)
-        res = self._lib.EC_KEY_set_private_key(ec_cdata, private)
-        self.openssl_assert(res == 1)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
 
-        evp_pkey = self._ec_cdata_to_evp_pkey(ec_cdata)
+            curve_nid = self._elliptic_curve_to_nid(curve)
+            sn = self._lib.OBJ_nid2sn(curve_nid)
 
-        return _EllipticCurvePrivateKey(self, ec_cdata, evp_pkey)
+            res = self._lib.OSSL_PARAM_BLD_push_utf8_string(
+                bld, b"group", sn, 0
+            )
+            self.openssl_assert(res == 1)
+
+            encoded_point = self._ec_key_encode_point(group, point)
+            res = self._lib.OSSL_PARAM_BLD_push_octet_string(
+                bld, b"pub", encoded_point, len(encoded_point)
+            )
+            self.openssl_assert(res == 1)
+
+            res = self._lib.OSSL_PARAM_BLD_push_BN(bld, b"priv", value)
+            self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(
+                self._lib.EVP_PKEY_EC, self._ffi.NULL
+            )
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_KEYPAIR, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+        else:
+            ec_cdata = self._ec_key_new_by_curve(curve)
+            res = self._lib.EC_KEY_set_public_key(ec_cdata, point)
+            self.openssl_assert(res == 1)
+            private = self._int_to_bn(private_value)
+            private = self._ffi.gc(private, self._lib.BN_clear_free)
+            res = self._lib.EC_KEY_set_private_key(ec_cdata, private)
+            self.openssl_assert(res == 1)
+            evp_pkey = self._ec_cdata_to_evp_pkey(ec_cdata)
+
+        return _EllipticCurvePrivateKey(self, evp_pkey)
 
     def _ec_key_new_by_curve(self, curve: ec.EllipticCurve):
+        assert not self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
         curve_nid = self._elliptic_curve_to_nid(curve)
         return self._ec_key_new_by_curve_nid(curve_nid)
 
     def _ec_key_new_by_curve_nid(self, curve_nid: int):
+        assert not self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
         ec_cdata = self._lib.EC_KEY_new_by_curve_name(curve_nid)
         self.openssl_assert(ec_cdata != self._ffi.NULL)
-        return self._ffi.gc(ec_cdata, self._lib.EC_KEY_free)
+        ec_cdata = self._ffi.gc(ec_cdata, self._lib.EC_KEY_free)
+        return ec_data
 
     def elliptic_curve_exchange_algorithm_supported(
         self, algorithm: ec.ECDH, curve: ec.EllipticCurve
@@ -1730,6 +1927,7 @@ class Backend:
         )
 
     def _ec_cdata_to_evp_pkey(self, ec_cdata):
+        assert not self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
         evp_pkey = self._create_evp_pkey_gc()
         res = self._lib.EVP_PKEY_set1_EC_KEY(evp_pkey, ec_cdata)
         self.openssl_assert(res == 1)
@@ -1763,39 +1961,75 @@ class Backend:
         finally:
             self._lib.BN_CTX_end(bn_ctx)
 
-    def _ec_key_determine_group_get_func(self, ctx):
+    def _ec_key_determine_group_get_func(self, evp_pkey):
         """
-        Given an EC_KEY determine the group and what function is required to
+        Given an EVP_PKEY determine the group and what function is required to
         get point coordinates.
         """
-        self.openssl_assert(ctx != self._ffi.NULL)
+        self.openssl_assert(evp_pkey != self._ffi.NULL)
 
-        nid_two_field = self._lib.OBJ_sn2nid(b"characteristic-two-field")
-        self.openssl_assert(nid_two_field != self._lib.NID_undef)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            buflen = self._ffi.new("size_t *")
+            res = self._lib.EVP_PKEY_get_group_name(
+                evp_pkey, self._ffi.NULL, 0, buflen
+            )
+            self.openssl_assert(res == 1)
+            buf = self._ffi.new("unsigned char[]", buflen[0] + 1)
+            res = self._lib.EVP_PKEY_get_group_name(
+                evp_pkey, buf, buflen[0] + 1, buflen
+            )
+            self.openssl_assert(res == 1)
 
-        group = self._lib.EC_KEY_get0_group(ctx)
-        self.openssl_assert(group != self._ffi.NULL)
+            curve_nid = self._lib.OBJ_sn2nid(buf)
 
-        method = self._lib.EC_GROUP_method_of(group)
-        self.openssl_assert(method != self._ffi.NULL)
-
-        nid = self._lib.EC_METHOD_get_field_type(method)
-        self.openssl_assert(nid != self._lib.NID_undef)
-
-        if nid == nid_two_field and self._lib.Cryptography_HAS_EC2M:
-            get_func = self._lib.EC_POINT_get_affine_coordinates_GF2m
+            group = self._lib.EC_GROUP_new_by_curve_name(curve_nid)
+            self.openssl_assert(group != self._ffi.NULL)
+            group = self._ffi.gc(group, self._lib.EC_GROUP_free)
         else:
-            get_func = self._lib.EC_POINT_get_affine_coordinates_GFp
+            ec_cdata = self._lib.EVP_PKEY_get0_EC_KEY(evp_pkey)
 
-        assert get_func
+            group = self._lib.EC_KEY_get0_group(ec_cdata)
+            self.openssl_assert(group != self._ffi.NULL)
+
+        get_func = self._ec_key_get_func_for_group(group)
 
         return get_func, group
 
-    def _ec_key_set_public_key_affine_coordinates(self, ctx, x: int, y: int):
+    def _ec_key_get_func_for_group(self, group):
         """
-        Sets the public key point in the EC_KEY context to the affine x and y
+        Given an EC_GROUP determine the function used to get point coordinates.
+        """
+        self.openssl_assert(group != self._ffi.NULL)
+
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            get_func = self._lib.EC_POINT_get_affine_coordinates
+        else:
+            nid_two_field = self._lib.OBJ_sn2nid(b"characteristic-two-field")
+            self.openssl_assert(nid_two_field != self._lib.NID_undef)
+
+            method = self._lib.EC_GROUP_method_of(group)
+            self.openssl_assert(method != self._ffi.NULL)
+
+            nid = self._lib.EC_METHOD_get_field_type(method)
+            self.openssl_assert(nid != self._lib.NID_undef)
+
+            if nid == nid_two_field and self._lib.Cryptography_HAS_EC2M:
+                get_func = self._lib.EC_POINT_get_affine_coordinates_GF2m
+            else:
+                get_func = self._lib.EC_POINT_get_affine_coordinates_GFp
+
+        assert get_func
+
+        return get_func
+
+    def _ec_key_set_public_key_affine_coordinates(
+        self, ec_cdata, x: int, y: int
+    ):
+        """
+        Sets the public key point in the EC_KEY to the affine x and y
         values.
         """
+        assert not self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
 
         if x < 0 or y < 0:
             raise ValueError(
@@ -1804,10 +2038,76 @@ class Backend:
 
         x = self._ffi.gc(self._int_to_bn(x), self._lib.BN_free)
         y = self._ffi.gc(self._int_to_bn(y), self._lib.BN_free)
-        res = self._lib.EC_KEY_set_public_key_affine_coordinates(ctx, x, y)
+
+        res = self._lib.EC_KEY_set_public_key_affine_coordinates(ec_cdata, x, y)
         if res != 1:
             self._consume_errors()
             raise ValueError("Invalid EC key.")
+
+    def _ec_key_point_for_curve(self, curve: ec.EllipticCurve):
+        """
+        Create an empty EC_POINT on the given curve
+        """
+        curve_nid = self._elliptic_curve_to_nid(curve)
+
+        group = self._lib.EC_GROUP_new_by_curve_name(curve_nid)
+        self.openssl_assert(group != self._ffi.NULL)
+        group = self._ffi.gc(group, self._lib.EC_GROUP_free)
+
+        point = self._lib.EC_POINT_new(group)
+        self.openssl_assert(point != self._ffi.NULL)
+        point = self._ffi.gc(point, self._lib.EC_POINT_free)
+
+        return group, point
+
+    def _ec_key_affine_coordinates_to_encoded_point(
+        self, curve: ec.EllipticCurve, x: int, y: int
+    ):
+        """
+        Convert the public key point affine coordinates to a buffer
+        containing an encoded EC point
+        """
+        assert self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
+
+        if x < 0 or y < 0:
+            raise ValueError(
+                "Invalid EC key. Both x and y must be non-negative."
+            )
+
+        x = self._ffi.gc(self._int_to_bn(x), self._lib.BN_free)
+        y = self._ffi.gc(self._int_to_bn(y), self._lib.BN_free)
+
+        group, point = self._ec_key_point_for_curve(curve)
+
+        res = self._lib.EC_POINT_set_affine_coordinates(
+            group, point, x, y, self._ffi.NULL
+        )
+        if res != 1:
+            self._consume_errors()
+            raise ValueError("Invalid EC key.")
+
+        return self._ec_key_encode_point(group, point)
+
+    def _ec_key_encode_point(self, group, point):
+        """
+        Encode an EC_POINT to EC point format
+        """
+        self.openssl_assert(group != self._ffi.NULL)
+        self.openssl_assert(point != self._ffi.NULL)
+
+        with self._tmp_bn_ctx() as bn_ctx:
+            conversion = self._lib.POINT_CONVERSION_UNCOMPRESSED
+            buflen = self._lib.EC_POINT_point2oct(
+                group, point, conversion, self._ffi.NULL, 0, bn_ctx
+            )
+            self.openssl_assert(buflen > 0)
+            buf = self._ffi.new("char[]", buflen)
+            res = self._lib.EC_POINT_point2oct(
+                group, point, conversion, buf, buflen, bn_ctx
+            )
+            self.openssl_assert(buflen == res)
+
+        return self._ffi.buffer(buf)[:buflen]
 
     def _private_key_bytes(
         self,
