@@ -7,6 +7,5 @@ ease-asn1-version-from-0.12.1-to-0.12.patch
 allow-pem-version-1.0.patch
 ease-chrono-dependency-from-0.4.22-to-0.4.patch
 
-ecpkparameters.patch
 getrandom-tolerance.patch
 api_compat_300.patch
