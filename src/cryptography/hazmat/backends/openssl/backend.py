@@ -838,10 +838,7 @@ class Backend:
         elif key_type == self._lib.EVP_PKEY_EC:
             return _EllipticCurvePrivateKey(self, evp_pkey)
         elif key_type in self._dh_types:
-            dh_cdata = self._lib.EVP_PKEY_get1_DH(evp_pkey)
-            self.openssl_assert(dh_cdata != self._ffi.NULL)
-            dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
-            return _DHPrivateKey(self, dh_cdata, evp_pkey)
+            return _DHPrivateKey(self, evp_pkey)
         elif key_type == getattr(self._lib, "EVP_PKEY_ED25519", None):
             # EVP_PKEY_ED25519 is not present in CRYPTOGRAPHY_IS_LIBRESSL
             return _Ed25519PrivateKey(self, evp_pkey)
@@ -897,10 +894,7 @@ class Backend:
         elif key_type == self._lib.EVP_PKEY_EC:
             return _EllipticCurvePublicKey(self, evp_pkey)
         elif key_type in self._dh_types:
-            dh_cdata = self._lib.EVP_PKEY_get1_DH(evp_pkey)
-            self.openssl_assert(dh_cdata != self._ffi.NULL)
-            dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
-            return _DHPublicKey(self, dh_cdata, evp_pkey)
+            return _DHPublicKey(self, evp_pkey)
         elif key_type == getattr(self._lib, "EVP_PKEY_ED25519", None):
             # EVP_PKEY_ED25519 is not present in CRYPTOGRAPHY_IS_LIBRESSL
             return _Ed25519PublicKey(self, evp_pkey)
@@ -1275,15 +1269,43 @@ class Backend:
 
     def load_pem_parameters(self, data: bytes) -> dh.DHParameters:
         mem_bio = self._bytes_to_bio(data)
-        # only DH is supported currently
-        dh_cdata = self._lib.PEM_read_bio_DHparams(
-            mem_bio.bio, self._ffi.NULL, self._ffi.NULL, self._ffi.NULL
-        )
-        if dh_cdata != self._ffi.NULL:
-            dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
-            return _DHParameters(self, dh_cdata)
+
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            key_types = [b"DH"]
+            if self._lib.Cryptography_HAS_EVP_PKEY_DHX:
+                key_types.append(b"DHX")
+
+            for key_type in key_types:
+                self._consume_errors()
+                ppkey = self._ffi.new("EVP_PKEY **")
+                ctx = self._lib.OSSL_DECODER_CTX_new_for_pkey(
+                    ppkey,
+                    b"PEM",
+                    self._ffi.NULL,
+                    key_type,
+                    self._lib.OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS,
+                    self._ffi.NULL,
+                    self._ffi.NULL
+                )
+                self.openssl_assert(ctx != self._ffi.NULL)
+                ctx = self._ffi.gc(ctx, self._lib.OSSL_DECODER_CTX_free)
+                res = self._lib.OSSL_DECODER_from_bio(ctx, mem_bio.bio)
+                if res == 1:
+                    evp_pkey = self._ffi.gc(ppkey[0], self._lib.EVP_PKEY_free)
+                    return _DHParameters(self, evp_pkey)
+                res = self._lib.BIO_reset(mem_bio.bio)
+                self.openssl_assert(res == 1)
         else:
-            self._handle_key_loading_error()
+            # only DH is supported currently
+            dh_cdata = self._lib.PEM_read_bio_DHparams(
+                mem_bio.bio, self._ffi.NULL, self._ffi.NULL, self._ffi.NULL
+            )
+            if dh_cdata != self._ffi.NULL:
+                dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
+                evp_pkey = self._dh_cdata_to_evp_pkey(dh_cdata)
+                return _DHParameters(self, evp_pkey)
+
+        self._handle_key_loading_error()
 
     def load_der_private_key(
         self,
@@ -1366,19 +1388,49 @@ class Backend:
 
     def load_der_parameters(self, data: bytes) -> dh.DHParameters:
         mem_bio = self._bytes_to_bio(data)
-        dh_cdata = self._lib.d2i_DHparams_bio(mem_bio.bio, self._ffi.NULL)
-        if dh_cdata != self._ffi.NULL:
-            dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
-            return _DHParameters(self, dh_cdata)
-        elif self._lib.Cryptography_HAS_EVP_PKEY_DHX:
-            # We check to see if the is dhx.
-            self._consume_errors()
-            res = self._lib.BIO_reset(mem_bio.bio)
-            self.openssl_assert(res == 1)
-            dh_cdata = self._lib.d2i_DHxparams_bio(mem_bio.bio, self._ffi.NULL)
+
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            key_types = [b"DH"]
+            if self._lib.Cryptography_HAS_EVP_PKEY_DHX:
+                key_types.append(b"DHX")
+
+            for key_type in key_types:
+                self._consume_errors()
+                ppkey = self._ffi.new("EVP_PKEY **")
+                ctx = self._lib.OSSL_DECODER_CTX_new_for_pkey(
+                    ppkey,
+                    b"DER",
+                    self._ffi.NULL,
+                    key_type,
+                    self._lib.OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS,
+                    self._ffi.NULL,
+                    self._ffi.NULL
+                )
+                self.openssl_assert(ctx != self._ffi.NULL)
+                res = self._lib.OSSL_DECODER_from_bio(ctx, mem_bio.bio)
+                if res == 1:
+                    evp_pkey = self._ffi.gc(ppkey[0], self._lib.EVP_PKEY_free)
+                    return _DHParameters(self, evp_pkey)
+                res = self._lib.BIO_reset(mem_bio.bio)
+                self.openssl_assert(res == 1)
+        else:
+            dh_cdata = self._lib.d2i_DHparams_bio(mem_bio.bio, self._ffi.NULL)
             if dh_cdata != self._ffi.NULL:
                 dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
-                return _DHParameters(self, dh_cdata)
+                evp_pkey = self._dh_cdata_to_evp_pkey(dh_cdata)
+                return _DHParameters(self, evp_pkey)
+            elif self._lib.Cryptography_HAS_EVP_PKEY_DHX:
+                # We check to see if the is dhx.
+                self._consume_errors()
+                res = self._lib.BIO_reset(mem_bio.bio)
+                self.openssl_assert(res == 1)
+                dh_cdata = self._lib.d2i_DHxparams_bio(
+                    mem_bio.bio, self._ffi.NULL
+                )
+                if dh_cdata != self._ffi.NULL:
+                    dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
+                    evp_pkey = self._dh_cdata_to_evp_pkey(dh_cdata)
+                    return _DHParameters(self, evp_pkey)
 
         self._handle_key_loading_error()
 
@@ -2398,20 +2450,34 @@ class Backend:
         if generator not in (2, 5):
             raise ValueError("DH generator must be 2 or 5")
 
-        dh_param_cdata = self._lib.DH_new()
-        self.openssl_assert(dh_param_cdata != self._ffi.NULL)
-        dh_param_cdata = self._ffi.gc(dh_param_cdata, self._lib.DH_free)
-
-        res = self._lib.DH_generate_parameters_ex(
-            dh_param_cdata, key_size, generator, self._ffi.NULL
+        evp_pkey_ctx = self._lib.EVP_PKEY_CTX_new_id(
+            self._lib.EVP_PKEY_DH, self._ffi.NULL
         )
+        self.openssl_assert(evp_pkey_ctx != self._ffi.NULL)
+        evp_pkey_ctx = self._ffi.gc(evp_pkey_ctx, self._lib.EVP_PKEY_CTX_free)
+        res = self._lib.EVP_PKEY_paramgen_init(evp_pkey_ctx)
+        self.openssl_assert(res == 1)
+        res = self._lib.EVP_PKEY_CTX_set_dh_paramgen_prime_len(
+            evp_pkey_ctx, key_size
+        )
+        self.openssl_assert(res == 1)
+        res = self._lib.EVP_PKEY_CTX_set_dh_paramgen_generator(
+            evp_pkey_ctx, generator
+        )
+        self.openssl_assert(res == 1)
+        evp_ppkey = self._ffi.new("EVP_PKEY **")
+        res = self._lib.EVP_PKEY_paramgen(evp_pkey_ctx, evp_ppkey)
         if res != 1:
             errors = self._consume_errors_with_text()
             raise ValueError("Unable to generate DH parameters", errors)
 
-        return _DHParameters(self, dh_param_cdata)
+        self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+        evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+
+        return _DHParameters(self, evp_pkey)
 
     def _dh_cdata_to_evp_pkey(self, dh_cdata):
+        assert not self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
         evp_pkey = self._create_evp_pkey_gc()
         res = self._lib.EVP_PKEY_set1_DH(evp_pkey, dh_cdata)
         self.openssl_assert(res == 1)
@@ -2420,16 +2486,20 @@ class Backend:
     def generate_dh_private_key(
         self, parameters: dh.DHParameters
     ) -> dh.DHPrivateKey:
-        dh_key_cdata = _dh_params_dup(
-            parameters._dh_cdata, self  # type: ignore[attr-defined]
+        evp_pkey_ctx = self._lib.EVP_PKEY_CTX_new(
+            parameters._evp_pkey, self._ffi.NULL
         )
-
-        res = self._lib.DH_generate_key(dh_key_cdata)
+        self.openssl_assert(evp_pkey_ctx != self._ffi.NULL)
+        evp_pkey_ctx = self._ffi.gc(evp_pkey_ctx, self._lib.EVP_PKEY_CTX_free)
+        res = self._lib.EVP_PKEY_keygen_init(evp_pkey_ctx)
         self.openssl_assert(res == 1)
+        evp_ppkey = self._ffi.new("EVP_PKEY **")
+        res = self._lib.EVP_PKEY_keygen(evp_pkey_ctx, evp_ppkey)
+        self.openssl_assert(res == 1)
+        self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+        evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
 
-        evp_pkey = self._dh_cdata_to_evp_pkey(dh_key_cdata)
-
-        return _DHPrivateKey(self, dh_key_cdata, evp_pkey)
+        return _DHPrivateKey(self, evp_pkey)
 
     def generate_dh_private_key_and_parameters(
         self, generator: int, key_size: int
@@ -2443,10 +2513,6 @@ class Backend:
     ) -> dh.DHPrivateKey:
         parameter_numbers = numbers.public_numbers.parameter_numbers
 
-        dh_cdata = self._lib.DH_new()
-        self.openssl_assert(dh_cdata != self._ffi.NULL)
-        dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
-
         p = self._int_to_bn(parameter_numbers.p)
         g = self._int_to_bn(parameter_numbers.g)
 
@@ -2458,41 +2524,113 @@ class Backend:
         pub_key = self._int_to_bn(numbers.public_numbers.y)
         priv_key = self._int_to_bn(numbers.x)
 
-        res = self._lib.DH_set0_pqg(dh_cdata, p, q, g)
-        self.openssl_assert(res == 1)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            p = self._ffi.gc(p, self._lib.BN_free)
+            g = self._ffi.gc(g, self._lib.BN_free)
+            pub_key = self._ffi.gc(pub_key, self._lib.BN_free)
+            priv_key = self._ffi.gc(priv_key, self._lib.BN_free)
+            key_type = self._lib.EVP_PKEY_DH
+            if q != self._ffi.NULL:
+                q = self._ffi.gc(q, self._lib.BN_free)
+                key_type = self._lib.EVP_PKEY_DHX
 
-        res = self._lib.DH_set0_key(dh_cdata, pub_key, priv_key)
-        self.openssl_assert(res == 1)
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
 
-        codes = self._ffi.new("int[]", 1)
-        res = self._lib.DH_check(dh_cdata, codes)
-        self.openssl_assert(res == 1)
+            for key, bn in [
+                (b"p", p),
+                (b"q", q),
+                (b"g", g),
+                (b"pub", pub_key),
+                (b"priv", priv_key),
+            ]:
+                if key == b"q" and bn == self._ffi.NULL:
+                    continue
+                res = self._lib.OSSL_PARAM_BLD_push_BN(bld, key, bn)
+                self.openssl_assert(res == 1)
 
-        # DH_check will return DH_NOT_SUITABLE_GENERATOR if p % 24 does not
-        # equal 11 when the generator is 2 (a quadratic nonresidue).
-        # We want to ignore that error because p % 24 == 23 is also fine.
-        # Specifically, g is then a quadratic residue. Within the context of
-        # Diffie-Hellman this means it can only generate half the possible
-        # values. That sounds bad, but quadratic nonresidues leak a bit of
-        # the key to the attacker in exchange for having the full key space
-        # available. See: https://crypto.stackexchange.com/questions/12961
-        if codes[0] != 0 and not (
-            parameter_numbers.g == 2
-            and codes[0] ^ self._lib.DH_NOT_SUITABLE_GENERATOR == 0
-        ):
-            raise ValueError("DH private numbers did not pass safety checks.")
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
 
-        evp_pkey = self._dh_cdata_to_evp_pkey(dh_cdata)
+            ctx = self._lib.EVP_PKEY_CTX_new_id(key_type, self._ffi.NULL)
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
 
-        return _DHPrivateKey(self, dh_cdata, evp_pkey)
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_KEYPAIR, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+
+            check_ctx = self._lib.EVP_PKEY_CTX_new(evp_pkey, self._ffi.NULL);
+            self.openssl_assert(check_ctx != self._ffi.NULL);
+            check_ctx = self._ffi.gc(check_ctx, self._lib.EVP_PKEY_CTX_free);
+
+            if self._lib.EVP_PKEY_param_check(check_ctx) != 1:
+                err = self._lib.ERR_peek_error()
+                # DH_check will return DH_NOT_SUITABLE_GENERATOR if p % 24 does not
+                # equal 11 when the generator is 2 (a quadratic nonresidue).
+                # We want to ignore that error because p % 24 == 23 is also fine.
+                # Specifically, g is then a quadratic residue. Within the context of
+                # Diffie-Hellman this means it can only generate half the possible
+                # values. That sounds bad, but quadratic nonresidues leak a bit of
+                # the key to the attacker in exchange for having the full key space
+                # available. See: https://crypto.stackexchange.com/questions/12961
+                if (parameter_numbers.g == 2
+                    and self._lib.ERR_GET_LIB(err) == self._lib.ERR_LIB_DH
+                    and self._lib.ERR_GET_REASON(err) == 
+                        self._lib.DH_R_NOT_SUITABLE_GENERATOR
+                ):
+                    self._lib.ERR_clear_error()
+                else:
+                    errors = self._consume_errors_with_text()
+                    raise ValueError(
+                        "DH private numbers did not pass safety checks.",
+                        errors
+                    )
+        else:
+            dh_cdata = self._lib.DH_new()
+            self.openssl_assert(dh_cdata != self._ffi.NULL)
+            dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
+
+            res = self._lib.DH_set0_pqg(dh_cdata, p, q, g)
+            self.openssl_assert(res == 1)
+
+            res = self._lib.DH_set0_key(dh_cdata, pub_key, priv_key)
+            self.openssl_assert(res == 1)
+
+            codes = self._ffi.new("int[]", 1)
+            res = self._lib.DH_check(dh_cdata, codes)
+            self.openssl_assert(res == 1)
+
+            # DH_check will return DH_NOT_SUITABLE_GENERATOR if p % 24 does not
+            # equal 11 when the generator is 2 (a quadratic nonresidue).
+            # We want to ignore that error because p % 24 == 23 is also fine.
+            # Specifically, g is then a quadratic residue. Within the context of
+            # Diffie-Hellman this means it can only generate half the possible
+            # values. That sounds bad, but quadratic nonresidues leak a bit of
+            # the key to the attacker in exchange for having the full key space
+            # available. See: https://crypto.stackexchange.com/questions/12961
+            if codes[0] != 0 and not (
+                parameter_numbers.g == 2
+                and codes[0] ^ self._lib.DH_NOT_SUITABLE_GENERATOR == 0
+            ):
+                raise ValueError("DH private numbers did not pass safety checks.")
+
+            evp_pkey = self._dh_cdata_to_evp_pkey(dh_cdata)
+
+        return _DHPrivateKey(self, evp_pkey)
 
     def load_dh_public_numbers(
         self, numbers: dh.DHPublicNumbers
     ) -> dh.DHPublicKey:
-        dh_cdata = self._lib.DH_new()
-        self.openssl_assert(dh_cdata != self._ffi.NULL)
-        dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
-
         parameter_numbers = numbers.parameter_numbers
 
         p = self._int_to_bn(parameter_numbers.p)
@@ -2505,23 +2643,66 @@ class Backend:
 
         pub_key = self._int_to_bn(numbers.y)
 
-        res = self._lib.DH_set0_pqg(dh_cdata, p, q, g)
-        self.openssl_assert(res == 1)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            p = self._ffi.gc(p, self._lib.BN_free)
+            g = self._ffi.gc(g, self._lib.BN_free)
+            pub_key = self._ffi.gc(pub_key, self._lib.BN_free)
+            key_type = self._lib.EVP_PKEY_DH
+            if q != self._ffi.NULL:
+                q = self._ffi.gc(q, self._lib.BN_free)
+                key_type = self._lib.EVP_PKEY_DHX
 
-        res = self._lib.DH_set0_key(dh_cdata, pub_key, self._ffi.NULL)
-        self.openssl_assert(res == 1)
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
 
-        evp_pkey = self._dh_cdata_to_evp_pkey(dh_cdata)
+            for key, bn in [
+                (b"p", p),
+                (b"q", q),
+                (b"g", g),
+                (b"pub", pub_key),
+            ]:
+                if key == b"q" and bn == self._ffi.NULL:
+                    continue
+                res = self._lib.OSSL_PARAM_BLD_push_BN(bld, key, bn)
+                self.openssl_assert(res == 1)
 
-        return _DHPublicKey(self, dh_cdata, evp_pkey)
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(key_type, self._ffi.NULL)
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_PUBLIC_KEY, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+        else:
+            dh_cdata = self._lib.DH_new()
+            self.openssl_assert(dh_cdata != self._ffi.NULL)
+            dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
+
+            res = self._lib.DH_set0_pqg(dh_cdata, p, q, g)
+            self.openssl_assert(res == 1)
+
+            res = self._lib.DH_set0_key(dh_cdata, pub_key, self._ffi.NULL)
+            self.openssl_assert(res == 1)
+
+            evp_pkey = self._dh_cdata_to_evp_pkey(dh_cdata)
+
+        return _DHPublicKey(self, evp_pkey)
 
     def load_dh_parameter_numbers(
         self, numbers: dh.DHParameterNumbers
     ) -> dh.DHParameters:
-        dh_cdata = self._lib.DH_new()
-        self.openssl_assert(dh_cdata != self._ffi.NULL)
-        dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
-
         p = self._int_to_bn(numbers.p)
         g = self._int_to_bn(numbers.g)
 
@@ -2530,18 +2711,61 @@ class Backend:
         else:
             q = self._ffi.NULL
 
-        res = self._lib.DH_set0_pqg(dh_cdata, p, q, g)
-        self.openssl_assert(res == 1)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            p = self._ffi.gc(p, self._lib.BN_free)
+            g = self._ffi.gc(g, self._lib.BN_free)
+            key_type = self._lib.EVP_PKEY_DH
+            if q != self._ffi.NULL:
+                q = self._ffi.gc(q, self._lib.BN_free)
+                key_type = self._lib.EVP_PKEY_DHX
 
-        return _DHParameters(self, dh_cdata)
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
+
+            for key, bn in [
+                (b"p", p),
+                (b"q", q),
+                (b"g", g),
+            ]:
+                if key == b"q" and bn == self._ffi.NULL:
+                    continue
+                res = self._lib.OSSL_PARAM_BLD_push_BN(bld, key, bn)
+                self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(key_type, self._ffi.NULL)
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_KEY_PARAMETERS, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+        else:
+            dh_cdata = self._lib.DH_new()
+            self.openssl_assert(dh_cdata != self._ffi.NULL)
+            dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
+
+            res = self._lib.DH_set0_pqg(dh_cdata, p, q, g)
+            self.openssl_assert(res == 1)
+
+            evp_pkey = self._dh_cdata_to_evp_pkey(dh_cdata)
+
+        return _DHParameters(self, evp_pkey)
 
     def dh_parameters_supported(
         self, p: int, g: int, q: typing.Optional[int] = None
     ) -> bool:
-        dh_cdata = self._lib.DH_new()
-        self.openssl_assert(dh_cdata != self._ffi.NULL)
-        dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
-
         p = self._int_to_bn(p)
         g = self._int_to_bn(g)
 
@@ -2550,14 +2774,67 @@ class Backend:
         else:
             q = self._ffi.NULL
 
-        res = self._lib.DH_set0_pqg(dh_cdata, p, q, g)
-        self.openssl_assert(res == 1)
+        if self._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
+            p = self._ffi.gc(p, self._lib.BN_free)
+            g = self._ffi.gc(g, self._lib.BN_free)
+            key_type = self._lib.EVP_PKEY_DH
+            if q != self._ffi.NULL:
+                q = self._ffi.gc(q, self._lib.BN_free)
+                key_type = self._lib.EVP_PKEY_DHX
 
-        codes = self._ffi.new("int[]", 1)
-        res = self._lib.DH_check(dh_cdata, codes)
-        self.openssl_assert(res == 1)
+            bld = self._lib.OSSL_PARAM_BLD_new();
+            self.openssl_assert(bld != self._ffi.NULL)
+            bld = self._ffi.gc(bld, self._lib.OSSL_PARAM_BLD_free)
 
-        return codes[0] == 0
+            for key, bn in [
+                (b"p", p),
+                (b"q", q),
+                (b"g", g),
+            ]:
+                if key == b"q" and bn == self._ffi.NULL:
+                    continue
+                res = self._lib.OSSL_PARAM_BLD_push_BN(bld, key, bn)
+                self.openssl_assert(res == 1)
+
+            params = self._lib.OSSL_PARAM_BLD_to_param(bld)
+            self.openssl_assert(params != self._ffi.NULL)
+            params = self._ffi.gc(params, self._lib.OSSL_PARAM_free)
+
+            ctx = self._lib.EVP_PKEY_CTX_new_id(key_type, self._ffi.NULL)
+            self.openssl_assert(ctx != self._ffi.NULL)
+            ctx = self._ffi.gc(ctx, self._lib.EVP_PKEY_CTX_free)
+
+            res = self._lib.EVP_PKEY_fromdata_init(ctx)
+            self.openssl_assert(res == 1)
+
+            evp_ppkey = self._ffi.new("EVP_PKEY **")
+            res = self._lib.EVP_PKEY_fromdata(
+                ctx, evp_ppkey, self._lib.EVP_PKEY_KEY_PARAMETERS, params
+            )
+            self.openssl_assert(res == 1)
+            self.openssl_assert(evp_ppkey[0] != self._ffi.NULL)
+            evp_pkey = self._ffi.gc(evp_ppkey[0], self._lib.EVP_PKEY_free)
+
+            check_ctx = self._lib.EVP_PKEY_CTX_new(evp_pkey, self._ffi.NULL);
+            self.openssl_assert(check_ctx != self._ffi.NULL);
+            check_ctx = self._ffi.gc(check_ctx, self._lib.EVP_PKEY_CTX_free);
+
+            res = self._lib.EVP_PKEY_param_check(check_ctx)
+            self._lib.ERR_clear_error()
+            return res == 1
+        else:
+            dh_cdata = self._lib.DH_new()
+            self.openssl_assert(dh_cdata != self._ffi.NULL)
+            dh_cdata = self._ffi.gc(dh_cdata, self._lib.DH_free)
+
+            res = self._lib.DH_set0_pqg(dh_cdata, p, q, g)
+            self.openssl_assert(res == 1)
+
+            codes = self._ffi.new("int[]", 1)
+            res = self._lib.DH_check(dh_cdata, codes)
+            self.openssl_assert(res == 1)
+
+            return codes[0] == 0
 
     def dh_x942_serialization_supported(self) -> bool:
         return self._lib.Cryptography_HAS_EVP_PKEY_DHX == 1

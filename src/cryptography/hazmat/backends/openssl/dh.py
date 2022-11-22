@@ -12,49 +12,70 @@ if typing.TYPE_CHECKING:
     from cryptography.hazmat.backends.openssl.backend import Backend
 
 
-def _dh_params_dup(dh_cdata, backend: "Backend"):
-    lib = backend._lib
-    ffi = backend._ffi
+def _dh_params_dup(evp_pkey, backend: "Backend"):
+    pparams = backend._ffi.new("OSSL_PARAM **")
+    res = backend._lib.EVP_PKEY_todata(
+        evp_pkey, backend._lib.EVP_PKEY_KEY_PARAMETERS, pparams
+    )
+    backend.openssl_assert(res == 1)
+    backend.openssl_assert(pparams[0] != backend._ffi.NULL)
 
-    param_cdata = lib.DHparams_dup(dh_cdata)
-    backend.openssl_assert(param_cdata != ffi.NULL)
-    param_cdata = ffi.gc(param_cdata, lib.DH_free)
-    if lib.CRYPTOGRAPHY_IS_LIBRESSL:
-        # In libressl DHparams_dup don't copy q
-        q = ffi.new("BIGNUM **")
-        lib.DH_get0_pqg(dh_cdata, ffi.NULL, q, ffi.NULL)
-        q_dup = lib.BN_dup(q[0])
-        res = lib.DH_set0_pqg(param_cdata, ffi.NULL, q_dup, ffi.NULL)
-        backend.openssl_assert(res == 1)
+    params = backend._ffi.gc(pparams[0], backend._lib.OSSL_PARAM_free)
 
-    return param_cdata
+    ctx = backend._lib.EVP_PKEY_CTX_new(evp_pkey, backend._ffi.NULL)
+    backend.openssl_assert(ctx != backend._ffi.NULL)
+    ctx = backend._ffi.gc(ctx, backend._lib.EVP_PKEY_CTX_free)
 
+    res = backend._lib.EVP_PKEY_fromdata_init(ctx)
+    backend.openssl_assert(res == 1)
 
-def _dh_cdata_to_parameters(dh_cdata, backend: "Backend") -> "_DHParameters":
-    param_cdata = _dh_params_dup(dh_cdata, backend)
-    return _DHParameters(backend, param_cdata)
+    evp_ppkey = backend._ffi.new("EVP_PKEY **")
+    res = backend._lib.EVP_PKEY_fromdata(
+        ctx, evp_ppkey, backend._lib.EVP_PKEY_KEY_PARAMETERS, params
+    )
+    backend.openssl_assert(res == 1)
+    backend.openssl_assert(evp_ppkey[0] != backend._ffi.NULL)
+
+    evp_pkey = backend._ffi.gc(evp_ppkey[0], backend._lib.EVP_PKEY_free)
+
+    return evp_pkey
 
 
 class _DHParameters(dh.DHParameters):
-    def __init__(self, backend: "Backend", dh_cdata):
+    def __init__(self, backend: "Backend", evp_pkey):
         self._backend = backend
-        self._dh_cdata = dh_cdata
+        self._evp_pkey = evp_pkey
 
     def parameter_numbers(self) -> dh.DHParameterNumbers:
-        p = self._backend._ffi.new("BIGNUM **")
-        g = self._backend._ffi.new("BIGNUM **")
-        q = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DH_get0_pqg(self._dh_cdata, p, q, g)
-        self._backend.openssl_assert(p[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(g[0] != self._backend._ffi.NULL)
+        pp = self._backend._ffi.new("BIGNUM **")
+        pg = self._backend._ffi.new("BIGNUM **")
+        pq = self._backend._ffi.new("BIGNUM **")
+
+        for key, pbn in [
+            (b"p", pp),
+            (b"q", pq),
+            (b"g", pg),
+        ]:
+            pbn[0] = self._backend._ffi.NULL
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, key, pbn
+            )
+            if key != b"q":
+                self._backend.openssl_assert(res == 1)
+                self._backend.openssl_assert(pbn[0] != self._backend._ffi.NULL)
+
+        p = self._backend._ffi.gc(pp[0], self._backend._lib.BN_free)
+        g = self._backend._ffi.gc(pg[0], self._backend._lib.BN_free)
+
         q_val: typing.Optional[int]
-        if q[0] == self._backend._ffi.NULL:
-            q_val = None
-        else:
-            q_val = self._backend._bn_to_int(q[0])
+        q_val = None
+        if pq[0] != self._backend._ffi.NULL:
+            q = self._backend._ffi.gc(pq[0], self._backend._lib.BN_free)
+            q_val = self._backend._bn_to_int(q)
+
         return dh.DHParameterNumbers(
-            p=self._backend._bn_to_int(p[0]),
-            g=self._backend._bn_to_int(g[0]),
+            p=self._backend._bn_to_int(p),
+            g=self._backend._bn_to_int(g),
             q=q_val,
         )
 
@@ -72,82 +93,82 @@ class _DHParameters(dh.DHParameters):
         if format is not serialization.ParameterFormat.PKCS3:
             raise ValueError("Only PKCS3 serialization is supported")
 
-        q = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DH_get0_pqg(
-            self._dh_cdata, self._backend._ffi.NULL, q, self._backend._ffi.NULL
-        )
-        if (
-            q[0] != self._backend._ffi.NULL
-            and not self._backend._lib.Cryptography_HAS_EVP_PKEY_DHX
-        ):
-            raise UnsupportedAlgorithm(
-                "DH X9.42 serialization is not supported",
-                _Reasons.UNSUPPORTED_SERIALIZATION,
-            )
-
         if encoding is serialization.Encoding.PEM:
-            if q[0] != self._backend._ffi.NULL:
-                write_bio = self._backend._lib.PEM_write_bio_DHxparams
-            else:
-                write_bio = self._backend._lib.PEM_write_bio_DHparams
+            output_type = b"PEM"
         elif encoding is serialization.Encoding.DER:
-            if q[0] != self._backend._ffi.NULL:
-                write_bio = self._backend._lib.i2d_DHxparams_bio
-            else:
-                write_bio = self._backend._lib.i2d_DHparams_bio
+            output_type = b"DER"
         else:
             raise TypeError("encoding must be an item from the Encoding enum")
 
+        ctx = self._backend._lib.OSSL_ENCODER_CTX_new_for_pkey(
+            self._evp_pkey,
+            self._backend._lib.OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS,
+            output_type,
+            self._backend._ffi.NULL,
+            self._backend._ffi.NULL
+        )
+        self._backend.openssl_assert(ctx != self._backend._ffi.NULL)
+        ctx = self._backend._ffi.gc(
+            ctx, self._backend._lib.OSSL_ENCODER_CTX_free
+        )
         bio = self._backend._create_mem_bio_gc()
-        res = write_bio(bio, self._dh_cdata)
+        res = self._backend._lib.OSSL_ENCODER_to_bio(ctx, bio)
         self._backend.openssl_assert(res == 1)
         return self._backend._read_mem_bio(bio)
 
 
-def _get_dh_num_bits(backend, dh_cdata) -> int:
-    p = backend._ffi.new("BIGNUM **")
-    backend._lib.DH_get0_pqg(dh_cdata, p, backend._ffi.NULL, backend._ffi.NULL)
-    backend.openssl_assert(p[0] != backend._ffi.NULL)
-    return backend._lib.BN_num_bits(p[0])
-
-
 class _DHPrivateKey(dh.DHPrivateKey):
-    def __init__(self, backend: "Backend", dh_cdata, evp_pkey):
+    def __init__(self, backend: "Backend", evp_pkey):
         self._backend = backend
-        self._dh_cdata = dh_cdata
         self._evp_pkey = evp_pkey
-        self._key_size_bytes = self._backend._lib.DH_size(dh_cdata)
+        self._key_size = self._backend._lib.EVP_PKEY_bits(evp_pkey)
 
     @property
     def key_size(self) -> int:
-        return _get_dh_num_bits(self._backend, self._dh_cdata)
+        return self._key_size
 
     def private_numbers(self) -> dh.DHPrivateNumbers:
-        p = self._backend._ffi.new("BIGNUM **")
-        g = self._backend._ffi.new("BIGNUM **")
-        q = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DH_get0_pqg(self._dh_cdata, p, q, g)
-        self._backend.openssl_assert(p[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(g[0] != self._backend._ffi.NULL)
-        if q[0] == self._backend._ffi.NULL:
-            q_val = None
-        else:
-            q_val = self._backend._bn_to_int(q[0])
-        pub_key = self._backend._ffi.new("BIGNUM **")
-        priv_key = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DH_get0_key(self._dh_cdata, pub_key, priv_key)
-        self._backend.openssl_assert(pub_key[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(priv_key[0] != self._backend._ffi.NULL)
+        pp = self._backend._ffi.new("BIGNUM **")
+        pg = self._backend._ffi.new("BIGNUM **")
+        pq = self._backend._ffi.new("BIGNUM **")
+        ppub_key = self._backend._ffi.new("BIGNUM **")
+        ppriv_key = self._backend._ffi.new("BIGNUM **")
+
+        for key, pbn in [
+            (b"p", pp),
+            (b"q", pq),
+            (b"g", pg),
+            (b"pub", ppub_key),
+            (b"priv", ppriv_key),
+        ]:
+            pbn[0] = self._backend._ffi.NULL
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, key, pbn
+            )
+            if key != b"q":
+                self._backend.openssl_assert(res == 1)
+                self._backend.openssl_assert(pbn[0] != self._backend._ffi.NULL)
+
+        p = self._backend._ffi.gc(pp[0], self._backend._lib.BN_free)
+        g = self._backend._ffi.gc(pg[0], self._backend._lib.BN_free)
+        pub_key = self._backend._ffi.gc(ppub_key[0], self._backend._lib.BN_free)
+        priv_key = self._backend._ffi.gc(ppriv_key[0], self._backend._lib.BN_free)
+
+        q_val = None
+        if pq[0] != self._backend._ffi.NULL:
+            q = self._backend._ffi.gc(pq[0], self._backend._lib.BN_free)
+            q_val = self._backend._bn_to_int(q)
+
         return dh.DHPrivateNumbers(
             public_numbers=dh.DHPublicNumbers(
                 parameter_numbers=dh.DHParameterNumbers(
-                    p=self._backend._bn_to_int(p[0]),
-                    g=self._backend._bn_to_int(g[0]),
+                    p=self._backend._bn_to_int(p),
+                    g=self._backend._bn_to_int(g),
                     q=q_val,
                 ),
-                y=self._backend._bn_to_int(pub_key[0]),
+                y=self._backend._bn_to_int(pub_key),
             ),
-            x=self._backend._bn_to_int(priv_key[0]),
+            x=self._backend._bn_to_int(priv_key),
         )
 
     def exchange(self, peer_public_key: dh.DHPublicKey) -> bytes:
@@ -179,7 +200,7 @@ class _DHPrivateKey(dh.DHPrivateKey):
         self._backend.openssl_assert(res == 1)
 
         key = self._backend._ffi.buffer(buf, keylen[0])[:]
-        pad = self._key_size_bytes - len(key)
+        pad = self._backend._lib.EVP_PKEY_size(self._evp_pkey) - len(key)
 
         if pad > 0:
             key = (b"\x00" * pad) + key
@@ -195,24 +216,41 @@ class _DHPrivateKey(dh.DHPrivateKey):
             )
 
     def public_key(self) -> dh.DHPublicKey:
-        dh_cdata = _dh_params_dup(self._dh_cdata, self._backend)
-        pub_key = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DH_get0_key(
-            self._dh_cdata, pub_key, self._backend._ffi.NULL
-        )
-        self._backend.openssl_assert(pub_key[0] != self._backend._ffi.NULL)
-        pub_key_dup = self._backend._lib.BN_dup(pub_key[0])
-        self._backend.openssl_assert(pub_key_dup != self._backend._ffi.NULL)
-
-        res = self._backend._lib.DH_set0_key(
-            dh_cdata, pub_key_dup, self._backend._ffi.NULL
+        pparams = self._backend._ffi.new("OSSL_PARAM **")
+        res = self._backend._lib.EVP_PKEY_todata(
+            self._evp_pkey, self._backend._lib.EVP_PKEY_PUBLIC_KEY, pparams
         )
         self._backend.openssl_assert(res == 1)
-        evp_pkey = self._backend._dh_cdata_to_evp_pkey(dh_cdata)
-        return _DHPublicKey(self._backend, dh_cdata, evp_pkey)
+        self._backend.openssl_assert(pparams[0] != self._backend._ffi.NULL)
+
+        params = self._backend._ffi.gc(
+            pparams[0], self._backend._lib.OSSL_PARAM_free
+        )
+
+        ctx = self._backend._lib.EVP_PKEY_CTX_new(
+            self._evp_pkey, self._backend._ffi.NULL
+        )
+        self._backend.openssl_assert(ctx != self._backend._ffi.NULL)
+        ctx = self._backend._ffi.gc(ctx, self._backend._lib.EVP_PKEY_CTX_free)
+
+        res = self._backend._lib.EVP_PKEY_fromdata_init(ctx)
+        self._backend.openssl_assert(res == 1)
+
+        ppub_key = self._backend._ffi.new("EVP_PKEY **")
+        res = self._backend._lib.EVP_PKEY_fromdata(
+            ctx, ppub_key, self._backend._lib.EVP_PKEY_PUBLIC_KEY, params
+        )
+        self._backend.openssl_assert(res == 1)
+        self._backend.openssl_assert(ppub_key[0] != self._backend._ffi.NULL)
+
+        pub_key = self._backend._ffi.gc(
+            ppub_key[0], self._backend._lib.EVP_PKEY_free
+        )
+        return _DHPublicKey(self._backend, pub_key)
 
     def parameters(self) -> dh.DHParameters:
-        return _dh_cdata_to_parameters(self._dh_cdata, self._backend)
+        params = _dh_params_dup(self._evp_pkey, self._backend)
+        return _DHParameters(self._backend, params)
 
     def private_bytes(
         self,
@@ -225,14 +263,13 @@ class _DHPrivateKey(dh.DHPrivateKey):
                 "DH private keys support only PKCS8 serialization"
             )
         if not self._backend._lib.Cryptography_HAS_EVP_PKEY_DHX:
-            q = self._backend._ffi.new("BIGNUM **")
-            self._backend._lib.DH_get0_pqg(
-                self._dh_cdata,
-                self._backend._ffi.NULL,
-                q,
-                self._backend._ffi.NULL,
+            pq = self._backend._ffi.new("BIGNUM **")
+
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, b"q", pq
             )
-            if q[0] != self._backend._ffi.NULL:
+            if res == 1 and pq[0] != self._backend._ffi.NULL:
+                _q = self._backend._ffi.gc(pq[0], self._backend._lib.BN_free)
                 raise UnsupportedAlgorithm(
                     "DH X9.42 serialization is not supported",
                     _Reasons.UNSUPPORTED_SERIALIZATION,
@@ -248,43 +285,56 @@ class _DHPrivateKey(dh.DHPrivateKey):
 
 
 class _DHPublicKey(dh.DHPublicKey):
-    def __init__(self, backend: "Backend", dh_cdata, evp_pkey):
+    def __init__(self, backend: "Backend", evp_pkey):
         self._backend = backend
-        self._dh_cdata = dh_cdata
         self._evp_pkey = evp_pkey
-        self._key_size_bits = _get_dh_num_bits(self._backend, self._dh_cdata)
+        self._key_size = self._backend._lib.EVP_PKEY_bits(evp_pkey)
 
     @property
     def key_size(self) -> int:
-        return self._key_size_bits
+        return self._key_size
 
     def public_numbers(self) -> dh.DHPublicNumbers:
-        p = self._backend._ffi.new("BIGNUM **")
-        g = self._backend._ffi.new("BIGNUM **")
-        q = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DH_get0_pqg(self._dh_cdata, p, q, g)
-        self._backend.openssl_assert(p[0] != self._backend._ffi.NULL)
-        self._backend.openssl_assert(g[0] != self._backend._ffi.NULL)
-        if q[0] == self._backend._ffi.NULL:
-            q_val = None
-        else:
-            q_val = self._backend._bn_to_int(q[0])
-        pub_key = self._backend._ffi.new("BIGNUM **")
-        self._backend._lib.DH_get0_key(
-            self._dh_cdata, pub_key, self._backend._ffi.NULL
-        )
-        self._backend.openssl_assert(pub_key[0] != self._backend._ffi.NULL)
+        pp = self._backend._ffi.new("BIGNUM **")
+        pg = self._backend._ffi.new("BIGNUM **")
+        pq = self._backend._ffi.new("BIGNUM **")
+        ppub_key = self._backend._ffi.new("BIGNUM **")
+
+        for key, pbn in [
+            (b"p", pp),
+            (b"q", pq),
+            (b"g", pg),
+            (b"pub", ppub_key),
+        ]:
+            pbn[0] = self._backend._ffi.NULL
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, key, pbn
+            )
+            if key != b"q":
+                self._backend.openssl_assert(res == 1)
+                self._backend.openssl_assert(pbn[0] != self._backend._ffi.NULL)
+
+        p = self._backend._ffi.gc(pp[0], self._backend._lib.BN_free)
+        g = self._backend._ffi.gc(pg[0], self._backend._lib.BN_free)
+        pub_key = self._backend._ffi.gc(ppub_key[0], self._backend._lib.BN_free)
+
+        q_val = None
+        if pq[0] != self._backend._ffi.NULL:
+            q = self._backend._ffi.gc(pq[0], self._backend._lib.BN_free)
+            q_val = self._backend._bn_to_int(q)
+
         return dh.DHPublicNumbers(
             parameter_numbers=dh.DHParameterNumbers(
-                p=self._backend._bn_to_int(p[0]),
-                g=self._backend._bn_to_int(g[0]),
+                p=self._backend._bn_to_int(p),
+                g=self._backend._bn_to_int(g),
                 q=q_val,
             ),
-            y=self._backend._bn_to_int(pub_key[0]),
+            y=self._backend._bn_to_int(pub_key),
         )
 
     def parameters(self) -> dh.DHParameters:
-        return _dh_cdata_to_parameters(self._dh_cdata, self._backend)
+        params = _dh_params_dup(self._evp_pkey, self._backend)
+        return _DHParameters(self._backend, params)
 
     def public_bytes(
         self,
@@ -298,14 +348,13 @@ class _DHPublicKey(dh.DHPublicKey):
             )
 
         if not self._backend._lib.Cryptography_HAS_EVP_PKEY_DHX:
-            q = self._backend._ffi.new("BIGNUM **")
-            self._backend._lib.DH_get0_pqg(
-                self._dh_cdata,
-                self._backend._ffi.NULL,
-                q,
-                self._backend._ffi.NULL,
+            pq = self._backend._ffi.new("BIGNUM **")
+
+            res = self._backend._lib.EVP_PKEY_get_bn_param(
+                self._evp_pkey, b"q", pq
             )
-            if q[0] != self._backend._ffi.NULL:
+            if res == 1 and pq[0] != self._backend._ffi.NULL:
+                _q = self._backend._ffi.gc(pq[0], self._backend._lib.BN_free)
                 raise UnsupportedAlgorithm(
                     "DH X9.42 serialization is not supported",
                     _Reasons.UNSUPPORTED_SERIALIZATION,
