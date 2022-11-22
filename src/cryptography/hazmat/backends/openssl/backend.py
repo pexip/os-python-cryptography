@@ -1506,7 +1506,7 @@ class Backend:
         return True
 
     def _check_keys_correspond(self, key1, key2):
-        if self._lib.EVP_PKEY_cmp(key1._evp_pkey, key2._evp_pkey) != 1:
+        if self._lib.EVP_PKEY_eq(key1._evp_pkey, key2._evp_pkey) != 1:
             raise ValueError("Keys do not correspond")
 
     def _load_key(
