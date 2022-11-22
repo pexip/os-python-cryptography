@@ -183,6 +183,7 @@ int SSL_read(SSL *, void *, int);
 int SSL_peek(SSL *, void *, int);
 X509 *SSL_get_certificate(const SSL *);
 X509 *SSL_get_peer_certificate(const SSL *);
+X509 *SSL_get1_peer_certificate(const SSL *);
 int SSL_get_ex_data_X509_STORE_CTX_idx(void);
 void SSL_set_verify(SSL *, int, int (*)(int, X509_STORE_CTX *));
 int SSL_get_verify_mode(const SSL *);
@@ -778,5 +779,15 @@ static const long Cryptography_HAS_PSK_TLSv1_3 = 1;
 SSL_SESSION *Cryptography_SSL_SESSION_new(void) {
     return SSL_SESSION_new();
 }
+#endif
+
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
+#ifdef OPENSSL_NO_DEPRECATED_3_0
+unsigned long (*SSL_CTX_set_tmp_dh)(SSL_CTX *, DH *) = NULL;
+unsigned long (*SSL_CTX_set_tmp_ecdh)(SSL_CTX *, EC_KEY *) = NULL;
+X509 *(*SSL_get_peer_certificate)(const SSL *) = NULL;
+#endif
+#else
+X509 *SSL_get1_peer_certificate(const SSL *) = SSL_get_peer_certificate;
 #endif
 """

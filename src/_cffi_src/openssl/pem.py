@@ -68,7 +68,29 @@ int PEM_write_bio_DHxparams(BIO *, DH *);
 """
 
 CUSTOMIZATIONS = """
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER && defined(OPENSSL_NO_DEPRECATED_3_0)
+DH *(*PEM_read_bio_DHparams)(BIO *, DH **, pem_password_cb *, void *) = NULL;
+
+int (*PEM_write_bio_DSAPrivateKey)(BIO *, DSA *, const EVP_CIPHER *,
+                                unsigned char *, int,
+                                pem_password_cb *, void *) = NULL;
+
+int (*PEM_write_bio_RSAPrivateKey)(BIO *, RSA *, const EVP_CIPHER *,
+                                unsigned char *, int,
+                                pem_password_cb *, void *) = NULL;
+
+RSA *(*PEM_read_bio_RSAPublicKey)(BIO *, RSA **, pem_password_cb *, void *) = NULL;
+
+int (*PEM_write_bio_RSAPublicKey)(BIO *, const RSA *) = NULL;
+
+int (*PEM_write_bio_ECPrivateKey)(BIO *, EC_KEY *, const EVP_CIPHER *,
+                               unsigned char *, int, pem_password_cb *,
+                               void *) = NULL;
+int (*PEM_write_bio_DHparams)(BIO *, DH *) = NULL;
+int (*PEM_write_bio_DHxparams)(BIO *, DH *) = NULL;
+#else
 #if !defined(EVP_PKEY_DHX) || EVP_PKEY_DHX == -1
 int (*PEM_write_bio_DHxparams)(BIO *, DH *) = NULL;
+#endif
 #endif
 """

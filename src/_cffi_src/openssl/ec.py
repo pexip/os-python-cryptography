@@ -59,8 +59,14 @@ void EC_POINT_free(EC_POINT *);
 void EC_POINT_clear_free(EC_POINT *);
 EC_POINT *EC_POINT_dup(const EC_POINT *, const EC_GROUP *);
 
+int EC_POINT_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
+    const BIGNUM *, const BIGNUM *, BN_CTX *);
+
 int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *, EC_POINT *,
     const BIGNUM *, const BIGNUM *, BN_CTX *);
+
+int EC_POINT_get_affine_coordinates(const EC_GROUP *,
+    const EC_POINT *, BIGNUM *, BIGNUM *, BN_CTX *);
 
 int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *,
     const EC_POINT *, BIGNUM *, BIGNUM *, BN_CTX *);
@@ -97,6 +103,41 @@ int EC_GROUP_get_asn1_flag(const EC_GROUP *);
 """
 
 CUSTOMIZATIONS = """
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
+static const int Cryptography_HAS_EC2M = 1;
+
+#ifdef OPENSSL_NO_DEPRECATED_3_0
+typedef void EC_KEY;
+typedef void EC_METHOD;
+
+const EC_METHOD *(*EC_GROUP_method_of)(const EC_GROUP *) = NULL;
+
+EC_KEY *(*EC_KEY_new)(void) = NULL;
+void (*EC_KEY_free)(EC_KEY *) = NULL;
+
+EC_KEY *(*EC_KEY_new_by_curve_name)(int) = NULL;
+const EC_GROUP *(*EC_KEY_get0_group)(const EC_KEY *) = NULL;
+int (*EC_KEY_set_group)(EC_KEY *, const EC_GROUP *) = NULL;
+const BIGNUM *(*EC_KEY_get0_private_key)(const EC_KEY *) = NULL;
+int (*EC_KEY_set_private_key)(EC_KEY *, const BIGNUM *) = NULL;
+const EC_POINT *(*EC_KEY_get0_public_key)(const EC_KEY *) = NULL;
+int (*EC_KEY_set_public_key)(EC_KEY *, const EC_POINT *) = NULL;
+void (*EC_KEY_set_asn1_flag)(EC_KEY *, int) = NULL;
+int (*EC_KEY_generate_key)(EC_KEY *) = NULL;
+int (*EC_KEY_set_public_key_affine_coordinates)(EC_KEY *, BIGNUM *, BIGNUM *) = NULL;
+
+int (*EC_POINT_set_affine_coordinates_GFp)(const EC_GROUP *, EC_POINT *,
+    const BIGNUM *, const BIGNUM *, BN_CTX *) = NULL;
+
+int (*EC_POINT_get_affine_coordinates_GFp)(const EC_GROUP *,
+    const EC_POINT *, BIGNUM *, BIGNUM *, BN_CTX *) = NULL;
+
+int (*EC_POINT_get_affine_coordinates_GF2m)(const EC_GROUP *,
+    const EC_POINT *, BIGNUM *, BIGNUM *, BN_CTX *) = NULL;
+
+int (*EC_METHOD_get_field_type)(const EC_METHOD *) = NULL;
+#endif
+#else
 #if defined(OPENSSL_NO_EC2M)
 static const long Cryptography_HAS_EC2M = 0;
 
@@ -105,5 +146,6 @@ int (*EC_POINT_get_affine_coordinates_GF2m)(const EC_GROUP *,
 
 #else
 static const long Cryptography_HAS_EC2M = 1;
+#endif
 #endif
 """

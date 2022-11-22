@@ -10,6 +10,8 @@ INCLUDES = """
 TYPES = """
 static const int CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH;
 
+static const int DH_R_NOT_SUITABLE_GENERATOR;
+
 static const int EVP_F_EVP_ENCRYPTFINAL_EX;
 static const int EVP_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH;
 static const int EVP_R_BAD_DECRYPT;
@@ -18,6 +20,7 @@ static const int PKCS12_R_PKCS12_CIPHERFINAL_ERROR;
 static const int PEM_R_UNSUPPORTED_ENCRYPTION;
 static const int EVP_R_XTS_DUPLICATED_KEYS;
 
+static const int ERR_LIB_DH;
 static const int ERR_LIB_EVP;
 static const int ERR_LIB_PEM;
 static const int ERR_LIB_PROV;
@@ -79,5 +82,17 @@ static const int CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH = 0;
 #else
 #define Cryptography_HAS_UNEXPECTED_EOF_WHILE_READING 0
 #define SSL_R_UNEXPECTED_EOF_WHILE_READING 0
+#endif
+
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER && defined(OPENSSL_NO_DEPRECATED_3_0)
+static const int EVP_F_EVP_ENCRYPTFINAL_EX = 0;
+
+const char *(*ERR_func_error_string)(unsigned long) = NULL;
+void ERR_put_error(int lib, int func, int reason, const char *file, int line)
+{
+    ERR_new();
+    ERR_set_debug(file, line, OPENSSL_FUNC);
+    ERR_set_error(lib, reason, NULL);
+}
 #endif
 """

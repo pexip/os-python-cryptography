@@ -93,4 +93,9 @@ int (*BN_prime_checks_for_size)(int) = NULL;
 #else
 static const long Cryptography_HAS_BN_FLAGS = 1;
 #endif
+
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER && defined(OPENSSL_NO_DEPRECATED_3_0)
+int (*BN_is_prime_ex)(const BIGNUM *, int, BN_CTX *, BN_GENCB *) = NULL;
+const int (*BN_prime_checks_for_size)(int) = NULL;
+#endif
 """

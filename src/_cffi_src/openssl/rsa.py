@@ -43,9 +43,33 @@ int EVP_PKEY_CTX_set_rsa_mgf1_md(EVP_PKEY_CTX *, EVP_MD *);
 int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *, unsigned char *, int);
 
 int EVP_PKEY_CTX_set_rsa_oaep_md(EVP_PKEY_CTX *, EVP_MD *);
+
+int EVP_PKEY_CTX_set_rsa_keygen_bits(EVP_PKEY_CTX *ctx, int bits);
+int EVP_PKEY_CTX_set1_rsa_keygen_pubexp(EVP_PKEY_CTX *ctx, BIGNUM *pubexp);
 """
 
 CUSTOMIZATIONS = """
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER && defined(OPENSSL_NO_DEPRECATED_3_0)
+typedef void RSA;
+
+RSA *(*RSA_new)(void) = NULL;
+void (*RSA_free)(RSA *) = NULL;
+int (*RSA_generate_key_ex)(RSA *, int, BIGNUM *, BN_GENCB *) = NULL;
+int (*RSA_check_key)(const RSA *) = NULL;
+RSA *(*RSAPublicKey_dup)(RSA *) = NULL;
+int (*RSA_blinding_on)(RSA *, BN_CTX *) = NULL;
+int (*RSA_print)(BIO *, const RSA *, int) = NULL;
+
+int (*RSA_set0_key)(RSA *, BIGNUM *, BIGNUM *, BIGNUM *) = NULL;
+int (*RSA_set0_factors)(RSA *, BIGNUM *, BIGNUM *) = NULL;
+int (*RSA_set0_crt_params)(RSA *, BIGNUM *, BIGNUM *, BIGNUM *) = NULL;
+void (*RSA_get0_key)(const RSA *, const BIGNUM **, const BIGNUM **,
+                  const BIGNUM **) = NULL;
+void (*RSA_get0_factors)(const RSA *, const BIGNUM **, const BIGNUM **) = NULL;
+void (*RSA_get0_crt_params)(const RSA *, const BIGNUM **, const BIGNUM **,
+                         const BIGNUM **) = NULL;
+#endif
+
 // BoringSSL doesn't define this constant, but the value is used for
 // automatic salt length computation as in OpenSSL and LibreSSL
 #if !defined(RSA_PSS_SALTLEN_AUTO)

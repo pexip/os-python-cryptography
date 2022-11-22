@@ -19,4 +19,7 @@ int RAND_bytes(unsigned char *, int);
 """
 
 CUSTOMIZATIONS = """
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER && defined(OPENSSL_NO_DEPRECATED_3_0)
+int (*RAND_set_rand_method)(const RAND_METHOD *) = NULL;
+#endif
 """

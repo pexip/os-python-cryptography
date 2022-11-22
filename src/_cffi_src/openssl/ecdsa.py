@@ -20,4 +20,11 @@ int ECDSA_size(const EC_KEY *);
 """
 
 CUSTOMIZATIONS = """
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER && defined(OPENSSL_NO_DEPRECATED_3_0)
+int (*ECDSA_sign)(int, const unsigned char *, int, unsigned char *,
+               unsigned int *, EC_KEY *) = NULL;
+int (*ECDSA_verify)(int, const unsigned char *, int, const unsigned char *, int,
+                 EC_KEY *) = NULL;
+int (*ECDSA_size)(const EC_KEY *) = NULL;
+#endif
 """

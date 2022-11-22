@@ -220,4 +220,14 @@ const ASN1_TIME *X509_REVOKED_get0_revocationDate(const X509_REVOKED *);
 """
 
 CUSTOMIZATIONS = """
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER && defined(OPENSSL_NO_DEPRECATED_3_0)
+int (*i2d_RSAPrivateKey_bio)(BIO *, RSA *) = NULL;
+RSA *(*d2i_RSAPublicKey_bio)(BIO *, RSA **) = NULL;
+int (*i2d_RSAPublicKey_bio)(BIO *, RSA *) = NULL;
+int (*i2d_DSAPrivateKey_bio)(BIO *, DSA *) = NULL;
+EC_KEY *(*d2i_EC_PUBKEY_bio)(BIO *, EC_KEY **) = NULL;
+int (*i2d_EC_PUBKEY_bio)(BIO *, EC_KEY *) = NULL;
+EC_KEY *(*d2i_ECPrivateKey_bio)(BIO *, EC_KEY **) = NULL;
+int (*i2d_ECPrivateKey_bio)(BIO *, EC_KEY *) = NULL;
+#endif
 """

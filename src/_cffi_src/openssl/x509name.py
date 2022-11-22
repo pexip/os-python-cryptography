@@ -25,6 +25,8 @@ X509_NAME *X509_NAME_new(void);
 void X509_NAME_free(X509_NAME *);
 
 unsigned long X509_NAME_hash(X509_NAME *);
+unsigned long X509_NAME_hash_ex(X509_NAME *, OSSL_LIB_CTX *, const char *,
+                                int *);
 
 int i2d_X509_NAME(X509_NAME *, unsigned char **);
 X509_NAME_ENTRY *X509_NAME_delete_entry(X509_NAME *, int);
@@ -58,4 +60,15 @@ int sk_X509_NAME_ENTRY_push(Cryptography_STACK_OF_X509_NAME_ENTRY *,
 """
 
 CUSTOMIZATIONS = """
+#if CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
+#ifdef OPENSSL_NO_DEPRECATED_3_0
+unsigned long (*X509_NAME_hash)(X509_NAME *) = NULL;
+#endif
+#else
+unsigned long X509_NAME_hash_ex(X509_NAME *x, OSSL_LIB_CTX *libctx,
+                                const char *propq, int *ok)
+{
+    return X509_NAME_hash(x);
+}
+#endif
 """
