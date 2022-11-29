@@ -368,6 +368,11 @@ long SSL_CTX_get_max_proto_version(SSL_CTX *);
 long SSL_get_min_proto_version(SSL *);
 long SSL_get_max_proto_version(SSL *);
 
+int SSL_CTX_get_security_level(const SSL_CTX *);
+void SSL_CTX_set_security_level(SSL_CTX *, int);
+int SSL_get_security_level(const SSL *);
+void SSL_set_security_level(SSL *, int);
+
 /* Defined as unsigned long because SSL_OP_ALL is greater than signed 32-bit
    and Windows defines long as 32-bit. */
 unsigned long SSL_CTX_set_options(SSL_CTX *, unsigned long);
@@ -381,6 +386,8 @@ unsigned long SSL_CTX_get_session_cache_mode(SSL_CTX *);
 unsigned long SSL_CTX_set_tmp_dh(SSL_CTX *, DH *);
 unsigned long SSL_CTX_set_tmp_ecdh(SSL_CTX *, EC_KEY *);
 unsigned long SSL_CTX_add_extra_chain_cert(SSL_CTX *, X509 *);
+int SSL_CTX_set0_tmp_dh_pkey(SSL_CTX *, EVP_PKEY *);
+int SSL_CTX_set1_curves(SSL_CTX *, int *, int);
 
 const SSL_METHOD *DTLS_method(void);
 const SSL_METHOD *DTLS_server_method(void);
@@ -788,6 +795,7 @@ unsigned long (*SSL_CTX_set_tmp_ecdh)(SSL_CTX *, EC_KEY *) = NULL;
 X509 *(*SSL_get_peer_certificate)(const SSL *) = NULL;
 #endif
 #else
+int (*SSL_CTX_set0_tmp_dh_pkey)(SSL_CTX *, EVP_PKEY *) = NULL;
 X509 *SSL_get1_peer_certificate(const SSL *) = SSL_get_peer_certificate;
 #endif
 """

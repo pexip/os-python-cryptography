@@ -8,6 +8,8 @@ INCLUDES = """
 """
 
 TYPES = """
+typedef ... ASN1_PCTX;
+
 typedef ... EVP_CIPHER;
 typedef ... EVP_CIPHER_CTX;
 typedef ... EVP_MD;
@@ -170,6 +172,10 @@ int EVP_PKEY_copy_parameters(EVP_PKEY *, const EVP_PKEY *);
 
 int EVP_PKEY_id(const EVP_PKEY *);
 int EVP_PKEY_is_a(const EVP_PKEY *, const char *);
+
+int EVP_PKEY_print_params(BIO *, const EVP_PKEY *, int, ASN1_PCTX *);
+int EVP_PKEY_print_public(BIO *, const EVP_PKEY *, int, ASN1_PCTX *);
+int EVP_PKEY_print_private(BIO *, const EVP_PKEY *, int, ASN1_PCTX *);
 
 EVP_MD_CTX *EVP_MD_CTX_new(void);
 void EVP_MD_CTX_free(EVP_MD_CTX *);
