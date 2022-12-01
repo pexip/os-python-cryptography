@@ -1,6 +1,8 @@
-python-cryptography (38.0.2-1~pexip1) pexip; urgency=medium
+python-cryptography (38.0.2-1~pexip1) pexip-bullseye-openssl3; urgency=medium
 
   * New upstream release
+  * Backport upstream v39 changes
+  * Remove use of deprecated OpenSSL APIs
 
  -- John-Mark Bell <jmb@pexip.com>  Thu, 17 Nov 2022 18:16:34 +0000
 
