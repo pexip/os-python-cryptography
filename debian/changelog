@@ -1,6 +1,10 @@
 python-cryptography (39.0.0-0pexip1) pexip-bullseye-openssl3; urgency=medium
 
   * New upstream release
+  * Refresh patches for cryptography 39.0.0
+  * Remove use of deprecated OpenSSL APIs
+  * Hard-disable legacy provider; don't load default provider
+  * Expose SSL(_CTX)(_get|_set)_security_level
 
  -- John-Mark Bell <jmb@pexip.com>  Thu, 26 Jan 2022 16:50:29 +0000
 
