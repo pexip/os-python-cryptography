@@ -1,3 +1,9 @@
+python-cryptography (38.0.2-1~pexip2) pexip-bullseye-openssl3; urgency=medium
+
+  * Hard-disable legacy provider; don't load default provider
+
+ -- John-Mark Bell <jmb@pexip.com>  Wed, 14 Dec 2022 16:59:51 +0000
+
 python-cryptography (38.0.2-1~pexip1) pexip-bullseye-openssl3; urgency=medium
 
   * New upstream release
