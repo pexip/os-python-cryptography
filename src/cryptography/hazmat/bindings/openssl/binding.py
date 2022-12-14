@@ -186,7 +186,7 @@ class Binding:
                 # are ugly legacy, but we aren't going to get rid of them
                 # any time soon.
                 if cls.lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER:
-                    if not os.environ.get("CRYPTOGRAPHY_OPENSSL_NO_LEGACY"):
+                    if False:
                         cls._legacy_provider = cls.lib.OSSL_PROVIDER_load(
                             cls.ffi.NULL, b"legacy"
                         )
@@ -195,12 +195,12 @@ class Binding:
                         )
                         _legacy_provider_error(cls._legacy_provider_loaded)
 
-                    cls._default_provider = cls.lib.OSSL_PROVIDER_load(
-                        cls.ffi.NULL, b"default"
-                    )
-                    _openssl_assert(
-                        cls.lib, cls._default_provider != cls.ffi.NULL
-                    )
+                        cls._default_provider = cls.lib.OSSL_PROVIDER_load(
+                            cls.ffi.NULL, b"default"
+                        )
+                        _openssl_assert(
+                            cls.lib, cls._default_provider != cls.ffi.NULL
+                        )
 
     @classmethod
     def init_static_locks(cls) -> None:
