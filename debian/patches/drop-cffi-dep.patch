@@ -1,0 +1,29 @@
+From: Stefano Rivera <stefanor@debian.org>
+Date: Sun, 8 Jan 2023 15:57:57 -0400
+Subject: Remove run-time dependency on cffi
+
+On Debian we ship a separate cffi-backend package (without the cffi
+.egg-info), that just contains the run-time backend. This is all that
+cryptography requires at runtime.
+
+However, pkg_resources is pedantic and complains if it can't find
+expected run-time dependency's .egg-info. To, avoid the problem, we drop
+the dependency.
+
+Bug-Debian: https://bugs.debian.org/1026537
+---
+ setup.cfg | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/setup.cfg b/setup.cfg
+index 2a669fa..94e8d20 100644
+--- a/setup.cfg
++++ b/setup.cfg
+@@ -43,7 +43,6 @@ package_dir =
+ 	=src
+ packages = find:
+ install_requires = 
+-	cffi >=1.12
+ 
+ [options.packages.find]
+ where = src

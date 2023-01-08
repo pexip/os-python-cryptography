@@ -49,3 +49,8 @@ override_dh_auto_configure:
 
 override_dh_dwz:
 	dh_dwz --no-dwz-multifile
+
+
+override_dh_python3:
+	# We patch it out of .dist-info to avoid pkg_resources complaining (#1026537)
+	dh_python3 --depends=cffi
