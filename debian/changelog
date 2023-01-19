@@ -1,3 +1,9 @@
+python-cryptography (38.0.2-1~pexip3) pexip-bullseye-openssl3; urgency=medium
+
+  * Expose SSL(_CTX)(_get|_set)_security_level
+
+ -- John-Mark Bell <jmb@pexip.com>  Thu, 19 Jan 2023 12:45:20 +0000
+
 python-cryptography (38.0.2-1~pexip2) pexip-bullseye-openssl3; urgency=medium
 
   * Hard-disable legacy provider; don't load default provider
