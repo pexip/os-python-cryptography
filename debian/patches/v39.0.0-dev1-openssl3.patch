@@ -695,7 +695,7 @@ index b1f6e4a4d..b2a973995 100644
  // automatic salt length computation as in OpenSSL and LibreSSL
  #if !defined(RSA_PSS_SALTLEN_AUTO)
 diff --git a/src/_cffi_src/openssl/ssl.py b/src/_cffi_src/openssl/ssl.py
-index 0a6a124e1..3faf62ab8 100644
+index 0a6a124e1..a8c4425ac 100644
 --- a/src/_cffi_src/openssl/ssl.py
 +++ b/src/_cffi_src/openssl/ssl.py
 @@ -183,6 +183,7 @@ int SSL_read(SSL *, void *, int);
@@ -706,7 +706,19 @@ index 0a6a124e1..3faf62ab8 100644
  int SSL_get_ex_data_X509_STORE_CTX_idx(void);
  void SSL_set_verify(SSL *, int, int (*)(int, X509_STORE_CTX *));
  int SSL_get_verify_mode(const SSL *);
-@@ -368,6 +369,8 @@ unsigned long SSL_CTX_get_session_cache_mode(SSL_CTX *);
+@@ -355,6 +356,11 @@ long SSL_CTX_get_max_proto_version(SSL_CTX *);
+ long SSL_get_min_proto_version(SSL *);
+ long SSL_get_max_proto_version(SSL *);
+ 
++int SSL_CTX_get_security_level(const SSL_CTX *);
++void SSL_CTX_set_security_level(SSL_CTX *, int);
++int SSL_get_security_level(const SSL *);
++void SSL_set_security_level(SSL *, int);
++
+ /* Defined as unsigned long because SSL_OP_ALL is greater than signed 32-bit
+    and Windows defines long as 32-bit. */
+ unsigned long SSL_CTX_set_options(SSL_CTX *, unsigned long);
+@@ -368,6 +374,8 @@ unsigned long SSL_CTX_get_session_cache_mode(SSL_CTX *);
  unsigned long SSL_CTX_set_tmp_dh(SSL_CTX *, DH *);
  unsigned long SSL_CTX_set_tmp_ecdh(SSL_CTX *, EC_KEY *);
  unsigned long SSL_CTX_add_extra_chain_cert(SSL_CTX *, X509 *);
@@ -715,7 +727,7 @@ index 0a6a124e1..3faf62ab8 100644
  
  const SSL_METHOD *DTLS_method(void);
  const SSL_METHOD *DTLS_server_method(void);
-@@ -767,4 +770,15 @@ SSL_SESSION *Cryptography_SSL_SESSION_new(void) {
+@@ -767,4 +775,15 @@ SSL_SESSION *Cryptography_SSL_SESSION_new(void) {
      return SSL_SESSION_new();
  }
  #endif
