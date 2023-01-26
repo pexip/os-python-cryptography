@@ -1,16 +1,56 @@
-python-cryptography (38.0.2-1~pexip1) pexip; urgency=medium
+python-cryptography (38.0.4-2pexip1) pexip; urgency=medium
 
   * New upstream release
 
- -- John-Mark Bell <jmb@pexip.com>  Thu, 17 Nov 2022 18:16:34 +0000
+ -- John-Mark Bell <jmb@pexip.com>  Thu, 26 Jan 2022 16:50:29 +0000
 
-python-cryptography (38.0.2-1) UNRELEASED; urgency=medium
+python-cryptography (38.0.4-2) unstable; urgency=medium
 
+  * Team upload.
+  * Patch: Remove the runtime dependency on cffi from .dist-info.
+    (Closes: #1026537)
+
+ -- Stefano Rivera <stefanor@debian.org>  Sun, 08 Jan 2023 16:31:04 -0400
+
+python-cryptography (38.0.4-1) unstable; urgency=medium
+
+  [ Claudius Heine ]
   * New upstream release (Closes: #1011155).
   * Dropped openssl3 patches, no longer required.
   * Integrated build of embedded rust library.
+  * debian/control
+    - bump b-d on cryptography-vectors to 38.0.4
+    - build using pybuild-plugin-pyproject
+    - remove dependencies dropped by upstream
+    - add pytest-benchmark to b-d, needed for tests
+    - add setuptools-rust to b-d, needed for the Rust part of the build
+    - add cargo and other rust pkgs to b-d
+    - bump Standards-Version to 4.6.1 (no changes needed)
+  * debian/pydist-overrides, debian/py3dist-overrides
+    - remove dependencies dropped by upstream
+  * debian/rules
+    - enable the Rust build
+    - override dh_dwz to disable multifile
+  * debian/patches/no-rust.patch
+    - removed, we are actually building the Rust code now
+  * debian/python-cryptography-doc.doc-base
+    - add doc-base
+  * debian/source/options
+    - exclude some packaging files updated during build
+  * debian/patches/Upgrade-to-pyo3-0.*
+    - add support for pyo3 0.16 and 0.17
+  * debian/patches/allow-pem-version-1.0.patch
+    - relax pem rust versioned dependency
+  * debian/patches/ease-asn1-version-from-0.12.1-to-0.12.patch
+    - relax asn1 rust versioned dependency
+  * debian/patches/ease-chrono-dependency-from-0.4.22-to-0.4.patch
+    - relax chrono rust versioned dependency
 
- -- Claudius Heine <ch@denx.de>  Mon, 29 Aug 2022 08:52:44 +0200
+  [ Sandro Tosi ]
+  * debian/control
+    - run wrap-and-sort
+
+ -- Sandro Tosi <morph@debian.org>  Thu, 15 Dec 2022 12:00:09 -0500
 
 python-cryptography (3.4.8-3) UNRELEASED; urgency=medium
 

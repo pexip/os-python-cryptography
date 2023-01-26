@@ -1,0 +1,213 @@
+From: Alex Gaynor <alex.gaynor@gmail.com>
+Date: Wed, 24 Aug 2022 07:53:13 -0400
+Subject: Upgrade to pyo3 0.17
+
+Ported from upstream PR: https://github.com/pyca/cryptography/pull/6935
+---
+ src/rust/Cargo.lock              | 30 ++++++++++++++++++++----------
+ src/rust/Cargo.toml              |  2 +-
+ src/rust/src/oid.rs              |  5 +----
+ src/rust/src/pool.rs             | 10 +++++-----
+ src/rust/src/x509/certificate.rs |  5 +----
+ src/rust/src/x509/crl.rs         |  9 +++++----
+ src/rust/src/x509/ocsp_req.rs    |  2 +-
+ src/rust/src/x509/ocsp_resp.rs   |  2 +-
+ 8 files changed, 35 insertions(+), 30 deletions(-)
+
+diff --git a/src/rust/Cargo.lock b/src/rust/Cargo.lock
+index 976f865..09354fd 100644
+--- a/src/rust/Cargo.lock
++++ b/src/rust/Cargo.lock
+@@ -170,6 +170,15 @@ dependencies = [
+  "cfg-if",
+ ]
+ 
++[[package]]
++name = "memoffset"
++version = "0.6.5"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
++dependencies = [
++ "autocfg",
++]
++
+ [[package]]
+ name = "num-integer"
+ version = "0.1.45"
+@@ -287,13 +296,14 @@ dependencies = [
+ 
+ [[package]]
+ name = "pyo3"
+-version = "0.16.5"
++version = "0.17.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "1e6302e85060011447471887705bb7838f14aba43fcb06957d823739a496b3dc"
++checksum = "12f72538a0230791398a0986a6518ebd88abc3fded89007b506ed072acc831e1"
+ dependencies = [
+  "cfg-if",
+  "indoc",
+  "libc",
++ "memoffset",
+  "parking_lot",
+  "pyo3-build-config",
+  "pyo3-ffi",
+@@ -303,9 +313,9 @@ dependencies = [
+ 
+ [[package]]
+ name = "pyo3-build-config"
+-version = "0.16.5"
++version = "0.17.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "b5b65b546c35d8a3b1b2f0ddbac7c6a569d759f357f2b9df884f5d6b719152c8"
++checksum = "fc4cf18c20f4f09995f3554e6bcf9b09bd5e4d6b67c562fdfaafa644526ba479"
+ dependencies = [
+  "once_cell",
+  "target-lexicon",
+@@ -313,9 +323,9 @@ dependencies = [
+ 
+ [[package]]
+ name = "pyo3-ffi"
+-version = "0.16.5"
++version = "0.17.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "c275a07127c1aca33031a563e384ffdd485aee34ef131116fcd58e3430d1742b"
++checksum = "a41877f28d8ebd600b6aa21a17b40c3b0fc4dfe73a27b6e81ab3d895e401b0e9"
+ dependencies = [
+  "libc",
+  "pyo3-build-config",
+@@ -323,9 +333,9 @@ dependencies = [
+ 
+ [[package]]
+ name = "pyo3-macros"
+-version = "0.16.5"
++version = "0.17.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "284fc4485bfbcc9850a6d661d627783f18d19c2ab55880b021671c4ba83e90f7"
++checksum = "2e81c8d4bcc2f216dc1b665412df35e46d12ee8d3d046b381aad05f1fcf30547"
+ dependencies = [
+  "proc-macro2",
+  "pyo3-macros-backend",
+@@ -335,9 +345,9 @@ dependencies = [
+ 
+ [[package]]
+ name = "pyo3-macros-backend"
+-version = "0.16.5"
++version = "0.17.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "53bda0f58f73f5c5429693c96ed57f7abdb38fdfc28ae06da4101a257adb7faf"
++checksum = "85752a767ee19399a78272cc2ab625cd7d373b2e112b4b13db28de71fa892784"
+ dependencies = [
+  "proc-macro2",
+  "quote",
+diff --git a/src/rust/Cargo.toml b/src/rust/Cargo.toml
+index 73347ab..8d11c97 100644
+--- a/src/rust/Cargo.toml
++++ b/src/rust/Cargo.toml
+@@ -7,7 +7,7 @@ publish = false
+ 
+ [dependencies]
+ once_cell = "1"
+-pyo3 = { version = "0.16" }
++pyo3 = { version = "0.17" }
+ asn1 = { version = "0.12.2", default-features = false, features = ["derive"] }
+ pem = "1.1"
+ chrono = { version = "0.4.22", default-features = false, features = ["alloc", "clock"] }
+diff --git a/src/rust/src/oid.rs b/src/rust/src/oid.rs
+index 8a77ee6..0cb3e85 100644
+--- a/src/rust/src/oid.rs
++++ b/src/rust/src/oid.rs
+@@ -36,10 +36,7 @@ impl ObjectIdentifier {
+         oid_names.call_method1("get", (slf, "Unknown OID"))
+     }
+ 
+-    fn __repr__(&self) -> pyo3::PyResult<String> {
+-        let gil = pyo3::Python::acquire_gil();
+-        let py = gil.python();
+-
++    fn __repr__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<String> {
+         let self_clone = pyo3::PyCell::new(
+             py,
+             ObjectIdentifier {
+diff --git a/src/rust/src/pool.rs b/src/rust/src/pool.rs
+index 9dacd7f..6e1c59b 100644
+--- a/src/rust/src/pool.rs
++++ b/src/rust/src/pool.rs
+@@ -63,11 +63,11 @@ impl FixedPool {
+ impl Drop for FixedPool {
+     fn drop(&mut self) {
+         if let Some(value) = self.value.replace(None) {
+-            let gil = pyo3::Python::acquire_gil();
+-            let py = gil.python();
+-            self.destroy_fn
+-                .call1(py, (value,))
+-                .expect("FixedPool destroy function failed in destructor");
++            pyo3::Python::with_gil(|py| {
++                self.destroy_fn
++                    .call1(py, (value,))
++                    .expect("FixedPool destroy function failed in destructor");
++            });
+         }
+     }
+ }
+diff --git a/src/rust/src/x509/certificate.rs b/src/rust/src/x509/certificate.rs
+index 6a19dd7..948e23f 100644
+--- a/src/rust/src/x509/certificate.rs
++++ b/src/rust/src/x509/certificate.rs
+@@ -104,10 +104,7 @@ impl Certificate {
+         }
+     }
+ 
+-    fn __repr__(&self) -> pyo3::PyResult<String> {
+-        let gil = pyo3::Python::acquire_gil();
+-        let py = gil.python();
+-
++    fn __repr__(&self, py: pyo3::Python<'_>) -> pyo3::PyResult<String> {
+         let subject = self.subject(py)?;
+         let subject_repr = subject.repr()?.extract::<&str>()?;
+         Ok(format!("<Certificate(subject={}, ...)>", subject_repr))
+diff --git a/src/rust/src/x509/crl.rs b/src/rust/src/x509/crl.rs
+index 29cfd60..832c8be 100644
+--- a/src/rust/src/x509/crl.rs
++++ b/src/rust/src/x509/crl.rs
+@@ -131,10 +131,11 @@ impl CertificateRevocationList {
+         }
+     }
+ 
+-    fn __getitem__(&self, idx: &pyo3::PyAny) -> pyo3::PyResult<pyo3::PyObject> {
+-        let gil = pyo3::Python::acquire_gil();
+-        let py = gil.python();
+-
++    fn __getitem__(
++        &self,
++        py: pyo3::Python<'_>,
++        idx: &pyo3::PyAny,
++    ) -> pyo3::PyResult<pyo3::PyObject> {
+         self.raw.with(|val| {
+             val.revoked_certs.get_or_init(py, || {
+                 match &val.value.tbs_cert_list.revoked_certificates {
+diff --git a/src/rust/src/x509/ocsp_req.rs b/src/rust/src/x509/ocsp_req.rs
+index 483acc8..e086b4d 100644
+--- a/src/rust/src/x509/ocsp_req.rs
++++ b/src/rust/src/x509/ocsp_req.rs
+@@ -79,7 +79,7 @@ impl OCSPRequest {
+ 
+         let hashes = py.import("cryptography.hazmat.primitives.hashes")?;
+         match ocsp::OIDS_TO_HASH.get(&cert_id.hash_algorithm.oid) {
+-            Some(alg_name) => Ok(hashes.getattr(alg_name)?.call0()?),
++            Some(alg_name) => Ok(hashes.getattr(*alg_name)?.call0()?),
+             None => {
+                 let exceptions = py.import("cryptography.exceptions")?;
+                 Err(PyAsn1Error::from(pyo3::PyErr::from_value(
+diff --git a/src/rust/src/x509/ocsp_resp.rs b/src/rust/src/x509/ocsp_resp.rs
+index 00205a2..715df01 100644
+--- a/src/rust/src/x509/ocsp_resp.rs
++++ b/src/rust/src/x509/ocsp_resp.rs
+@@ -514,7 +514,7 @@ impl SingleResponse<'_> {
+     fn py_hash_algorithm<'p>(&self, py: pyo3::Python<'p>) -> Result<&'p pyo3::PyAny, PyAsn1Error> {
+         let hashes = py.import("cryptography.hazmat.primitives.hashes")?;
+         match ocsp::OIDS_TO_HASH.get(&self.cert_id.hash_algorithm.oid) {
+-            Some(alg_name) => Ok(hashes.getattr(alg_name)?.call0()?),
++            Some(alg_name) => Ok(hashes.getattr(*alg_name)?.call0()?),
+             None => {
+                 let exceptions = py.import("cryptography.exceptions")?;
+                 Err(PyAsn1Error::from(pyo3::PyErr::from_value(
