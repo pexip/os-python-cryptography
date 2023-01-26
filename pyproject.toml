@@ -27,6 +27,8 @@ check_untyped_defs = true
 no_implicit_reexport = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+warn_unused_configs = true
+strict_equality = true
 
 [[tool.mypy.overrides]]
 module = [
@@ -57,7 +59,21 @@ tests =[
 [tool.coverage.report]
 exclude_lines = [
     "@abc.abstractmethod",
-    "@abc.abstractproperty",
     "@typing.overload",
     "if typing.TYPE_CHECKING",
 ]
+
+[tool.ruff]
+exclude = [
+    '.tox',
+    '*.egg',
+    '.git',
+    '_build',
+    '.hypothesis',
+]
+ignore = ['N818']
+select = ['E', 'F', 'I', 'N', 'W']
+line-length = 79
+
+[tool.ruff.isort]
+known-first-party = ["cryptography", "cryptography_vectors", "tests"]

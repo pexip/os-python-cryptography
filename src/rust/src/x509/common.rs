@@ -44,7 +44,7 @@ pub(crate) struct AttributeTypeValue<'a> {
     pub(crate) value: RawTlv<'a>,
 }
 
-// Like `asn1::Tlv` but doesn't store `full_data` so it can be constucted from
+// Like `asn1::Tlv` but doesn't store `full_data` so it can be constructed from
 // an un-encoded tag and value.
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub(crate) struct RawTlv<'a> {
@@ -683,16 +683,15 @@ pub(crate) fn py_to_chrono(
     val: &pyo3::PyAny,
 ) -> pyo3::PyResult<chrono::DateTime<chrono::Utc>> {
     Ok(chrono::Utc
-        .ymd(
+        .with_ymd_and_hms(
             val.getattr(crate::intern!(py, "year"))?.extract()?,
             val.getattr(crate::intern!(py, "month"))?.extract()?,
             val.getattr(crate::intern!(py, "day"))?.extract()?,
-        )
-        .and_hms(
             val.getattr(crate::intern!(py, "hour"))?.extract()?,
             val.getattr(crate::intern!(py, "minute"))?.extract()?,
             val.getattr(crate::intern!(py, "second"))?.extract()?,
-        ))
+        )
+        .unwrap())
 }
 
 #[derive(Hash, PartialEq, Clone)]

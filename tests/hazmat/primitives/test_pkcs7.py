@@ -14,7 +14,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
 from cryptography.hazmat.primitives.serialization import pkcs7
 
-from .utils import skip_signature_hash
 from ...utils import load_vectors_from_file, raises_unsupported_algorithm
 
 
@@ -133,8 +132,11 @@ def _pkcs7_verify(encoding, sig, msg, certs, options, backend):
         )
     else:
         msg_bio = backend._bytes_to_bio(msg)
+        # libressl 3.7.0 has a bug when NULL is passed as an `out_bio`. Work
+        # around it for now.
+        out_bio = backend._create_mem_bio_gc()
         res = backend._lib.PKCS7_verify(
-            p7, backend._ffi.NULL, store, msg_bio.bio, backend._ffi.NULL, flags
+            p7, backend._ffi.NULL, store, msg_bio.bio, out_bio, flags
         )
     backend.openssl_assert(res == 1)
     # OpenSSL 3.0 leaves a random bio error on the stack:
@@ -345,7 +347,6 @@ class TestPKCS7Builder:
     @pytest.mark.parametrize(
         ("hash_alg", "expected_value"),
         [
-            (hashes.SHA1(), b"\x06\x05+\x0e\x03\x02\x1a"),
             (hashes.SHA256(), b"\x06\t`\x86H\x01e\x03\x04\x02\x01"),
             (hashes.SHA384(), b"\x06\t`\x86H\x01e\x03\x04\x02\x02"),
             (hashes.SHA512(), b"\x06\t`\x86H\x01e\x03\x04\x02\x03"),
@@ -354,8 +355,6 @@ class TestPKCS7Builder:
     def test_sign_alternate_digests_der(
         self, hash_alg, expected_value, backend
     ):
-        skip_signature_hash(backend, hash_alg)
-
         data = b"hello world"
         cert, key = _load_cert_key()
         builder = (
@@ -373,7 +372,6 @@ class TestPKCS7Builder:
     @pytest.mark.parametrize(
         ("hash_alg", "expected_value"),
         [
-            (hashes.SHA1(), b"sha1"),
             (hashes.SHA256(), b"sha-256"),
             (hashes.SHA384(), b"sha-384"),
             (hashes.SHA512(), b"sha-512"),
@@ -382,8 +380,6 @@ class TestPKCS7Builder:
     def test_sign_alternate_digests_detached(
         self, hash_alg, expected_value, backend
     ):
-        skip_signature_hash(backend, hash_alg)
-
         data = b"hello world"
         cert, key = _load_cert_key()
         builder = (
@@ -741,7 +737,7 @@ class TestPKCS7SerializeCerts:
             list(reversed(certs)), serialization.Encoding.DER
         )
         certs2 = pkcs7.load_der_pkcs7_certificates(p7)
-        assert certs != certs2
+        assert certs == certs2
 
     def test_pem_matches_vector(self, backend):
         p7_pem = load_vectors_from_file(

@@ -1,16 +1,15 @@
 Metadata-Version: 2.1
 Name: cryptography
-Version: 38.0.4
+Version: 39.0.0
 Summary: cryptography is a package which provides cryptographic recipes and primitives to Python developers.
 Home-page: https://github.com/pyca/cryptography
 Author: The Python Cryptographic Authority and individual contributors
 Author-email: cryptography-dev@python.org
-License: BSD-3-Clause OR Apache-2.0
+License: (Apache-2.0 OR BSD-3-Clause) AND PSF-2.0
 Project-URL: Documentation, https://cryptography.io/
 Project-URL: Source, https://github.com/pyca/cryptography/
 Project-URL: Issues, https://github.com/pyca/cryptography/issues
 Project-URL: Changelog, https://cryptography.io/en/latest/changelog/
-Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Developers
 Classifier: License :: OSI Approved :: Apache Software License
@@ -29,6 +28,7 @@ Classifier: Programming Language :: Python :: 3.7
 Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
 Classifier: Programming Language :: Python :: Implementation :: CPython
 Classifier: Programming Language :: Python :: Implementation :: PyPy
 Classifier: Topic :: Security :: Cryptography
@@ -61,7 +61,7 @@ pyca/cryptography
 
 
 ``cryptography`` is a package which provides cryptographic recipes and
-primitives to Python developers.  Our goal is for it to be your "cryptographic
+primitives to Python developers. Our goal is for it to be your "cryptographic
 standard library". It supports Python 3.6+ and PyPy3 7.2+.
 
 ``cryptography`` includes both high level recipes and low level interfaces to
@@ -77,9 +77,9 @@ key derivation functions. For example, to encrypt something with
     >>> f = Fernet(key)
     >>> token = f.encrypt(b"A really secret message. Not for prying eyes.")
     >>> token
-    '...'
+    b'...'
     >>> f.decrypt(token)
-    'A really secret message. Not for prying eyes.'
+    b'A really secret message. Not for prying eyes.'
 
 You can find more information in the `documentation`_.
 
@@ -113,5 +113,3 @@ documentation.
 .. _`issue tracker`: https://github.com/pyca/cryptography/issues
 .. _`cryptography-dev`: https://mail.python.org/mailman/listinfo/cryptography-dev
 .. _`security reporting`: https://cryptography.io/en/latest/security/
-
-

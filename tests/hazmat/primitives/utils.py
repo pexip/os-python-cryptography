@@ -26,9 +26,9 @@ from cryptography.hazmat.primitives.ciphers import (
 from cryptography.hazmat.primitives.ciphers.modes import GCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF, HKDFExpand
 from cryptography.hazmat.primitives.kdf.kbkdf import (
-    CounterLocation,
     KBKDFCMAC,
     KBKDFHMAC,
+    CounterLocation,
     Mode,
 )
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -572,8 +572,3 @@ def skip_fips_traditional_openssl(backend, fmt):
         pytest.skip(
             "Traditional OpenSSL key format is not supported in FIPS mode."
         )
-
-
-def skip_signature_hash(backend, hash_alg: hashes.HashAlgorithm):
-    if not backend.signature_hash_supported(hash_alg):
-        pytest.skip(f"{hash_alg} is not a supported signature hash algorithm.")

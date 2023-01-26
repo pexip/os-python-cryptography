@@ -10,7 +10,6 @@ import os
 import typing
 
 import pretend
-
 import pytest
 
 from cryptography import x509
@@ -37,10 +36,10 @@ from cryptography.x509.oid import (
     SubjectInformationAccessOID,
 )
 
-from .test_x509 import _load_cert
 from ..hazmat.primitives.fixtures_rsa import RSA_KEY_2048
 from ..hazmat.primitives.test_ec import _skip_curve_unsupported
 from ..utils import load_vectors_from_file
+from .test_x509 import _load_cert
 
 
 def _make_certbuilder(private_key):
@@ -3967,6 +3966,10 @@ class TestDistributionPoint:
             x509.DistributionPoint(
                 "data", "notname", None, None  # type:ignore[arg-type]
             )
+
+    def test_no_full_name_relative_name_or_crl_issuer(self):
+        with pytest.raises(ValueError):
+            x509.DistributionPoint(None, None, None, None)
 
     def test_crl_issuer_not_general_names(self):
         with pytest.raises(TypeError):

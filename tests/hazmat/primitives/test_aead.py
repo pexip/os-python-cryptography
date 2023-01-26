@@ -17,13 +17,13 @@ from cryptography.hazmat.primitives.ciphers.aead import (
     ChaCha20Poly1305,
 )
 
-from .utils import _load_all_params
 from ...utils import (
     load_nist_ccm_vectors,
     load_nist_vectors,
     load_vectors_from_file,
     raises_unsupported_algorithm,
 )
+from .utils import _load_all_params
 
 
 class FakeData(bytes):
@@ -625,7 +625,17 @@ class TestAESSIV(object):
             aessiv.encrypt(FakeData(), None)
 
         with pytest.raises(OverflowError):
-            aessiv.encrypt(b"", [FakeData()])
+            aessiv.encrypt(b"irrelevant", [FakeData()])
+
+    def test_no_empty_encryption(self):
+        key = AESSIV.generate_key(256)
+        aessiv = AESSIV(key)
+
+        with pytest.raises(ValueError):
+            aessiv.encrypt(b"", None)
+
+        with pytest.raises(ValueError):
+            aessiv.decrypt(b"", None)
 
     def test_vectors(self, backend, subtests):
         vectors = load_vectors_from_file(

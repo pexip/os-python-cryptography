@@ -1,6 +1,55 @@
 Changelog
 =========
 
+.. _v39-0-0:
+
+39.0.0 - 2023-01-01
+~~~~~~~~~~~~~~~~~~~
+
+* **BACKWARDS INCOMPATIBLE:** Support for OpenSSL 1.1.0 has been removed.
+  Users on older version of OpenSSL will need to upgrade.
+* **BACKWARDS INCOMPATIBLE:** Dropped support for LibreSSL < 3.5. The new
+  minimum LibreSSL version is 3.5.0. Going forward our policy is to support
+  versions of LibreSSL that are available in versions of OpenBSD that are
+  still receiving security support.
+* **BACKWARDS INCOMPATIBLE:** Removed the ``encode_point`` and
+  ``from_encoded_point`` methods on
+  :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicNumbers`,
+  which had been deprecated for several years.
+  :meth:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey.public_bytes`
+  and
+  :meth:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey.from_encoded_point`
+  should be used instead.
+* **BACKWARDS INCOMPATIBLE:** Support for using MD5 or SHA1 in
+  :class:`~cryptography.x509.CertificateBuilder`, other X.509 builders, and
+  PKCS7 has been removed.
+* **BACKWARDS INCOMPATIBLE:** Dropped support for macOS 10.10 and 10.11, macOS
+  users must upgrade to 10.12 or newer.
+* **ANNOUNCEMENT:** The next version of ``cryptography`` (40.0) will change
+  the way we link OpenSSL. This will only impact users who build
+  ``cryptography`` from source (i.e., not from a ``wheel``), and specify their
+  own version of OpenSSL. For those users, the ``CFLAGS``, ``LDFLAGS``,
+  ``INCLUDE``, ``LIB``, and ``CRYPTOGRAPHY_SUPPRESS_LINK_FLAGS`` environment
+  variables will no longer be respected. Instead, users will need to
+  configure their builds `as documented here`_.
+* Added support for
+  :ref:`disabling the legacy provider in OpenSSL 3.0.x<legacy-provider>`.
+* Added support for disabling RSA key validation checks when loading RSA
+  keys via
+  :func:`~cryptography.hazmat.primitives.serialization.load_pem_private_key`,
+  :func:`~cryptography.hazmat.primitives.serialization.load_der_private_key`,
+  and
+  :meth:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateNumbers.private_key`.
+  This speeds up key loading but is :term:`unsafe` if you are loading potentially
+  attacker supplied keys.
+* Significantly improved performance for
+  :class:`~cryptography.hazmat.primitives.ciphers.aead.ChaCha20Poly1305`
+  when repeatedly calling ``encrypt`` or ``decrypt`` with the same key.
+* Added support for creating OCSP requests with precomputed hashes using
+  :meth:`~cryptography.x509.ocsp.OCSPRequestBuilder.add_certificate_by_hash`.
+* Added support for loading multiple PEM-encoded X.509 certificates from
+  a single input via :func:`~cryptography.x509.load_pem_x509_certificates`.
+
 .. _v38-0-4:
 
 38.0.4 - 2022-11-27
@@ -20,14 +69,15 @@ Changelog
 
 .. _v38-0-2:
 
-38.0.2 - 2022-10-11
-~~~~~~~~~~~~~~~~~~~
+38.0.2 - 2022-10-11 (YANKED)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. attention::
 
     This release was subsequently yanked from PyPI due to a regression in OpenSSL.
 
 * Updated Windows, macOS, and Linux wheels to be compiled with OpenSSL 3.0.6.
+
 
 .. _v38-0-1:
 
@@ -2049,5 +2099,6 @@ Changelog
 
 * Initial release.
 
+.. _`as documented here`: https://docs.rs/openssl/latest/openssl/#automatic
 .. _`main`: https://github.com/pyca/cryptography/
 .. _`cffi`: https://cffi.readthedocs.io/

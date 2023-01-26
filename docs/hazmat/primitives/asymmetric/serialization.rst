@@ -125,7 +125,7 @@ all begin with ``-----BEGIN {format}-----`` and end with ``-----END
     extract the public key with
     :meth:`Certificate.public_key <cryptography.x509.Certificate.public_key>`.
 
-.. function:: load_pem_private_key(data, password)
+.. function:: load_pem_private_key(data, password, *, unsafe_skip_rsa_key_validation=False)
 
     .. versionadded:: 0.6
 
@@ -141,7 +141,20 @@ all begin with ``-----BEGIN {format}-----`` and end with ``-----END
 
     :param password: The password to use to decrypt the data. Should
         be ``None`` if the private key is not encrypted.
-    :type data: :term:`bytes-like`
+    :type password: :term:`bytes-like`
+
+    :param unsafe_skip_rsa_key_validation:
+
+        .. versionadded:: 39.0.0
+
+        A keyword-only argument that defaults to ``False``. If ``True``
+        RSA private keys will not be validated. This significantly speeds up
+        loading the keys, but is :term:`unsafe` unless you are certain the
+        key is valid. User supplied keys should never be loaded with this
+        parameter set to ``True``. If you do load an invalid key this way and
+        attempt to use it OpenSSL may hang, crash, or otherwise misbehave.
+
+    :type unsafe_skip_rsa_key_validation: bool
 
     :returns: One of
         :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey`,
@@ -234,7 +247,7 @@ data is binary. DER keys may be in a variety of formats, but as long as you
 know whether it is a public or private key the loading functions will handle
 the rest.
 
-.. function:: load_der_private_key(data, password)
+.. function:: load_der_private_key(data, password, *, unsafe_skip_rsa_key_validation=False)
 
     .. versionadded:: 0.8
 
@@ -247,6 +260,19 @@ the rest.
     :param password: The password to use to decrypt the data. Should
         be ``None`` if the private key is not encrypted.
     :type password: :term:`bytes-like`
+
+    :param unsafe_skip_rsa_key_validation:
+
+        .. versionadded:: 39.0.0
+
+        A keyword-only argument that defaults to ``False``. If ``True``
+        RSA private keys will not be validated. This significantly speeds up
+        loading the keys, but is :term:`unsafe` unless you are certain the
+        key is valid. User supplied keys should never be loaded with this
+        parameter set to ``True``. If you do load an invalid key this way and
+        attempt to use it OpenSSL may hang, crash, or otherwise misbehave.
+
+    :type unsafe_skip_rsa_key_validation: bool
 
     :returns: One of
         :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey`,
@@ -618,6 +644,7 @@ file suffix.
         instances.
 
 .. class:: PBES
+    :canonical: cryptography.hazmat.primitives._serialization.PBES
 
     .. versionadded:: 38.0.0
 
@@ -840,6 +867,7 @@ Serialization Formats
 .. currentmodule:: cryptography.hazmat.primitives.serialization
 
 .. class:: PrivateFormat
+    :canonical: cryptography.hazmat.primitives._serialization.PrivateFormat
 
     .. versionadded:: 0.8
 
@@ -1026,6 +1054,7 @@ Serialization Encodings
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 .. class:: Encoding
+    :canonical: cryptography.hazmat.primitives._serialization.Encoding
 
     An enumeration for encoding types. Used with the ``private_bytes`` method
     available on
@@ -1086,6 +1115,7 @@ Serialization Encryption Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. class:: KeySerializationEncryption
+    :canonical: cryptography.hazmat.primitives._serialization.KeySerializationEncryption
 
     Objects with this interface are usable as encryption types with methods
     like ``private_bytes`` available on
@@ -1099,6 +1129,7 @@ Serialization Encryption Types
     encryption and have this interface.
 
 .. class:: BestAvailableEncryption(password)
+    :canonical: cryptography.hazmat.primitives._serialization.BestAvailableEncryption
 
     Encrypt using the best available encryption for a given key.
     This is a curated encryption choice and the algorithm may change over
@@ -1108,6 +1139,7 @@ Serialization Encryption Types
     :param bytes password: The password to use for encryption.
 
 .. class:: NoEncryption
+    :canonical: cryptography.hazmat.primitives._serialization.NoEncryption
 
     Do not encrypt.
 
