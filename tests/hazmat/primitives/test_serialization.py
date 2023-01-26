@@ -13,11 +13,11 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric import (
     dsa,
     ec,
-    ed25519,
     ed448,
+    ed25519,
     rsa,
-    x25519,
     x448,
+    x25519,
 )
 from cryptography.hazmat.primitives.hashes import SHA1
 from cryptography.hazmat.primitives.serialization import (
@@ -39,15 +39,11 @@ from cryptography.hazmat.primitives.serialization import (
 )
 from cryptography.hazmat.primitives.serialization.pkcs12 import PBES
 
-
-from .fixtures_rsa import RSA_KEY_2048
-from .test_ec import _skip_curve_unsupported
-from .utils import (
-    _check_dsa_private_numbers,
-    _check_rsa_private_numbers,
-)
 from ...doubles import DummyKeySerializationEncryption
 from ...utils import load_vectors_from_file, raises_unsupported_algorithm
+from .fixtures_rsa import RSA_KEY_2048
+from .test_ec import _skip_curve_unsupported
+from .utils import _check_dsa_private_numbers, _check_rsa_private_numbers
 
 
 def _skip_fips_format(key_path, password, backend):

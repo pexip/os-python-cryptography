@@ -13,7 +13,6 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 from .utils import wycheproof_tests
 
-
 _DIGESTS = {
     "SHA-1": hashes.SHA1(),
     "SHA-224": hashes.SHA224(),
@@ -98,6 +97,7 @@ def test_rsa_pkcs1v15_signature_generation(backend, wycheproof):
         wycheproof.testgroup["privateKeyPem"].encode(),
         password=None,
         backend=backend,
+        unsafe_skip_rsa_key_validation=True,
     )
     assert isinstance(key, rsa.RSAPrivateKey)
     digest = _DIGESTS[wycheproof.testgroup["sha"]]
@@ -193,6 +193,7 @@ def test_rsa_oaep_encryption(backend, wycheproof):
         wycheproof.testgroup["privateKeyPem"].encode("ascii"),
         password=None,
         backend=backend,
+        unsafe_skip_rsa_key_validation=True,
     )
     assert isinstance(key, rsa.RSAPrivateKey)
     digest = _DIGESTS[wycheproof.testgroup["sha"]]
@@ -228,6 +229,7 @@ def test_rsa_pkcs1_encryption(backend, wycheproof):
         wycheproof.testgroup["privateKeyPem"].encode("ascii"),
         password=None,
         backend=backend,
+        unsafe_skip_rsa_key_validation=True,
     )
     assert isinstance(key, rsa.RSAPrivateKey)
 
@@ -237,8 +239,18 @@ def test_rsa_pkcs1_encryption(backend, wycheproof):
         )
         assert pt == binascii.unhexlify(wycheproof.testcase["msg"])
     else:
-        with pytest.raises(ValueError):
-            key.decrypt(
-                binascii.unhexlify(wycheproof.testcase["ct"]),
-                padding.PKCS1v15(),
-            )
+        if backend._lib.Cryptography_HAS_IMPLICIT_RSA_REJECTION:
+            try:
+                assert key.decrypt(
+                    binascii.unhexlify(wycheproof.testcase["ct"]),
+                    padding.PKCS1v15(),
+                ) != binascii.unhexlify(wycheproof.testcase["ct"])
+            except ValueError:
+                # Some raise ValueError due to length mismatch.
+                pass
+        else:
+            with pytest.raises(ValueError):
+                key.decrypt(
+                    binascii.unhexlify(wycheproof.testcase["ct"]),
+                    padding.PKCS1v15(),
+                )

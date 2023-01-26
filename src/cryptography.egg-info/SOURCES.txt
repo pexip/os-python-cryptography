@@ -95,7 +95,6 @@ src/_cffi_src/openssl/bignum.py
 src/_cffi_src/openssl/bio.py
 src/_cffi_src/openssl/callbacks.py
 src/_cffi_src/openssl/cmac.py
-src/_cffi_src/openssl/conf.py
 src/_cffi_src/openssl/crypto.py
 src/_cffi_src/openssl/cryptography.py
 src/_cffi_src/openssl/dh.py
@@ -157,12 +156,12 @@ src/cryptography/hazmat/backends/openssl/rsa.py
 src/cryptography/hazmat/backends/openssl/utils.py
 src/cryptography/hazmat/backends/openssl/x25519.py
 src/cryptography/hazmat/backends/openssl/x448.py
-src/cryptography/hazmat/backends/openssl/x509.py
 src/cryptography/hazmat/bindings/__init__.py
 src/cryptography/hazmat/bindings/_openssl.pyi
 src/cryptography/hazmat/bindings/_rust/__init__.pyi
 src/cryptography/hazmat/bindings/_rust/asn1.pyi
 src/cryptography/hazmat/bindings/_rust/ocsp.pyi
+src/cryptography/hazmat/bindings/_rust/pkcs7.pyi
 src/cryptography/hazmat/bindings/_rust/x509.pyi
 src/cryptography/hazmat/bindings/openssl/__init__.py
 src/cryptography/hazmat/bindings/openssl/_conditional.py
@@ -224,6 +223,7 @@ src/rust/src/asn1.rs
 src/rust/src/intern.rs
 src/rust/src/lib.rs
 src/rust/src/oid.rs
+src/rust/src/pkcs7.rs
 src/rust/src/pool.rs
 src/rust/src/x509/certificate.rs
 src/rust/src/x509/common.rs

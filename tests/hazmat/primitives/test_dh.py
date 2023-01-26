@@ -13,9 +13,9 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import dh
 
-from .fixtures_dh import FFDH3072_P
 from ...doubles import DummyKeySerializationEncryption
 from ...utils import load_nist_vectors, load_vectors_from_file
+from .fixtures_dh import FFDH3072_P
 
 # RFC 3526
 P_1536 = int(
@@ -147,6 +147,10 @@ class TestDH:
     def test_unsupported_generator_generate_dh(self, backend):
         with pytest.raises(ValueError):
             dh.generate_parameters(7, 512, backend)
+
+    def test_large_key_generate_dh(self):
+        with pytest.raises(ValueError):
+            dh.generate_parameters(2, 1 << 30)
 
     @pytest.mark.skip_fips(reason="non-FIPS parameters")
     def test_dh_parameters_supported(self, backend):
