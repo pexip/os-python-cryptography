@@ -1,3 +1,45 @@
+--- a/src/rust/src/x509/certificate.rs
++++ b/src/rust/src/x509/certificate.rs
+@@ -26,7 +26,7 @@
+     #[explicit(0)]
+     #[default(0)]
+     version: u8,
+-    pub(crate) serial: asn1::BigInt<'a>,
++    pub(crate) serial: asn1::BigDodgyPaddedInt<'a>,
+     signature_alg: x509::AlgorithmIdentifier<'a>,
+ 
+     pub(crate) issuer: x509::Name<'a>,
+@@ -991,7 +991,7 @@
+             .getattr(crate::intern!(py, "_version"))?
+             .getattr(crate::intern!(py, "value"))?
+             .extract()?,
+-        serial: asn1::BigInt::new(py_uint_to_big_endian_bytes(py, py_serial)?).unwrap(),
++        serial: asn1::BigDodgyPaddedInt::new(py_uint_to_big_endian_bytes(py, py_serial)?).unwrap(),
+         signature_alg: sigalg.clone(),
+         issuer: x509::common::encode_name(py, py_issuer_name)?,
+         validity: Validity {
+--- a/src/rust/src/pkcs7.rs
++++ b/src/rust/src/pkcs7.rs
+@@ -245,7 +245,7 @@
+             version: 1,
+             issuer_and_serial_number: IssuerAndSerialNumber {
+                 issuer: cert.raw.borrow_value_public().tbs_cert.issuer.clone(),
+-                serial_number: cert.raw.borrow_value_public().tbs_cert.serial,
++                serial_number: asn1::BigInt::new(cert.raw.borrow_value_public().tbs_cert.serial.as_bytes()).unwrap(),
+             },
+             digest_algorithm: digest_alg,
+             authenticated_attributes: authenticated_attrs,
+--- a/src/rust/src/x509/ocsp.rs
++++ b/src/rust/src/x509/ocsp.rs
+@@ -67,7 +67,7 @@
+             },
+             issuer_name_hash,
+             issuer_key_hash,
+-            serial_number: cert.raw.borrow_value_public().tbs_cert.serial,
++            serial_number: asn1::BigInt::new(cert.raw.borrow_value_public().tbs_cert.serial.as_bytes()).unwrap(),
+         })
+     }
+ 
 --- a/tests/x509/test_x509.py
 +++ b/tests/x509/test_x509.py
 @@ -5801,3 +5801,81 @@

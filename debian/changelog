@@ -1,6 +1,7 @@
 python-cryptography (39.0.0-0pexip3) pexip; urgency=medium
 
   * Add test for OpenSSL 1.0's dodgy padded ints in serial numbers
+  * Cope with OpenSSL 1.0's dodgy padded ints in serial numbers
 
  -- Huw Jones <huw@pexip.com>  Wed, 12 Apr 2023 16:11:16 +0100
 
