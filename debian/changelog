@@ -1,3 +1,9 @@
+python-cryptography (39.0.0-0pexip4) pexip; urgency=medium
+
+  * Pull in fix for CVE-2023-23931
+
+ -- John-Mark Bell <jmb@pexip.com>  Mon, 25 Sep 2023 12:13:03 +0100
+
 python-cryptography (39.0.0-0pexip3) pexip; urgency=medium
 
   * Add test for OpenSSL 1.0's dodgy padded ints in serial numbers
