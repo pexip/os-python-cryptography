@@ -1,3 +1,9 @@
+python-cryptography (39.0.0-0pexip5) pexip-bookworm; urgency=medium
+
+  * Initial bookworm build
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Thu, 16 Nov 2023 10:22:46 +0000
+
 python-cryptography (39.0.0-0pexip4) pexip; urgency=medium
 
   * Pull in fix for CVE-2023-23931
