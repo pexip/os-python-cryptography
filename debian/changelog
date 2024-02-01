@@ -1,3 +1,9 @@
+python-cryptography (39.0.0-0+pexip24u7) pexip-bookworm; urgency=medium
+
+  * New versioning scheme
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Thu, 01 Feb 2024 16:21:11 +0000
+
 python-cryptography (39.0.0-0pexip6) pexip-bookworm; urgency=medium
 
   * Bookworm build for product distribution
