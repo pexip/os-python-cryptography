@@ -13,3 +13,4 @@ pexip-dodgy-int.patch
 CVE-2023-23931.patch
 
 upstream-0001-chrono-drop-clock.patch
+upstream-0002-upgrade-rust-asn1.patch
