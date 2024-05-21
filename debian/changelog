@@ -1,3 +1,10 @@
+python-cryptography (39.0.0-0+pexip24u8) pexip; urgency=medium
+
+  * Upgrade asn1 & drop chrono
+  * Upgrade pyo3
+
+ -- Huw Jones <huw@pexip.com>  Tue, 21 May 2024 17:43:05 +0100
+
 python-cryptography (39.0.0-0+pexip24u7) pexip-bookworm; urgency=medium
 
   * New versioning scheme

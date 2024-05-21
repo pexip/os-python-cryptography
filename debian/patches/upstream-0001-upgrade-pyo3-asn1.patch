@@ -1,0 +1,755 @@
+From 5a0ca4e25d177926a9ec94562a9e6a3d937f78aa Mon Sep 17 00:00:00 2001
+From: Alex Gaynor <alex.gaynor@gmail.com>
+Date: Sun, 2 Apr 2023 17:19:38 -0400
+Subject: [PATCH] Drop usage of clock feature of chrono (#8657)
+
+It adds a zillion dependencies, we can just let python get the current time
+
+From eeca346f23d2595864ec3cff86d562974cff480a Mon Sep 17 00:00:00 2001
+From: Paul Kehrer <paul.l.kehrer@gmail.com>
+Date: Tue, 4 Apr 2023 20:04:55 +0900
+Subject: [PATCH] upgrade rust-asn1, which removes chrono dep (#8664)
+
+* use new rust-asn1 non-chrono path
+
+* bump asn1
+
+* oh yeah, remove that
+
+From b1cfa3adef986ef3466b080263911e8d79ec6141 Mon Sep 17 00:00:00 2001
+From: Alex Gaynor <alex.gaynor@gmail.com>
+Date: Wed, 31 May 2023 16:27:10 -0400
+Subject: [PATCH] pyo3 0.19 (#8999)
+
+* Bump pyo3 from 0.18.3 to 0.19.0 in /src/rust
+
+diff --git a/src/rust/Cargo.lock b/src/rust/Cargo.lock
+index b884f1a8e..228d160be 100644
+--- a/src/rust/Cargo.lock
++++ b/src/rust/Cargo.lock
+@@ -14,28 +14,18 @@ version = "0.1.3"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "250f629c0161ad8107cf89319e990051fae62832fd343083bea452d93e2205fd"
+ 
+-[[package]]
+-name = "android_system_properties"
+-version = "0.1.5"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
+-dependencies = [
+- "libc",
+-]
+-
+ [[package]]
+ name = "asn1"
+-version = "0.13.0"
++version = "0.15.5"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "2affba5e62ee09eeba078f01a00c4aed45ac4287e091298eccbb0d4802efbdc5"
+ dependencies = [
+  "asn1_derive",
+- "chrono",
+ ]
+ 
+ [[package]]
+ name = "asn1_derive"
+-version = "0.13.0"
++version = "0.15.5"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "bfab79c195875e5aef2bd20b4c8ed8d43ef9610bcffefbbcf66f88f555cc78af"
+ dependencies = [
+@@ -62,12 +52,6 @@ version = "1.3.2"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
+ 
+-[[package]]
+-name = "bumpalo"
+-version = "3.10.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "37ccbd214614c6783386c1af30caf03192f17891059cecc394b4fb119e363de3"
+-
+ [[package]]
+ name = "cc"
+ version = "1.0.78"
+@@ -80,114 +64,17 @@ version = "1.0.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+ 
+-[[package]]
+-name = "chrono"
+-version = "0.4.23"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "16b0a3d9ed01224b22057780a37bb8c5dbfe1be8ba48678e7bf57ec4b385411f"
+-dependencies = [
+- "iana-time-zone",
+- "num-integer",
+- "num-traits",
+- "winapi",
+-]
+-
+-[[package]]
+-name = "codespan-reporting"
+-version = "0.11.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "3538270d33cc669650c4b093848450d380def10c331d38c768e34cac80576e6e"
+-dependencies = [
+- "termcolor",
+- "unicode-width",
+-]
+-
+-[[package]]
+-name = "core-foundation-sys"
+-version = "0.8.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
+-
+ [[package]]
+ name = "cryptography-rust"
+ version = "0.1.0"
+ dependencies = [
+  "asn1",
+- "chrono",
+  "once_cell",
+  "ouroboros",
+  "pem",
+  "pyo3",
+ ]
+ 
+-[[package]]
+-name = "cxx"
+-version = "1.0.85"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "5add3fc1717409d029b20c5b6903fc0c0b02fa6741d820054f4a2efa5e5816fd"
+-dependencies = [
+- "cc",
+- "cxxbridge-flags",
+- "cxxbridge-macro",
+- "link-cplusplus",
+-]
+-
+-[[package]]
+-name = "cxx-build"
+-version = "1.0.85"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "b4c87959ba14bc6fbc61df77c3fcfe180fc32b93538c4f1031dd802ccb5f2ff0"
+-dependencies = [
+- "cc",
+- "codespan-reporting",
+- "once_cell",
+- "proc-macro2",
+- "quote",
+- "scratch",
+- "syn",
+-]
+-
+-[[package]]
+-name = "cxxbridge-flags"
+-version = "1.0.85"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "69a3e162fde4e594ed2b07d0f83c6c67b745e7f28ce58c6df5e6b6bef99dfb59"
+-
+-[[package]]
+-name = "cxxbridge-macro"
+-version = "1.0.85"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "3e7e2adeb6a0d4a282e581096b06e1791532b7d576dcde5ccd9382acf55db8e6"
+-dependencies = [
+- "proc-macro2",
+- "quote",
+- "syn",
+-]
+-
+-[[package]]
+-name = "iana-time-zone"
+-version = "0.1.53"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "64c122667b287044802d6ce17ee2ddf13207ed924c712de9a66a5814d5b64765"
+-dependencies = [
+- "android_system_properties",
+- "core-foundation-sys",
+- "iana-time-zone-haiku",
+- "js-sys",
+- "wasm-bindgen",
+- "winapi",
+-]
+-
+-[[package]]
+-name = "iana-time-zone-haiku"
+-version = "0.1.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "0703ae284fc167426161c2e3f1da3ea71d94b21bedbcc9494e92b28e334e3dca"
+-dependencies = [
+- "cxx",
+- "cxx-build",
+-]
+-
+ [[package]]
+ name = "indoc"
+ version = "1.0.4"
+@@ -206,30 +93,12 @@ dependencies = [
+  "cfg-if",
+ ]
+ 
+-[[package]]
+-name = "js-sys"
+-version = "0.3.60"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "49409df3e3bf0856b916e2ceaca09ee28e6871cf7d9ce97a692cacfdb2a25a47"
+-dependencies = [
+- "wasm-bindgen",
+-]
+-
+ [[package]]
+ name = "libc"
+ version = "0.2.139"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
+ 
+-[[package]]
+-name = "link-cplusplus"
+-version = "1.0.8"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ecd207c9c713c34f95a097a5b029ac2ce6010530c7b49d7fea24d977dede04f5"
+-dependencies = [
+- "cc",
+-]
+-
+ [[package]]
+ name = "lock_api"
+ version = "0.4.9"
+@@ -240,15 +109,6 @@ dependencies = [
+  "scopeguard",
+ ]
+ 
+-[[package]]
+-name = "log"
+-version = "0.4.17"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
+-dependencies = [
+- "cfg-if",
+-]
+-
+ [[package]]
+ name = "memoffset"
+ version = "0.6.5"
+@@ -258,25 +118,6 @@ dependencies = [
+  "autocfg",
+ ]
+ 
+-[[package]]
+-name = "num-integer"
+-version = "0.1.45"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "225d3389fb3509a24c93f5c29eb6bde2586b98d9f016636dff58d7c6f7569cd9"
+-dependencies = [
+- "autocfg",
+- "num-traits",
+-]
+-
+-[[package]]
+-name = "num-traits"
+-version = "0.2.15"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
+-dependencies = [
+- "autocfg",
+-]
+-
+ [[package]]
+ name = "once_cell"
+ version = "1.14.0"
+@@ -457,12 +298,6 @@ version = "1.1.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+ 
+-[[package]]
+-name = "scratch"
+-version = "1.0.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ddccb15bcce173023b3fedd9436f882a0739b8dfb45e4f6b6002bee5929f61b2"
+-
+ [[package]]
+ name = "smallvec"
+ version = "1.10.0"
+@@ -480,15 +315,6 @@ dependencies = [
+  "unicode-ident",
+ ]
+ 
+-[[package]]
+-name = "termcolor"
+-version = "1.1.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "bab24d30b911b2376f3a13cc2cd443142f0c81dda04c118693e35b3835757755"
+-dependencies = [
+- "winapi-util",
+-]
+-
+ [[package]]
+ name = "target-lexicon"
+ version = "0.12.4"
+@@ -501,12 +327,6 @@ version = "1.0.6"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
+ 
+-[[package]]
+-name = "unicode-width"
+-version = "0.1.10"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
+-
+ [[package]]
+ name = "unindent"
+ version = "0.1.11"
+@@ -518,88 +338,3 @@ name = "version_check"
+ version = "0.9.4"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+-
+-[[package]]
+-name = "wasm-bindgen"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "eaf9f5aceeec8be17c128b2e93e031fb8a4d469bb9c4ae2d7dc1888b26887268"
+-dependencies = [
+- "cfg-if",
+- "wasm-bindgen-macro",
+-]
+-
+-[[package]]
+-name = "wasm-bindgen-backend"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "4c8ffb332579b0557b52d268b91feab8df3615f265d5270fec2a8c95b17c1142"
+-dependencies = [
+- "bumpalo",
+- "log",
+- "once_cell",
+- "proc-macro2",
+- "quote",
+- "syn",
+- "wasm-bindgen-shared",
+-]
+-
+-[[package]]
+-name = "wasm-bindgen-macro"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "052be0f94026e6cbc75cdefc9bae13fd6052cdcaf532fa6c45e7ae33a1e6c810"
+-dependencies = [
+- "quote",
+- "wasm-bindgen-macro-support",
+-]
+-
+-[[package]]
+-name = "wasm-bindgen-macro-support"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "07bc0c051dc5f23e307b13285f9d75df86bfdf816c5721e573dec1f9b8aa193c"
+-dependencies = [
+- "proc-macro2",
+- "quote",
+- "syn",
+- "wasm-bindgen-backend",
+- "wasm-bindgen-shared",
+-]
+-
+-[[package]]
+-name = "wasm-bindgen-shared"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "1c38c045535d93ec4f0b4defec448e4291638ee608530863b1e2ba115d4fff7f"
+-
+-[[package]]
+-name = "winapi"
+-version = "0.3.9"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "5c839a674fcd7a98952e593242ea400abe93992746761e38641405d28b00f419"
+-dependencies = [
+- "winapi-i686-pc-windows-gnu",
+- "winapi-x86_64-pc-windows-gnu",
+-]
+-
+-[[package]]
+-name = "winapi-i686-pc-windows-gnu"
+-version = "0.4.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+-
+-[[package]]
+-name = "winapi-util"
+-version = "0.1.5"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "70ec6ce85bb158151cae5e5c87f95a8e97d2c0c4b001223f33a334e3ce5de178"
+-dependencies = [
+- "winapi",
+-]
+-
+-[[package]]
+-name = "winapi-x86_64-pc-windows-gnu"
+-version = "0.4.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+diff --git a/src/rust/Cargo.toml b/src/rust/Cargo.toml
+index b857ee268..98ed2f8c5 100644
+--- a/src/rust/Cargo.toml
++++ b/src/rust/Cargo.toml
+@@ -7,10 +7,9 @@ publish = false
+ 
+ [dependencies]
+ once_cell = "1"
+-pyo3 = { version = "0.17" }
+-asn1 = { version = "0.13.0", default-features = false }
++pyo3 = { version = "0.20" }
++asn1 = { version = "0.15.5", default-features = false }
+ pem = ">= 1.0, < 1.2"
+-chrono = { version = "0.4", default-features = false, features = ["alloc", "clock"] }
+ ouroboros = "0.15"
+ 
+ [features]
+diff --git a/src/rust/src/pkcs7.rs b/src/rust/src/pkcs7.rs
+index 6b2236405..d4bfb2040 100644
+--- a/src/rust/src/pkcs7.rs
++++ b/src/rust/src/pkcs7.rs
+@@ -5,7 +5,6 @@
+ use crate::asn1::{encode_der_data, PyAsn1Result};
+ use crate::x509;
+ 
+-use chrono::Timelike;
+ use once_cell::sync::Lazy;
+ use std::borrow::Cow;
+ use std::collections::HashMap;
+@@ -146,9 +145,8 @@ fn sign_and_serialize<'p>(
+     };
+ 
+     let content_type_bytes = asn1::write_single(&PKCS7_DATA_OID)?;
+-    let signing_time_bytes = asn1::write_single(&x509::certificate::time_from_chrono(
+-        chrono::Utc::now().with_nanosecond(0).unwrap(),
+-    )?)?;
++    let now = x509::common::datetime_now(py)?;
++    let signing_time_bytes = asn1::write_single(&x509::certificate::time_from_datetime(now)?)?;
+     let smime_cap_bytes = asn1::write_single(&asn1::SequenceOfWriter::new([
+         // Subset of values OpenSSL provides:
+         // https://github.com/openssl/openssl/blob/667a8501f0b6e5705fd611d5bb3ca24848b07154/crypto/pkcs7/pk7_smime.c#L150
+diff --git a/src/rust/src/x509/certificate.rs b/src/rust/src/x509/certificate.rs
+index 15beddee5..4ba5c70d6 100644
+--- a/src/rust/src/x509/certificate.rs
++++ b/src/rust/src/x509/certificate.rs
+@@ -8,7 +8,6 @@ use crate::asn1::{
+ };
+ use crate::x509;
+ use crate::x509::{crl, extensions, oid, sct, Asn1ReadableOrWritable};
+-use chrono::Datelike;
+ use pyo3::ToPyObject;
+ use std::collections::hash_map::DefaultHasher;
+ use std::hash::{Hash, Hasher};
+@@ -231,26 +230,26 @@ impl Certificate {
+ 
+     #[getter]
+     fn not_valid_before<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+-        let chrono = &self
++        let dt = &self
+             .raw
+             .borrow_value()
+             .tbs_cert
+             .validity
+             .not_before
+-            .as_chrono();
+-        x509::chrono_to_py(py, chrono)
++            .as_datetime();
++        x509::datetime_to_py(py, dt)
+     }
+ 
+     #[getter]
+     fn not_valid_after<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+-        let chrono = &self
++        let dt = &self
+             .raw
+             .borrow_value()
+             .tbs_cert
+             .validity
+             .not_after
+-            .as_chrono();
+-        x509::chrono_to_py(py, chrono)
++            .as_datetime();
++        x509::datetime_to_py(py, dt)
+     }
+ 
+     #[getter]
+@@ -944,11 +943,11 @@ pub fn parse_cert_ext<'p>(
+ }
+ 
+ pub(crate) fn time_from_py(py: pyo3::Python<'_>, val: &pyo3::PyAny) -> PyAsn1Result<x509::Time> {
+-    let dt = x509::py_to_chrono(py, val)?;
+-    time_from_chrono(dt)
++    let dt = x509::py_to_datetime(py, val)?;
++    time_from_datetime(dt)
+ }
+ 
+-pub(crate) fn time_from_chrono(dt: chrono::DateTime<chrono::Utc>) -> PyAsn1Result<x509::Time> {
++pub(crate) fn time_from_datetime(dt: asn1::DateTime) -> PyAsn1Result<x509::Time> {
+     if dt.year() >= 2050 {
+         Ok(x509::Time::GeneralizedTime(asn1::GeneralizedTime::new(dt)?))
+     } else {
+diff --git a/src/rust/src/x509/common.rs b/src/rust/src/x509/common.rs
+index 114ecf7fa..e8e380bf4 100644
+--- a/src/rust/src/x509/common.rs
++++ b/src/rust/src/x509/common.rs
+@@ -4,7 +4,6 @@
+ 
+ use crate::asn1::{oid_to_py_oid, py_oid_to_oid, PyAsn1Error, PyAsn1Result};
+ use crate::x509;
+-use chrono::{Datelike, TimeZone, Timelike};
+ use pyo3::types::IntoPyDict;
+ use pyo3::ToPyObject;
+ use std::collections::HashSet;
+@@ -311,10 +310,10 @@ pub(crate) enum Time {
+ }
+ 
+ impl Time {
+-    pub(crate) fn as_chrono(&self) -> &chrono::DateTime<chrono::Utc> {
++    pub(crate) fn as_datetime(&self) -> &asn1::DateTime {
+         match self {
+-            Time::UtcTime(data) => data.as_chrono(),
+-            Time::GeneralizedTime(data) => data.as_chrono(),
++            Time::UtcTime(data) => data.as_datetime(),
++            Time::GeneralizedTime(data) => data.as_datetime(),
+         }
+     }
+ }
+@@ -661,9 +660,9 @@ fn encode_extension_value<'p>(
+     )))
+ }
+ 
+-pub(crate) fn chrono_to_py<'p>(
++pub(crate) fn datetime_to_py<'p>(
+     py: pyo3::Python<'p>,
+-    dt: &chrono::DateTime<chrono::Utc>,
++    dt: &asn1::DateTime,
+ ) -> pyo3::PyResult<&'p pyo3::PyAny> {
+     let datetime_module = py.import("datetime")?;
+     datetime_module
+@@ -678,21 +677,28 @@ pub(crate) fn chrono_to_py<'p>(
+         ))
+ }
+ 
+-pub(crate) fn py_to_chrono(
++pub(crate) fn py_to_datetime(
+     py: pyo3::Python<'_>,
+     val: &pyo3::PyAny,
+-) -> pyo3::PyResult<chrono::DateTime<chrono::Utc>> {
+-    Ok(chrono::Utc
+-        .ymd(
+-            val.getattr(crate::intern!(py, "year"))?.extract()?,
+-            val.getattr(crate::intern!(py, "month"))?.extract()?,
+-            val.getattr(crate::intern!(py, "day"))?.extract()?,
+-        )
+-        .and_hms(
+-            val.getattr(crate::intern!(py, "hour"))?.extract()?,
+-            val.getattr(crate::intern!(py, "minute"))?.extract()?,
+-            val.getattr(crate::intern!(py, "second"))?.extract()?,
+-        ))
++) -> pyo3::PyResult<asn1::DateTime> {
++    Ok(asn1::DateTime::new(
++        val.getattr(pyo3::intern!(py, "year"))?.extract()?,
++        val.getattr(pyo3::intern!(py, "month"))?.extract()?,
++        val.getattr(pyo3::intern!(py, "day"))?.extract()?,
++        val.getattr(pyo3::intern!(py, "hour"))?.extract()?,
++        val.getattr(pyo3::intern!(py, "minute"))?.extract()?,
++        val.getattr(pyo3::intern!(py, "second"))?.extract()?,
++    )
++    .unwrap())
++}
++
++pub(crate) fn datetime_now(py: pyo3::Python<'_>) -> pyo3::PyResult<asn1::DateTime> {
++    py_to_datetime(
++        py,
++        py.import(pyo3::intern!(py, "datetime"))?
++            .getattr(pyo3::intern!(py, "datetime"))?
++            .call_method0(pyo3::intern!(py, "utcnow"))?,
++    )
+ }
+ 
+ #[derive(Hash, PartialEq, Clone)]
+diff --git a/src/rust/src/x509/crl.rs b/src/rust/src/x509/crl.rs
+index 80b7a02a2..0ee7fbcbc 100644
+--- a/src/rust/src/x509/crl.rs
++++ b/src/rust/src/x509/crl.rs
+@@ -146,7 +146,7 @@ impl CertificateRevocationList {
+             });
+         });
+ 
+-        if idx.is_instance_of::<pyo3::types::PySlice>()? {
++        if idx.is_instance_of::<pyo3::types::PySlice>() {
+             let indices = idx
+                 .downcast::<pyo3::types::PySlice>()?
+                 .indices(self.len().try_into().unwrap())?;
+@@ -244,20 +244,20 @@ impl CertificateRevocationList {
+     #[getter]
+     fn next_update<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+         match &self.raw.borrow_value().tbs_cert_list.next_update {
+-            Some(t) => x509::chrono_to_py(py, t.as_chrono()),
++            Some(t) => x509::datetime_to_py(py, t.as_datetime()),
+             None => Ok(py.None().into_ref(py)),
+         }
+     }
+ 
+     #[getter]
+     fn last_update<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+-        x509::chrono_to_py(
++        x509::datetime_to_py(
+             py,
+             self.raw
+                 .borrow_value()
+                 .tbs_cert_list
+                 .this_update
+-                .as_chrono(),
++                .as_datetime(),
+         )
+     }
+ 
+@@ -516,7 +516,7 @@ impl RevokedCertificate {
+ 
+     #[getter]
+     fn revocation_date<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+-        x509::chrono_to_py(py, self.raw.borrow_value().revocation_date.as_chrono())
++        x509::datetime_to_py(py, self.raw.borrow_value().revocation_date.as_datetime())
+     }
+ 
+     #[getter]
+@@ -613,7 +613,7 @@ pub fn parse_crl_entry_ext<'p>(
+         }
+         oid::INVALIDITY_DATE_OID => {
+             let time = asn1::parse_single::<asn1::GeneralizedTime>(data)?;
+-            let py_dt = x509::chrono_to_py(py, time.as_chrono())?;
++            let py_dt = x509::datetime_to_py(py, time.as_datetime())?;
+             Ok(Some(
+                 x509_module
+                     .getattr(crate::intern!(py, "InvalidityDate"))?
+diff --git a/src/rust/src/x509/extensions.rs b/src/rust/src/x509/extensions.rs
+index e5db68aae..eb6cfb252 100644
+--- a/src/rust/src/x509/extensions.rs
++++ b/src/rust/src/x509/extensions.rs
+@@ -228,7 +228,7 @@ pub(crate) fn encode_extension(
+                     let mut qualifiers = vec![];
+                     for py_qualifier in py_policy_qualifiers.iter()? {
+                         let py_qualifier = py_qualifier?;
+-                        let qualifier = if py_qualifier.is_instance_of::<pyo3::types::PyString>()? {
++                        let qualifier = if py_qualifier.is_instance_of::<pyo3::types::PyString>() {
+                             let cps_uri = match asn1::IA5String::new(py_qualifier.extract()?) {
+                                 Some(s) => s,
+                                 None => {
+@@ -396,11 +396,8 @@ pub(crate) fn encode_extension(
+             Ok(Some(asn1::write_single(&asn1::SequenceOfWriter::new(gns))?))
+         }
+         &oid::INVALIDITY_DATE_OID => {
+-            let chrono_dt =
+-                x509::py_to_chrono(py, ext.getattr(crate::intern!(py, "invalidity_date"))?)?;
+-            Ok(Some(asn1::write_single(&asn1::GeneralizedTime::new(
+-                chrono_dt,
+-            )?)?))
++            let dt = x509::py_to_datetime(py, ext.getattr(pyo3::intern!(py, "invalidity_date"))?)?;
++            Ok(Some(asn1::write_single(&asn1::GeneralizedTime::new(dt)?)?))
+         }
+         &oid::CRL_NUMBER_OID | &oid::DELTA_CRL_INDICATOR_OID => {
+             let intval = ext
+diff --git a/src/rust/src/x509/mod.rs b/src/rust/src/x509/mod.rs
+index 8c7b39f4b..2ad15c6e6 100644
+--- a/src/rust/src/x509/mod.rs
++++ b/src/rust/src/x509/mod.rs
+@@ -16,7 +16,7 @@ pub(crate) mod sign;
+ 
+ pub(crate) use certificate::Certificate;
+ pub(crate) use common::{
+-    chrono_to_py, find_in_pem, parse_and_cache_extensions, parse_general_name, parse_general_names,
+-    parse_name, parse_rdn, py_to_chrono, AlgorithmIdentifier, Asn1ReadableOrWritable,
+-    AttributeTypeValue, Extensions, GeneralName, Name, Time,
++    datetime_to_py, find_in_pem, parse_and_cache_extensions, parse_general_name,
++    parse_general_names, parse_name, parse_rdn, py_to_datetime, AlgorithmIdentifier,
++    Asn1ReadableOrWritable, AttributeTypeValue, Extensions, GeneralName, Name, Time,
+ };
+diff --git a/src/rust/src/x509/ocsp_resp.rs b/src/rust/src/x509/ocsp_resp.rs
+index be106596c..aee593ff7 100644
+--- a/src/rust/src/x509/ocsp_resp.rs
++++ b/src/rust/src/x509/ocsp_resp.rs
+@@ -4,8 +4,7 @@
+ 
+ use crate::asn1::{big_byte_slice_to_py_int, oid_to_py_oid, PyAsn1Error, PyAsn1Result};
+ use crate::x509;
+-use crate::x509::{certificate, crl, extensions, ocsp, oid, py_to_chrono, sct};
+-use chrono::Timelike;
++use crate::x509::{certificate, crl, extensions, ocsp, oid, py_to_datetime, sct};
+ use std::sync::Arc;
+ 
+ const BASIC_RESPONSE_OID: asn1::ObjectIdentifier = asn1::oid!(1, 3, 6, 1, 5, 5, 7, 48, 1, 1);
+@@ -150,7 +149,7 @@ impl OCSPResponse {
+     #[getter]
+     fn produced_at<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+         let resp = self.requires_successful_response()?;
+-        x509::chrono_to_py(py, resp.tbs_response_data.produced_at.as_chrono())
++        x509::datetime_to_py(py, resp.tbs_response_data.produced_at.as_datetime())
+     }
+ 
+     #[getter]
+@@ -530,12 +529,12 @@ impl SingleResponse<'_> {
+     }
+ 
+     fn py_this_update<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+-        x509::chrono_to_py(py, self.this_update.as_chrono())
++        x509::datetime_to_py(py, self.this_update.as_datetime())
+     }
+ 
+     fn py_next_update<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+         match &self.next_update {
+-            Some(v) => x509::chrono_to_py(py, v.as_chrono()),
++            Some(v) => x509::datetime_to_py(py, v.as_datetime()),
+             None => Ok(py.None().into_ref(py)),
+         }
+     }
+@@ -553,7 +552,7 @@ impl SingleResponse<'_> {
+     fn py_revocation_time<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
+         match &self.cert_status {
+             CertStatus::Revoked(revoked_info) => {
+-                x509::chrono_to_py(py, revoked_info.revocation_time.as_chrono())
++                x509::datetime_to_py(py, revoked_info.revocation_time.as_datetime())
+             }
+             CertStatus::Good(_) | CertStatus::Unknown(_) => Ok(py.None().into_ref(py)),
+         }
+@@ -638,7 +637,7 @@ fn create_ocsp_response(
+             let py_revocation_time =
+                 py_single_resp.getattr(crate::intern!(py, "_revocation_time"))?;
+             let revocation_time =
+-                asn1::GeneralizedTime::new(py_to_chrono(py, py_revocation_time)?)?;
++                asn1::GeneralizedTime::new(py_to_datetime(py, py_revocation_time)?)?;
+             CertStatus::Revoked(RevokedInfo {
+                 revocation_time,
+                 revocation_reason,
+@@ -649,7 +648,7 @@ fn create_ocsp_response(
+             .is_none()
+         {
+             let py_next_update = py_single_resp.getattr(crate::intern!(py, "_next_update"))?;
+-            Some(asn1::GeneralizedTime::new(py_to_chrono(
++            Some(asn1::GeneralizedTime::new(py_to_datetime(
+                 py,
+                 py_next_update,
+             )?)?)
+@@ -657,7 +656,7 @@ fn create_ocsp_response(
+             None
+         };
+         let py_this_update = py_single_resp.getattr(crate::intern!(py, "_this_update"))?;
+-        let this_update = asn1::GeneralizedTime::new(py_to_chrono(py, py_this_update)?)?;
++        let this_update = asn1::GeneralizedTime::new(py_to_datetime(py, py_this_update)?)?;
+ 
+         let responses = vec![SingleResponse {
+             cert_id: ocsp::CertID::new(py, &py_cert, &py_issuer, py_cert_hash_algorithm)?,
+@@ -700,9 +699,7 @@ fn create_ocsp_response(
+ 
+         let tbs_response_data = ResponseData {
+             version: 0,
+-            produced_at: asn1::GeneralizedTime::new(
+-                chrono::Utc::now().with_nanosecond(0).unwrap(),
+-            )?,
++            produced_at: asn1::GeneralizedTime::new(x509::common::datetime_now(py)?)?,
+             responder_id,
+             responses: x509::Asn1ReadableOrWritable::new_write(asn1::SequenceOfWriter::new(
+                 responses,
