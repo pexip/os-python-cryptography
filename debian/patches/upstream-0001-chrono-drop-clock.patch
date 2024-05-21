@@ -1,0 +1,407 @@
+From 5a0ca4e25d177926a9ec94562a9e6a3d937f78aa Mon Sep 17 00:00:00 2001
+From: Alex Gaynor <alex.gaynor@gmail.com>
+Date: Sun, 2 Apr 2023 17:19:38 -0400
+Subject: [PATCH] Drop usage of clock feature of chrono (#8657)
+
+It adds a zillion dependencies, we can just let python get the current time
+---
+ src/rust/Cargo.lock            | 243 ---------------------------------
+ src/rust/Cargo.toml            |   2 +-
+ src/rust/src/pkcs7.rs          |   6 +-
+ src/rust/src/x509/common.rs    |   9 ++
+ src/rust/src/x509/ocsp_resp.rs |   5 +-
+ 6 files changed, 13 insertions(+), 253 deletions(-)
+
+--- a/src/rust/Cargo.lock
++++ b/src/rust/Cargo.lock
+@@ -14,15 +14,6 @@ version = "0.1.3"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "250f629c0161ad8107cf89319e990051fae62832fd343083bea452d93e2205fd"
+ 
+-[[package]]
+-name = "android_system_properties"
+-version = "0.1.5"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
+-dependencies = [
+- "libc",
+-]
+-
+ [[package]]
+ name = "asn1"
+ version = "0.13.0"
+@@ -62,12 +53,6 @@ version = "1.3.2"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
+ 
+-[[package]]
+-name = "bumpalo"
+-version = "3.10.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "37ccbd214614c6783386c1af30caf03192f17891059cecc394b4fb119e363de3"
+-
+ [[package]]
+ name = "cc"
+ version = "1.0.78"
+@@ -86,28 +71,10 @@ version = "0.4.23"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "16b0a3d9ed01224b22057780a37bb8c5dbfe1be8ba48678e7bf57ec4b385411f"
+ dependencies = [
+- "iana-time-zone",
+  "num-integer",
+  "num-traits",
+- "winapi",
+ ]
+ 
+-[[package]]
+-name = "codespan-reporting"
+-version = "0.11.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "3538270d33cc669650c4b093848450d380def10c331d38c768e34cac80576e6e"
+-dependencies = [
+- "termcolor",
+- "unicode-width",
+-]
+-
+-[[package]]
+-name = "core-foundation-sys"
+-version = "0.8.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
+-
+ [[package]]
+ name = "cryptography-rust"
+ version = "0.1.0"
+@@ -120,74 +87,6 @@ dependencies = [
+  "pyo3",
+ ]
+ 
+-[[package]]
+-name = "cxx"
+-version = "1.0.85"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "5add3fc1717409d029b20c5b6903fc0c0b02fa6741d820054f4a2efa5e5816fd"
+-dependencies = [
+- "cc",
+- "cxxbridge-flags",
+- "cxxbridge-macro",
+- "link-cplusplus",
+-]
+-
+-[[package]]
+-name = "cxx-build"
+-version = "1.0.85"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "b4c87959ba14bc6fbc61df77c3fcfe180fc32b93538c4f1031dd802ccb5f2ff0"
+-dependencies = [
+- "cc",
+- "codespan-reporting",
+- "once_cell",
+- "proc-macro2",
+- "quote",
+- "scratch",
+- "syn",
+-]
+-
+-[[package]]
+-name = "cxxbridge-flags"
+-version = "1.0.85"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "69a3e162fde4e594ed2b07d0f83c6c67b745e7f28ce58c6df5e6b6bef99dfb59"
+-
+-[[package]]
+-name = "cxxbridge-macro"
+-version = "1.0.85"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "3e7e2adeb6a0d4a282e581096b06e1791532b7d576dcde5ccd9382acf55db8e6"
+-dependencies = [
+- "proc-macro2",
+- "quote",
+- "syn",
+-]
+-
+-[[package]]
+-name = "iana-time-zone"
+-version = "0.1.53"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "64c122667b287044802d6ce17ee2ddf13207ed924c712de9a66a5814d5b64765"
+-dependencies = [
+- "android_system_properties",
+- "core-foundation-sys",
+- "iana-time-zone-haiku",
+- "js-sys",
+- "wasm-bindgen",
+- "winapi",
+-]
+-
+-[[package]]
+-name = "iana-time-zone-haiku"
+-version = "0.1.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "0703ae284fc167426161c2e3f1da3ea71d94b21bedbcc9494e92b28e334e3dca"
+-dependencies = [
+- "cxx",
+- "cxx-build",
+-]
+-
+ [[package]]
+ name = "indoc"
+ version = "1.0.4"
+@@ -206,30 +105,12 @@ dependencies = [
+  "cfg-if",
+ ]
+ 
+-[[package]]
+-name = "js-sys"
+-version = "0.3.60"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "49409df3e3bf0856b916e2ceaca09ee28e6871cf7d9ce97a692cacfdb2a25a47"
+-dependencies = [
+- "wasm-bindgen",
+-]
+-
+ [[package]]
+ name = "libc"
+ version = "0.2.139"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
+ 
+-[[package]]
+-name = "link-cplusplus"
+-version = "1.0.8"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ecd207c9c713c34f95a097a5b029ac2ce6010530c7b49d7fea24d977dede04f5"
+-dependencies = [
+- "cc",
+-]
+-
+ [[package]]
+ name = "lock_api"
+ version = "0.4.9"
+@@ -240,15 +121,6 @@ dependencies = [
+  "scopeguard",
+ ]
+ 
+-[[package]]
+-name = "log"
+-version = "0.4.17"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
+-dependencies = [
+- "cfg-if",
+-]
+-
+ [[package]]
+ name = "memoffset"
+ version = "0.6.5"
+@@ -457,12 +329,6 @@ version = "1.1.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+ 
+-[[package]]
+-name = "scratch"
+-version = "1.0.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ddccb15bcce173023b3fedd9436f882a0739b8dfb45e4f6b6002bee5929f61b2"
+-
+ [[package]]
+ name = "smallvec"
+ version = "1.10.0"
+@@ -480,15 +346,6 @@ dependencies = [
+  "unicode-ident",
+ ]
+ 
+-[[package]]
+-name = "termcolor"
+-version = "1.1.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "bab24d30b911b2376f3a13cc2cd443142f0c81dda04c118693e35b3835757755"
+-dependencies = [
+- "winapi-util",
+-]
+-
+ [[package]]
+ name = "target-lexicon"
+ version = "0.12.4"
+@@ -501,12 +358,6 @@ version = "1.0.6"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
+ 
+-[[package]]
+-name = "unicode-width"
+-version = "0.1.10"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
+-
+ [[package]]
+ name = "unindent"
+ version = "0.1.11"
+@@ -518,88 +369,3 @@ name = "version_check"
+ version = "0.9.4"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+-
+-[[package]]
+-name = "wasm-bindgen"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "eaf9f5aceeec8be17c128b2e93e031fb8a4d469bb9c4ae2d7dc1888b26887268"
+-dependencies = [
+- "cfg-if",
+- "wasm-bindgen-macro",
+-]
+-
+-[[package]]
+-name = "wasm-bindgen-backend"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "4c8ffb332579b0557b52d268b91feab8df3615f265d5270fec2a8c95b17c1142"
+-dependencies = [
+- "bumpalo",
+- "log",
+- "once_cell",
+- "proc-macro2",
+- "quote",
+- "syn",
+- "wasm-bindgen-shared",
+-]
+-
+-[[package]]
+-name = "wasm-bindgen-macro"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "052be0f94026e6cbc75cdefc9bae13fd6052cdcaf532fa6c45e7ae33a1e6c810"
+-dependencies = [
+- "quote",
+- "wasm-bindgen-macro-support",
+-]
+-
+-[[package]]
+-name = "wasm-bindgen-macro-support"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "07bc0c051dc5f23e307b13285f9d75df86bfdf816c5721e573dec1f9b8aa193c"
+-dependencies = [
+- "proc-macro2",
+- "quote",
+- "syn",
+- "wasm-bindgen-backend",
+- "wasm-bindgen-shared",
+-]
+-
+-[[package]]
+-name = "wasm-bindgen-shared"
+-version = "0.2.83"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "1c38c045535d93ec4f0b4defec448e4291638ee608530863b1e2ba115d4fff7f"
+-
+-[[package]]
+-name = "winapi"
+-version = "0.3.9"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "5c839a674fcd7a98952e593242ea400abe93992746761e38641405d28b00f419"
+-dependencies = [
+- "winapi-i686-pc-windows-gnu",
+- "winapi-x86_64-pc-windows-gnu",
+-]
+-
+-[[package]]
+-name = "winapi-i686-pc-windows-gnu"
+-version = "0.4.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+-
+-[[package]]
+-name = "winapi-util"
+-version = "0.1.5"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "70ec6ce85bb158151cae5e5c87f95a8e97d2c0c4b001223f33a334e3ce5de178"
+-dependencies = [
+- "winapi",
+-]
+-
+-[[package]]
+-name = "winapi-x86_64-pc-windows-gnu"
+-version = "0.4.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+diff --git a/src/rust/Cargo.toml b/src/rust/Cargo.toml
+index 5b5a671d497b..e7f0e1baddd6 100644
+--- a/src/rust/Cargo.toml
++++ b/src/rust/Cargo.toml
+@@ -10,7 +10,7 @@ once_cell = "1"
+ pyo3 = { version = "0.17" }
+ asn1 = { version = "0.13.0", default-features = false }
+ pem = ">= 1.0, < 1.2"
+-chrono = { version = "0.4", default-features = false, features = ["alloc", "clock"] }
++chrono = { version = "0.4", default-features = false }
+ ouroboros = "0.15"
+ 
+ [features]
+diff --git a/src/rust/src/pkcs7.rs b/src/rust/src/pkcs7.rs
+index 4904dd8cc250..9b1920f1d2ed 100644
+--- a/src/rust/src/pkcs7.rs
++++ b/src/rust/src/pkcs7.rs
+@@ -5,7 +5,6 @@
+ use crate::asn1::{encode_der_data, PyAsn1Result};
+ use crate::x509;
+ 
+-use chrono::Timelike;
+ use once_cell::sync::Lazy;
+ use std::borrow::Cow;
+ use std::collections::HashMap;
+@@ -146,9 +145,8 @@ fn sign_and_serialize<'p>(
+     };
+ 
+     let content_type_bytes = asn1::write_single(&PKCS7_DATA_OID)?;
+-    let signing_time_bytes = asn1::write_single(&x509::certificate::time_from_chrono(
+-        chrono::Utc::now().with_nanosecond(0).unwrap(),
+-    )?)?;
++    let now = x509::common::chrono_now(py)?;
++    let signing_time_bytes = asn1::write_single(&x509::certificate::time_from_chrono(now)?)?;
+     let smime_cap_bytes = asn1::write_single(&asn1::SequenceOfWriter::new([
+         // Subset of values OpenSSL provides:
+         // https://github.com/openssl/openssl/blob/667a8501f0b6e5705fd611d5bb3ca24848b07154/crypto/pkcs7/pk7_smime.c#L150
+diff --git a/src/rust/src/x509/common.rs b/src/rust/src/x509/common.rs
+index a5f642e0d1ef..9bed702d7991 100644
+--- a/src/rust/src/x509/common.rs
++++ b/src/rust/src/x509/common.rs
+@@ -695,6 +695,15 @@ pub(crate) fn py_to_chrono(
+         ))
+ }
+ 
++pub(crate) fn chrono_now(py: pyo3::Python<'_>) -> pyo3::PyResult<chrono::DateTime<chrono::Utc>> {
++    py_to_chrono(
++        py,
++        py.import(pyo3::intern!(py, "datetime"))?
++            .getattr(pyo3::intern!(py, "datetime"))?
++            .call_method0(pyo3::intern!(py, "utcnow"))?,
++    )
++}
++
+ #[derive(Hash, PartialEq, Clone)]
+ pub(crate) enum Asn1ReadableOrWritable<'a, T, U> {
+     Read(T, PhantomData<&'a ()>),
+diff --git a/src/rust/src/x509/ocsp_resp.rs b/src/rust/src/x509/ocsp_resp.rs
+index e8f864c42f1e..1679503b6b2a 100644
+--- a/src/rust/src/x509/ocsp_resp.rs
++++ b/src/rust/src/x509/ocsp_resp.rs
+@@ -5,7 +5,6 @@
+ use crate::asn1::{big_byte_slice_to_py_int, oid_to_py_oid, PyAsn1Error, PyAsn1Result};
+ use crate::x509;
+ use crate::x509::{certificate, crl, extensions, ocsp, oid, py_to_chrono, sct};
+-use chrono::Timelike;
+ use std::sync::Arc;
+ 
+ const BASIC_RESPONSE_OID: asn1::ObjectIdentifier = asn1::oid!(1, 3, 6, 1, 5, 5, 7, 48, 1, 1);
+@@ -700,9 +699,7 @@ fn create_ocsp_response(
+ 
+         let tbs_response_data = ResponseData {
+             version: 0,
+-            produced_at: asn1::GeneralizedTime::new(
+-                chrono::Utc::now().with_nanosecond(0).unwrap(),
+-            )?,
++            produced_at: asn1::GeneralizedTime::new(x509::common::chrono_now(py)?)?,
+             responder_id,
+             responses: x509::Asn1ReadableOrWritable::new_write(asn1::SequenceOfWriter::new(
+                 responses,

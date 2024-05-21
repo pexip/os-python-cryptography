@@ -11,3 +11,5 @@ getrandom-tolerance.patch
 api_compat_300.patch
 pexip-dodgy-int.patch
 CVE-2023-23931.patch
+
+upstream-0001-chrono-drop-clock.patch
