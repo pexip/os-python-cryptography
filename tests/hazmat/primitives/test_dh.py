@@ -4,18 +4,20 @@
 
 
 import binascii
+import copy
 import itertools
 import os
 import typing
 
 import pytest
 
+from cryptography.hazmat.bindings._rust import openssl as rust_openssl
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import dh
 
-from .fixtures_dh import FFDH3072_P
 from ...doubles import DummyKeySerializationEncryption
 from ...utils import load_nist_vectors, load_vectors_from_file
+from .fixtures_dh import FFDH3072_P
 
 # RFC 3526
 P_1536 = int(
@@ -107,6 +109,9 @@ def test_dh_parameter_numbers_equality():
     assert dh.DHParameterNumbers(P_1536, 2, 123) != dh.DHParameterNumbers(
         P_1536, 2, 456
     )
+    assert dh.DHParameterNumbers(P_1536, 2, 123) != dh.DHParameterNumbers(
+        P_1536, 2
+    )
     assert dh.DHParameterNumbers(P_1536, 5) != dh.DHParameterNumbers(P_1536, 2)
     assert dh.DHParameterNumbers(P_1536, 2) != object()
 
@@ -148,18 +153,9 @@ class TestDH:
         with pytest.raises(ValueError):
             dh.generate_parameters(7, 512, backend)
 
-    @pytest.mark.skip_fips(reason="non-FIPS parameters")
-    def test_dh_parameters_supported(self, backend):
-        valid_p = int(
-            b"907c7211ae61aaaba1825ff53b6cb71ac6df9f1a424c033f4a0a41ac42fad3a9"
-            b"bcfc7f938a269710ed69e330523e4039029b7900977c740990d46efed79b9bbe"
-            b"73505ae878808944ce4d9c6c52daecc0a87dc889c53499be93db8551ee685f30"
-            b"349bf1b443d4ebaee0d5e8b441a40d4e8178f8f612f657a5eb91e0a8e"
-            b"107755f",
-            16,
-        )
-        assert backend.dh_parameters_supported(valid_p, 5)
-        assert not backend.dh_parameters_supported(23, 22)
+    def test_large_key_generate_dh(self, backend):
+        with pytest.raises(ValueError):
+            dh.generate_parameters(2, 1 << 30)
 
     @pytest.mark.parametrize(
         "vector",
@@ -169,10 +165,7 @@ class TestDH:
     )
     def test_dh_parameters_allows_rfc3526_groups(self, backend, vector):
         p = int.from_bytes(binascii.unhexlify(vector["p"]), "big")
-        if (
-            backend._fips_enabled
-            and p.bit_length() < backend._fips_dh_min_modulus
-        ):
+        if backend._fips_enabled and p < backend._fips_dh_min_modulus:
             pytest.skip("modulus too small for FIPS mode")
 
         params = dh.DHParameterNumbers(p, int(vector["g"]))
@@ -196,18 +189,6 @@ class TestDH:
             # what we expect OpenSSL to have done here.
             assert serialized_params.q == (params.p - 1) // 2
 
-    @pytest.mark.skip_fips(reason="non-FIPS parameters")
-    @pytest.mark.parametrize(
-        "vector",
-        load_vectors_from_file(
-            os.path.join("asymmetric", "DH", "RFC5114.txt"), load_nist_vectors
-        ),
-    )
-    def test_dh_parameters_supported_with_q(self, backend, vector):
-        assert backend.dh_parameters_supported(
-            int(vector["p"], 16), int(vector["g"], 16), int(vector["q"], 16)
-        )
-
     @pytest.mark.skip_fips(reason="modulus too small for FIPS")
     @pytest.mark.parametrize("with_q", [False, True])
     def test_convert_to_numbers(self, backend, with_q):
@@ -220,7 +201,7 @@ class TestDH:
             g = int(vector["g"], 16)
             q: typing.Optional[int] = int(vector["q"], 16)
         else:
-            parameters = backend.generate_dh_private_key_and_parameters(2, 512)
+            parameters = dh.generate_parameters(2, 512).generate_private_key()
 
             private = parameters.private_numbers()
 
@@ -399,7 +380,7 @@ class TestDH:
     @pytest.mark.skip_fips(reason="key_size too small for FIPS")
     @pytest.mark.supported(
         only_if=lambda backend: (
-            not backend._lib.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
+            not rust_openssl.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
         ),
         skip_message="256-bit DH keys are not supported in OpenSSL 3.0.0+",
     )
@@ -459,6 +440,48 @@ class TestDH:
 
         assert int.from_bytes(symkey1, "big") == int(vector["z"], 16)
         assert int.from_bytes(symkey2, "big") == int(vector["z"], 16)
+
+    def test_exchange_old_key(self, backend):
+        k = load_vectors_from_file(
+            os.path.join("asymmetric", "DH", "dhpub_cryptography_old.pem"),
+            lambda f: serialization.load_pem_public_key(f.read()),
+            mode="rb",
+        )
+        assert isinstance(k, dh.DHPublicKey)
+        # Ensure this doesn't raise.
+        k.parameters().generate_private_key().exchange(k)
+
+    def test_public_key_equality(self, backend):
+        key_bytes = load_vectors_from_file(
+            os.path.join("asymmetric", "DH", "dhpub.pem"),
+            lambda pemfile: pemfile.read(),
+            mode="rb",
+        )
+        key_bytes_2 = load_vectors_from_file(
+            os.path.join("asymmetric", "DH", "dhpub_rfc5114_2.pem"),
+            lambda pemfile: pemfile.read(),
+            mode="rb",
+        )
+        key1 = serialization.load_pem_public_key(key_bytes)
+        key2 = serialization.load_pem_public_key(key_bytes)
+        key3 = serialization.load_pem_public_key(key_bytes_2)
+        assert key1 == key2
+        assert key1 != key3
+        assert key1 != object()
+
+        with pytest.raises(TypeError):
+            key1 < key2  # type: ignore[operator]
+
+    def test_public_key_copy(self):
+        key_bytes = load_vectors_from_file(
+            os.path.join("asymmetric", "DH", "dhpub.pem"),
+            lambda pemfile: pemfile.read(),
+            mode="rb",
+        )
+        key1 = serialization.load_pem_public_key(key_bytes)
+        key2 = copy.copy(key1)
+
+        assert key1 == key2
 
 
 @pytest.mark.supported(
@@ -673,7 +696,24 @@ class TestDHPublicKeySerialization:
         loaded_key = loader_func(serialized, backend)
         loaded_pub_num = loaded_key.public_numbers()
         pub_num = key.public_numbers()
-        assert loaded_pub_num == pub_num
+
+        assert loaded_pub_num.y == pub_num.y
+        assert (
+            loaded_pub_num.parameter_numbers.p == pub_num.parameter_numbers.p
+        )
+        assert (
+            loaded_pub_num.parameter_numbers.g == pub_num.parameter_numbers.g
+        )
+        if pub_num.parameter_numbers.q and loaded_pub_num.parameter_numbers.q:
+            assert (
+                loaded_pub_num.parameter_numbers.q
+                == pub_num.parameter_numbers.q
+            )
+        else:
+            # When this branch becomes unreachable by coverage (when support
+            # for RHEL8 is dropped), all this code can be replaced with:
+            #   assert loaded_pub_num == pub_num
+            assert True
 
     @pytest.mark.skip_fips(reason="non-FIPS parameters")
     @pytest.mark.parametrize(
@@ -721,38 +761,33 @@ class TestDHPublicKeySerialization:
 
     @pytest.mark.skip_fips(reason="non-FIPS parameters")
     @pytest.mark.parametrize(
-        ("key_path", "loader_func", "vec_path", "is_dhx"),
+        ("key_path", "loader_func", "vec_path"),
         [
             (
                 os.path.join("asymmetric", "DH", "dhpub.pem"),
                 serialization.load_pem_public_key,
                 os.path.join("asymmetric", "DH", "dhkey.txt"),
-                False,
             ),
             (
                 os.path.join("asymmetric", "DH", "dhpub.der"),
                 serialization.load_der_public_key,
                 os.path.join("asymmetric", "DH", "dhkey.txt"),
-                False,
             ),
             (
                 os.path.join("asymmetric", "DH", "dhpub_rfc5114_2.pem"),
                 serialization.load_pem_public_key,
                 os.path.join("asymmetric", "DH", "dhkey_rfc5114_2.txt"),
-                True,
             ),
             (
                 os.path.join("asymmetric", "DH", "dhpub_rfc5114_2.der"),
                 serialization.load_der_public_key,
                 os.path.join("asymmetric", "DH", "dhkey_rfc5114_2.txt"),
-                True,
             ),
         ],
     )
     def test_public_bytes_values(
-        self, key_path, loader_func, vec_path, is_dhx, backend
+        self, key_path, loader_func, vec_path, backend
     ):
-        _skip_dhx_unsupported(backend, is_dhx)
         key_bytes = load_vectors_from_file(
             key_path, lambda pemfile: pemfile.read(), mode="rb"
         )
@@ -850,38 +885,33 @@ class TestDHParameterSerialization:
         assert serialized == param_bytes
 
     @pytest.mark.parametrize(
-        ("param_path", "loader_func", "vec_path", "is_dhx"),
+        ("param_path", "loader_func", "vec_path"),
         [
             (
                 os.path.join("asymmetric", "DH", "dhp.pem"),
                 serialization.load_pem_parameters,
                 os.path.join("asymmetric", "DH", "dhkey.txt"),
-                False,
             ),
             (
                 os.path.join("asymmetric", "DH", "dhp.der"),
                 serialization.load_der_parameters,
                 os.path.join("asymmetric", "DH", "dhkey.txt"),
-                False,
             ),
             (
                 os.path.join("asymmetric", "DH", "dhp_rfc5114_2.pem"),
                 serialization.load_pem_parameters,
                 os.path.join("asymmetric", "DH", "dhkey_rfc5114_2.txt"),
-                True,
             ),
             (
                 os.path.join("asymmetric", "DH", "dhp_rfc5114_2.der"),
                 serialization.load_der_parameters,
                 os.path.join("asymmetric", "DH", "dhkey_rfc5114_2.txt"),
-                True,
             ),
         ],
     )
     def test_public_bytes_values(
-        self, param_path, loader_func, vec_path, backend, is_dhx
+        self, param_path, loader_func, vec_path, backend
     ):
-        _skip_dhx_unsupported(backend, is_dhx)
         key_bytes = load_vectors_from_file(
             param_path, lambda pemfile: pemfile.read(), mode="rb"
         )
@@ -903,9 +933,7 @@ class TestDHParameterSerialization:
                 serialization.PublicFormat.SubjectPublicKeyInfo,
             ),
             (serialization.Encoding.Raw, serialization.PublicFormat.PKCS1),
-        ]
-        + list(
-            itertools.product(
+            *itertools.product(
                 [
                     serialization.Encoding.Raw,
                     serialization.Encoding.X962,
@@ -917,8 +945,8 @@ class TestDHParameterSerialization:
                     serialization.PublicFormat.UncompressedPoint,
                     serialization.PublicFormat.CompressedPoint,
                 ],
-            )
-        ),
+            ),
+        ],
     )
     def test_public_bytes_rejects_invalid(self, encoding, fmt, backend):
         parameters = FFDH3072_P.parameters(backend)

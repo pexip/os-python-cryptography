@@ -13,10 +13,8 @@ from contextlib import contextmanager
 
 import pytest
 
-from cryptography.exceptions import UnsupportedAlgorithm
-
 import cryptography_vectors
-
+from cryptography.exceptions import UnsupportedAlgorithm
 
 HashVector = collections.namedtuple("HashVector", ["message", "digest"])
 KeyedHashVector = collections.namedtuple(
@@ -35,7 +33,7 @@ def raises_unsupported_algorithm(reason):
     with pytest.raises(UnsupportedAlgorithm) as exc_info:
         yield exc_info
 
-    assert exc_info.value._reason is reason
+    assert exc_info.value._reason == reason
 
 
 T = typing.TypeVar("T")
@@ -68,7 +66,7 @@ def load_nist_vectors(vector_data):
             continue
 
         # Build our data using a simple Key = Value format
-        name, value = [c.strip() for c in line.split("=")]
+        name, value = (c.strip() for c in line.split("="))
 
         # Some tests (PBKDF2) contain \0, which should be interpreted as a
         # null character rather than literal.
@@ -109,7 +107,7 @@ def load_cryptrec_vectors(vector_data):
                 {"key": key, "plaintext": pt, "ciphertext": ct}
             )
         else:
-            raise ValueError("Invalid line in file '{}'".format(line))
+            raise ValueError(f"Invalid line in file '{line}'")
     return cryptrec_list
 
 
@@ -245,9 +243,6 @@ def load_pkcs1_vectors(vector_data):
             attr = None
 
         if private_key_vector is None or public_key_vector is None:
-            # Random garbage to defeat CPython's peephole optimizer so that
-            # coverage records correctly: https://bugs.python.org/issue2506
-            1 + 1
             continue
 
         if line.startswith("# Private key"):
@@ -302,7 +297,7 @@ def load_rsa_nist_vectors(vector_data):
             continue
 
         # Build our data using a simple Key = Value format
-        name, value = [c.strip() for c in line.split("=")]
+        name, value = (c.strip() for c in line.split("="))
 
         if name == "n":
             n = int(value, 16)
@@ -398,7 +393,7 @@ def load_fips_dsa_sig_vectors(vector_data):
         if line.startswith("[mod"):
             continue
 
-        name, value = [c.strip() for c in line.split("=")]
+        name, value = (c.strip() for c in line.split("="))
 
         if name == "P":
             vectors.append(
@@ -625,7 +620,7 @@ def load_kasvs_ecdh_vectors(vector_data):
             if len(parm) == 2:
                 names = parm[1].strip().split()
                 for n in names:
-                    tags.append("[%s]" % n)
+                    tags.append(f"[{n}]")
                 break
 
     # Sets Metadata
@@ -706,6 +701,58 @@ def load_kasvs_ecdh_vectors(vector_data):
     return vectors
 
 
+def load_rfc6979_vectors(vector_data):
+    """
+    Loads data out of the ECDSA and DSA RFC6979 vector files.
+    """
+    vectors = []
+    keys: typing.Dict[str, typing.List[str]] = dict()
+    reading_key = False
+    current_key_name = None
+
+    data: typing.Dict[str, object] = dict()
+    for line in vector_data:
+        line = line.strip()
+
+        if reading_key and current_key_name:
+            keys[current_key_name].append(line)
+            if line.startswith("-----END"):
+                reading_key = False
+                current_key_name = None
+
+        if line.startswith("PrivateKey=") or line.startswith("PublicKey="):
+            reading_key = True
+            current_key_name = line.split("=")[1].strip()
+            keys[current_key_name] = []
+        elif line.startswith("DigestSign = "):
+            data["digest_sign"] = line.split("=")[1].strip()
+            data["deterministic_nonce"] = False
+        elif line.startswith("DigestVerify = "):
+            data["digest_verify"] = line.split("=")[1].strip()
+            data["verify_error"] = False
+        elif line.startswith("Key = "):
+            key_name = line.split("=")[1].strip()
+            assert key_name in keys
+            data["key"] = keys[key_name]
+            data["key_name"] = key_name
+        elif line.startswith("NonceType = "):
+            nonce_type = line.split("=")[1].strip()
+            data["deterministic_nonce"] = nonce_type == "deterministic"
+        elif line.startswith("Input = "):
+            data["input"] = line.split("=")[1].strip(' "')
+        elif line.startswith("Output = "):
+            data["output"] = line.split("=")[1].strip()
+        elif line.startswith("Result = "):
+            data["verify_error"] = line.split("=")[1].strip() == "VERIFY_ERROR"
+
+        elif not line:
+            if data:
+                vectors.append(data)
+                data = {}
+
+    return vectors
+
+
 def load_x963_vectors(vector_data):
     """
     Loads data out of the X9.63 vector data
@@ -773,7 +820,7 @@ def load_nist_kbkdf_vectors(vector_data):
 
         if line.startswith("[") and line.endswith("]"):
             tag_data = line[1:-1]
-            name, value = [c.strip() for c in tag_data.split("=")]
+            name, value = (c.strip() for c in tag_data.split("="))
             if value.endswith("_BITS"):
                 value = int(value.split("_")[0])
                 tag.update({name.lower(): value})
@@ -785,10 +832,10 @@ def load_nist_kbkdf_vectors(vector_data):
             test_data.update(tag)
             vectors.append(test_data)
         elif line.startswith(("L", "DataBeforeCtrLen", "DataAfterCtrLen")):
-            name, value = [c.strip() for c in line.split("=")]
+            name, value = (c.strip() for c in line.split("="))
             test_data[name.lower()] = int(value)
         else:
-            name, value = [c.strip() for c in line.split("=")]
+            name, value = (c.strip() for c in line.split("="))
             test_data[name.lower()] = value.encode("ascii")
 
     return vectors
@@ -830,7 +877,7 @@ def load_nist_ccm_vectors(vector_data):
         # Some of the CCM vectors have global values for this. They are always
         # at the top before the first section header (see: VADT, VNT, VPT)
         if line.startswith(("Alen", "Plen", "Nlen", "Tlen")):
-            name, value = [c.strip() for c in line.split("=")]
+            name, value = (c.strip() for c in line.split("="))
             global_data[name.lower()] = int(value)
             continue
 
@@ -841,11 +888,11 @@ def load_nist_ccm_vectors(vector_data):
             section = line[1:-1]
             items = [c.strip() for c in section.split(",")]
             for item in items:
-                name, value = [c.strip() for c in item.split("=")]
+                name, value = (c.strip() for c in item.split("="))
                 section_data[name.lower()] = int(value)
             continue
 
-        name, value = [c.strip() for c in line.split("=")]
+        name, value = (c.strip() for c in line.split("="))
 
         if name.lower() in ("key", "nonce") and new_section:
             section_data[name.lower()] = value.encode("ascii")
@@ -901,23 +948,30 @@ class WycheproofTest:
         )
 
     @property
-    def valid(self):
+    def valid(self) -> bool:
         return self.testcase["result"] == "valid"
 
     @property
-    def acceptable(self):
+    def acceptable(self) -> bool:
         return self.testcase["result"] == "acceptable"
 
     @property
-    def invalid(self):
+    def invalid(self) -> bool:
         return self.testcase["result"] == "invalid"
 
-    def has_flag(self, flag):
+    def has_flag(self, flag: str) -> bool:
         return flag in self.testcase["flags"]
 
+    def cache_value_to_group(self, cache_key: str, func):
+        cache_val = self.testgroup.get(cache_key)
+        if cache_val is not None:
+            return cache_val
+        self.testgroup[cache_key] = cache_val = func()
+        return cache_val
 
-def load_wycheproof_tests(wycheproof, test_file):
-    path = os.path.join(wycheproof, "testvectors", test_file)
+
+def load_wycheproof_tests(wycheproof, test_file, subdir):
+    path = os.path.join(wycheproof, subdir, test_file)
     with open(path) as f:
         data = json.load(f)
         for group in data.pop("testGroups"):

@@ -15,12 +15,12 @@ from cryptography.hazmat.primitives.ciphers import (
     modes,
 )
 
+from ...doubles import DummyCipherAlgorithm, DummyMode
+from ...utils import raises_unsupported_algorithm
 from .utils import (
     generate_aead_exception_test,
     generate_aead_tag_exception_test,
 )
-from ...doubles import DummyCipherAlgorithm, DummyMode
-from ...utils import raises_unsupported_algorithm
 
 
 class TestCipher:
@@ -44,7 +44,9 @@ class TestCipher:
         algorithm = object()
         with pytest.raises(TypeError):
             Cipher(
-                algorithm, mode=None, backend=backend  # type: ignore[arg-type]
+                algorithm,  # type: ignore[arg-type]
+                mode=None,
+                backend=backend,
             )
 
 

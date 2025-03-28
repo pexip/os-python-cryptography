@@ -1,0 +1,182 @@
+From: Paul Kehrer <paul.l.kehrer@gmail.com>
+Date: Sun, 17 Nov 2024 07:28:04 -0800
+Subject: update to asn1 0.19 and use X509GeneralizedTime
+
+---
+ src/rust/cryptography-x509-verification/src/policy/mod.rs | 10 +++++-----
+ src/rust/cryptography-x509/src/common.rs                  |  2 +-
+ src/rust/cryptography-x509/src/ocsp_resp.rs               |  8 ++++----
+ src/rust/src/x509/certificate.rs                          |  6 +++---
+ src/rust/src/x509/extensions.rs                           |  4 +++-
+ src/rust/src/x509/ocsp_resp.rs                            |  9 +++++----
+ 6 files changed, 21 insertions(+), 18 deletions(-)
+
+diff --git a/src/rust/cryptography-x509-verification/src/policy/mod.rs b/src/rust/cryptography-x509-verification/src/policy/mod.rs
+index 5616a83..a67eaf9 100644
+--- a/src/rust/cryptography-x509-verification/src/policy/mod.rs
++++ b/src/rust/cryptography-x509-verification/src/policy/mod.rs
+@@ -769,7 +769,7 @@ mod tests {
+             let generalized_dt = utc_dt.clone();
+             let utc_validity = Time::UtcTime(asn1::UtcTime::new(utc_dt).unwrap());
+             let generalized_validity =
+-                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
++                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+             assert!(permits_validity_date(&utc_validity).is_ok());
+             assert!(permits_validity_date(&generalized_validity).is_err());
+         }
+@@ -779,7 +779,7 @@ mod tests {
+             let generalized_dt = utc_dt.clone();
+             let utc_validity = Time::UtcTime(asn1::UtcTime::new(utc_dt).unwrap());
+             let generalized_validity =
+-                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
++                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+             assert!(permits_validity_date(&utc_validity).is_ok());
+             assert!(permits_validity_date(&generalized_validity).is_err());
+         }
+@@ -789,7 +789,7 @@ mod tests {
+             let generalized_dt = utc_dt.clone();
+             assert!(asn1::UtcTime::new(utc_dt).is_err());
+             let generalized_validity =
+-                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
++                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+             assert!(permits_validity_date(&generalized_validity).is_ok());
+         }
+         {
+@@ -799,7 +799,7 @@ mod tests {
+             // The `asn1::UtcTime` constructor prevents this.
+             assert!(asn1::UtcTime::new(utc_dt).is_err());
+             let generalized_validity =
+-                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
++                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+             assert!(permits_validity_date(&generalized_validity).is_ok());
+         }
+         {
+@@ -809,7 +809,7 @@ mod tests {
+             // The `asn1::UtcTime` constructor prevents this.
+             assert!(asn1::UtcTime::new(utc_dt).is_err());
+             let generalized_validity =
+-                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
++                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+             assert!(permits_validity_date(&generalized_validity).is_ok());
+         }
+     }
+diff --git a/src/rust/cryptography-x509/src/common.rs b/src/rust/cryptography-x509/src/common.rs
+index 0b95553..2957eeb 100644
+--- a/src/rust/cryptography-x509/src/common.rs
++++ b/src/rust/cryptography-x509/src/common.rs
+@@ -207,7 +207,7 @@ impl<'a> asn1::Asn1Writable for RawTlv<'a> {
+ #[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone)]
+ pub enum Time {
+     UtcTime(asn1::UtcTime),
+-    GeneralizedTime(asn1::GeneralizedTime),
++    GeneralizedTime(asn1::X509GeneralizedTime),
+ }
+ 
+ impl Time {
+diff --git a/src/rust/cryptography-x509/src/ocsp_resp.rs b/src/rust/cryptography-x509/src/ocsp_resp.rs
+index f40707e..5b0338b 100644
+--- a/src/rust/cryptography-x509/src/ocsp_resp.rs
++++ b/src/rust/cryptography-x509/src/ocsp_resp.rs
+@@ -39,7 +39,7 @@ pub struct ResponseData<'a> {
+     #[default(0)]
+     pub version: u8,
+     pub responder_id: ResponderId<'a>,
+-    pub produced_at: asn1::GeneralizedTime,
++    pub produced_at: asn1::X509GeneralizedTime,
+     pub responses: common::Asn1ReadableOrWritable<
+         asn1::SequenceOf<'a, SingleResponse<'a>>,
+         asn1::SequenceOfWriter<'a, SingleResponse<'a>, Vec<SingleResponse<'a>>>,
+@@ -60,9 +60,9 @@ pub enum ResponderId<'a> {
+ pub struct SingleResponse<'a> {
+     pub cert_id: ocsp_req::CertID<'a>,
+     pub cert_status: CertStatus,
+-    pub this_update: asn1::GeneralizedTime,
++    pub this_update: asn1::X509GeneralizedTime,
+     #[explicit(0)]
+-    pub next_update: Option<asn1::GeneralizedTime>,
++    pub next_update: Option<asn1::X509GeneralizedTime>,
+     #[explicit(1)]
+     pub raw_single_extensions: Option<extensions::RawExtensions<'a>>,
+ }
+@@ -79,7 +79,7 @@ pub enum CertStatus {
+ 
+ #[derive(asn1::Asn1Read, asn1::Asn1Write)]
+ pub struct RevokedInfo {
+-    pub revocation_time: asn1::GeneralizedTime,
++    pub revocation_time: asn1::X509GeneralizedTime,
+     #[explicit(0)]
+     pub revocation_reason: Option<crl::CRLReason>,
+ }
+diff --git a/src/rust/src/x509/certificate.rs b/src/rust/src/x509/certificate.rs
+index 810d7aa..246c15f 100644
+--- a/src/rust/src/x509/certificate.rs
++++ b/src/rust/src/x509/certificate.rs
+@@ -877,9 +877,9 @@ pub(crate) fn time_from_py(
+ 
+ pub(crate) fn time_from_datetime(dt: asn1::DateTime) -> CryptographyResult<common::Time> {
+     if dt.year() >= 2050 {
+-        Ok(common::Time::GeneralizedTime(asn1::GeneralizedTime::new(
+-            dt,
+-        )?))
++        Ok(common::Time::GeneralizedTime(
++            asn1::X509GeneralizedTime::new(dt)?,
++        ))
+     } else {
+         Ok(common::Time::UtcTime(asn1::UtcTime::new(dt).unwrap()))
+     }
+diff --git a/src/rust/src/x509/extensions.rs b/src/rust/src/x509/extensions.rs
+index 9bd9425..d3396ff 100644
+--- a/src/rust/src/x509/extensions.rs
++++ b/src/rust/src/x509/extensions.rs
+@@ -532,7 +532,9 @@ pub(crate) fn encode_extension(
+         &oid::INVALIDITY_DATE_OID => {
+             let py_dt = ext.getattr(pyo3::intern!(py, "invalidity_date_utc"))?;
+             let dt = x509::py_to_datetime(py, py_dt)?;
+-            Ok(Some(asn1::write_single(&asn1::GeneralizedTime::new(dt)?)?))
++            Ok(Some(asn1::write_single(&asn1::X509GeneralizedTime::new(
++                dt,
++            )?)?))
+         }
+         &oid::CRL_NUMBER_OID | &oid::DELTA_CRL_INDICATOR_OID => {
+             let intval = ext
+diff --git a/src/rust/src/x509/ocsp_resp.rs b/src/rust/src/x509/ocsp_resp.rs
+index 955bf35..1a24188 100644
+--- a/src/rust/src/x509/ocsp_resp.rs
++++ b/src/rust/src/x509/ocsp_resp.rs
+@@ -746,7 +746,8 @@ pub(crate) fn create_ocsp_response(
+         };
+         // REVOKED
+         let py_revocation_time = py_single_resp.getattr(pyo3::intern!(py, "_revocation_time"))?;
+-        let revocation_time = asn1::GeneralizedTime::new(py_to_datetime(py, py_revocation_time)?)?;
++        let revocation_time =
++            asn1::X509GeneralizedTime::new(py_to_datetime(py, py_revocation_time)?)?;
+         ocsp_resp::CertStatus::Revoked(ocsp_resp::RevokedInfo {
+             revocation_time,
+             revocation_reason,
+@@ -757,7 +758,7 @@ pub(crate) fn create_ocsp_response(
+         .is_none()
+     {
+         let py_next_update = py_single_resp.getattr(pyo3::intern!(py, "_next_update"))?;
+-        Some(asn1::GeneralizedTime::new(py_to_datetime(
++        Some(asn1::X509GeneralizedTime::new(py_to_datetime(
+             py,
+             py_next_update,
+         )?)?)
+@@ -765,7 +766,7 @@ pub(crate) fn create_ocsp_response(
+         None
+     };
+     let py_this_update = py_single_resp.getattr(pyo3::intern!(py, "_this_update"))?;
+-    let this_update = asn1::GeneralizedTime::new(py_to_datetime(py, py_this_update)?)?;
++    let this_update = asn1::X509GeneralizedTime::new(py_to_datetime(py, py_this_update)?)?;
+ 
+     let ka_vec = cryptography_keepalive::KeepAlive::new();
+     let ka_bytes = cryptography_keepalive::KeepAlive::new();
+@@ -807,7 +808,7 @@ pub(crate) fn create_ocsp_response(
+ 
+     let tbs_response_data = ocsp_resp::ResponseData {
+         version: 0,
+-        produced_at: asn1::GeneralizedTime::new(x509::common::datetime_now(py)?)?,
++        produced_at: asn1::X509GeneralizedTime::new(x509::common::datetime_now(py)?)?,
+         responder_id,
+         responses: common::Asn1ReadableOrWritable::new_write(asn1::SequenceOfWriter::new(
+             responses,

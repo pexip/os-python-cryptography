@@ -134,13 +134,43 @@ Creating Requests
     .. method:: add_certificate(cert, issuer, algorithm)
 
         Adds a request using a certificate, issuer certificate, and hash
-        algorithm. This can only be called once.
+        algorithm. You can call this method or ``add_certificate_by_hash``
+        only once.
 
         :param cert: The :class:`~cryptography.x509.Certificate` whose validity
             is being checked.
 
         :param issuer: The issuer :class:`~cryptography.x509.Certificate` of
             the certificate that is being checked.
+
+        :param algorithm: A
+            :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
+            instance. For OCSP only
+            :class:`~cryptography.hazmat.primitives.hashes.SHA1`,
+            :class:`~cryptography.hazmat.primitives.hashes.SHA224`,
+            :class:`~cryptography.hazmat.primitives.hashes.SHA256`,
+            :class:`~cryptography.hazmat.primitives.hashes.SHA384`, and
+            :class:`~cryptography.hazmat.primitives.hashes.SHA512` are allowed.
+
+    .. method:: add_certificate_by_hash(issuer_name_hash, issuer_key_hash, serial_number, algorithm)
+
+        .. versionadded:: 39.0.0
+
+        Adds a request using the issuer's name hash, key hash, the certificate
+        serial number and hash algorithm. You can call this method or
+        ``add_certificate`` only once.
+
+        :param issuer_name_hash: The hash of the issuer's DER encoded name using the
+            same hash algorithm as the one specified in the ``algorithm`` parameter.
+        :type issuer_name_hash: bytes
+
+        :param issuer_key_hash: The hash of the issuer's public key bit string
+            DER encoding using the same hash algorithm as the one specified in
+            the ``algorithm`` parameter.
+        :type issuer_key_hash: bytes
+
+        :param serial_number: The serial number of the certificate being checked.
+        :type serial_number: int
 
         :param algorithm: A
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
@@ -299,7 +329,7 @@ Creating Responses
             :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey`,
             :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey` or
             :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PrivateKey`
-            that will be used to sign the certificate.
+            that will be used to sign the response.
 
         :param algorithm: The
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm` that
@@ -310,7 +340,11 @@ Creating Responses
             :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PrivateKey`
             and an instance of a
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
-            otherwise.
+            otherwise. Please note that
+            :class:`~cryptography.hazmat.primitives.hashes.SHA1`
+            can not be used here, regardless of if it was used for
+            :meth:`~cryptography.x509.ocsp.OCSPResponseBuilder.add_response`
+            or not.
 
         :returns: A new :class:`~cryptography.x509.ocsp.OCSPResponse`.
 
@@ -505,7 +539,24 @@ Interfaces
 
         :type: :class:`datetime.datetime`
 
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.ocsp.OCSPResponse.produced_at_utc`.
+
         A naïve datetime representing the time when the response was produced.
+
+        :raises ValueError: If ``response_status`` is not
+            :class:`~cryptography.x509.ocsp.OCSPResponseStatus.SUCCESSFUL`.
+
+    .. attribute:: produced_at_utc
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing the time when the response was produced.
 
         :raises ValueError: If ``response_status`` is not
             :class:`~cryptography.x509.ocsp.OCSPResponseStatus.SUCCESSFUL`.
@@ -524,12 +575,32 @@ Interfaces
 
         :type: :class:`datetime.datetime` or None
 
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.ocsp.OCSPResponse.revocation_time_utc`.
+
         A naïve datetime representing the time when the certificate was revoked
         or ``None`` if the certificate has not been revoked.
 
         :raises ValueError: If ``response_status`` is not
             :class:`~cryptography.x509.ocsp.OCSPResponseStatus.SUCCESSFUL` or
             if multiple SINGLERESPs are present.
+
+    .. attribute:: revocation_time_utc
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`datetime.datetime` or None
+
+        A timezone-aware datetime representing the time when the certificate was
+        revoked or ``None`` if the certificate has not been revoked.
+
+        :raises ValueError: If ``response_status`` is not
+            :class:`~cryptography.x509.ocsp.OCSPResponseStatus.SUCCESSFUL` or
+            if multiple SINGLERESPs are present.
+
 
     .. attribute:: revocation_reason
 
@@ -546,7 +617,26 @@ Interfaces
 
         :type: :class:`datetime.datetime`
 
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.ocsp.OCSPResponse.this_update_utc`.
+
         A naïve datetime representing the most recent time at which the status
+        being indicated is known by the responder to have been correct.
+
+        :raises ValueError: If ``response_status`` is not
+            :class:`~cryptography.x509.ocsp.OCSPResponseStatus.SUCCESSFUL` or
+            if multiple SINGLERESPs are present.
+
+    .. attribute:: this_update_utc
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing the most recent time at which the status
         being indicated is known by the responder to have been correct.
 
         :raises ValueError: If ``response_status`` is not
@@ -557,12 +647,33 @@ Interfaces
 
         :type: :class:`datetime.datetime`
 
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.ocsp.OCSPResponse.next_update_utc`.
+
         A naïve datetime representing the time when newer information will
         be available.
 
         :raises ValueError: If ``response_status`` is not
             :class:`~cryptography.x509.ocsp.OCSPResponseStatus.SUCCESSFUL` or
             if multiple SINGLERESPs are present.
+
+
+    .. attribute:: next_update_utc
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing the time when newer information will
+        be available.
+
+        :raises ValueError: If ``response_status`` is not
+            :class:`~cryptography.x509.ocsp.OCSPResponseStatus.SUCCESSFUL` or
+            if multiple SINGLERESPs are present.
+
 
     .. attribute:: issuer_key_hash
 
@@ -725,7 +836,22 @@ Interfaces
 
         :type: :class:`datetime.datetime` or None
 
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.ocsp.OCSPSingleResponse.revocation_time_utc`.
+
         A naïve datetime representing the time when the certificate was revoked
+        or ``None`` if the certificate has not been revoked.
+
+    .. attribute:: revocation_time_utc
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`datetime.datetime` or None
+
+        A timezone-aware datetime representing the time when the certificate was revoked
         or ``None`` if the certificate has not been revoked.
 
     .. attribute:: revocation_reason
@@ -739,14 +865,44 @@ Interfaces
 
         :type: :class:`datetime.datetime`
 
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.ocsp.OCSPSingleResponse.this_update_utc`.
+
         A naïve datetime representing the most recent time at which the status
+        being indicated is known by the responder to have been correct.
+
+    .. attribute:: this_update_utc
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing the most recent time at which the status
         being indicated is known by the responder to have been correct.
 
     .. attribute:: next_update
 
         :type: :class:`datetime.datetime`
 
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.ocsp.OCSPSingleResponse.next_update_utc`.
+
         A naïve datetime representing the time when newer information will
+        be available.
+
+    .. attribute:: next_update_utc
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing the time when newer information will
         be available.
 
     .. attribute:: issuer_key_hash

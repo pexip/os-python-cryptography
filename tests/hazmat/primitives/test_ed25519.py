@@ -4,6 +4,7 @@
 
 
 import binascii
+import copy
 import os
 
 import pytest
@@ -15,6 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
+from ...doubles import DummyKeySerializationEncryption
 from ...utils import load_vectors_from_file, raises_unsupported_algorithm
 
 
@@ -92,6 +94,20 @@ class TestEd25519Signing:
                 )
                 public_key.verify(signature, message)
 
+    def test_pub_priv_bytes_raw(self, backend, subtests):
+        vectors = load_vectors_from_file(
+            os.path.join("asymmetric", "Ed25519", "sign.input"),
+            load_ed25519_vectors,
+        )
+        for vector in vectors:
+            with subtests.test():
+                sk = binascii.unhexlify(vector["secret_key"])
+                pk = binascii.unhexlify(vector["public_key"])
+                private_key = Ed25519PrivateKey.from_private_bytes(sk)
+                assert private_key.private_bytes_raw() == sk
+                public_key = Ed25519PublicKey.from_public_bytes(pk)
+                assert public_key.public_bytes_raw() == pk
+
     def test_invalid_signature(self, backend):
         key = Ed25519PrivateKey.generate()
         signature = key.sign(b"test data")
@@ -100,6 +116,12 @@ class TestEd25519Signing:
 
         with pytest.raises(InvalidSignature):
             key.public_key().verify(b"0" * 64, b"test data")
+
+    def test_sign_verify_buffer(self, backend):
+        key = Ed25519PrivateKey.generate()
+        data = bytearray(b"test data")
+        signature = key.sign(data)
+        key.public_key().verify(bytearray(signature), data)
 
     def test_generate(self, backend):
         key = Ed25519PrivateKey.generate()
@@ -142,24 +164,37 @@ class TestEd25519Signing:
 
     def test_invalid_private_bytes(self, backend):
         key = Ed25519PrivateKey.generate()
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.Raw,
                 None,  # type: ignore[arg-type]
+            )
+        with pytest.raises(ValueError):
+            key.private_bytes(
+                serialization.Encoding.Raw,
+                serialization.PrivateFormat.Raw,
+                DummyKeySerializationEncryption(),
             )
 
         with pytest.raises(ValueError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.PKCS8,
-                None,  # type: ignore[arg-type]
+                DummyKeySerializationEncryption(),
             )
 
         with pytest.raises(ValueError):
             key.private_bytes(
                 serialization.Encoding.PEM,
                 serialization.PrivateFormat.Raw,
+                serialization.NoEncryption(),
+            )
+
+        with pytest.raises(ValueError):
+            key.private_bytes(
+                serialization.Encoding.DER,
+                serialization.PrivateFormat.OpenSSH,
                 serialization.NoEncryption(),
             )
 
@@ -179,6 +214,11 @@ class TestEd25519Signing:
         with pytest.raises(ValueError):
             key.public_bytes(
                 serialization.Encoding.PEM, serialization.PublicFormat.Raw
+            )
+
+        with pytest.raises(ValueError):
+            key.public_bytes(
+                serialization.Encoding.DER, serialization.PublicFormat.OpenSSH
             )
 
     @pytest.mark.parametrize(
@@ -212,6 +252,13 @@ class TestEd25519Signing:
                 None,
                 serialization.load_der_private_key,
             ),
+            (
+                serialization.Encoding.DER,
+                serialization.PrivateFormat.PKCS8,
+                serialization.BestAvailableEncryption(b"\x00"),
+                b"\x00",
+                serialization.load_der_private_key,
+            ),
         ],
     )
     def test_round_trip_private_serialization(
@@ -233,3 +280,40 @@ class TestEd25519Signing:
             )
             == private_bytes
         )
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.ed25519_supported(),
+    skip_message="Requires OpenSSL with Ed25519 support",
+)
+def test_public_key_equality(backend):
+    key_bytes = load_vectors_from_file(
+        os.path.join("asymmetric", "Ed25519", "ed25519-pkcs8.der"),
+        lambda derfile: derfile.read(),
+        mode="rb",
+    )
+    key1 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key2 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key3 = Ed25519PrivateKey.generate().public_key()
+    assert key1 == key2
+    assert key1 != key3
+    assert key1 != object()
+
+    with pytest.raises(TypeError):
+        key1 < key2  # type: ignore[operator]
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.ed25519_supported(),
+    skip_message="Requires OpenSSL with Ed25519 support",
+)
+def test_public_key_copy(backend):
+    key_bytes = load_vectors_from_file(
+        os.path.join("asymmetric", "Ed25519", "ed25519-pkcs8.der"),
+        lambda derfile: derfile.read(),
+        mode="rb",
+    )
+    key1 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key2 = copy.copy(key1)
+
+    assert key1 == key2

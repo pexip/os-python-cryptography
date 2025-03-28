@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import annotations
 
 INCLUDES = """
 #include <openssl/bio.h>
@@ -15,14 +16,9 @@ typedef ... BIO_ADDR;
 
 FUNCTIONS = """
 int BIO_free(BIO *);
-void BIO_free_all(BIO *);
 BIO *BIO_new_file(const char *, const char *);
-size_t BIO_ctrl_pending(BIO *);
 int BIO_read(BIO *, void *, int);
-int BIO_gets(BIO *, char *, int);
 int BIO_write(BIO *, const void *, int);
-/* Added in 1.1.0 */
-int BIO_up_ref(BIO *);
 
 BIO *BIO_new(BIO_METHOD *);
 const BIO_METHOD *BIO_s_mem(void);
@@ -34,8 +30,6 @@ int BIO_should_write(BIO *);
 int BIO_should_io_special(BIO *);
 int BIO_should_retry(BIO *);
 int BIO_reset(BIO *);
-void BIO_set_retry_read(BIO *);
-void BIO_clear_retry_flags(BIO *);
 
 BIO_ADDR *BIO_ADDR_new(void);
 void BIO_ADDR_free(BIO_ADDR *);
@@ -43,7 +37,11 @@ void BIO_ADDR_free(BIO_ADDR *);
 
 CUSTOMIZATIONS = """
 #if CRYPTOGRAPHY_IS_LIBRESSL || CRYPTOGRAPHY_IS_BORINGSSL
+
+#if !defined(_WIN32)
 #include <sys/socket.h>
+#endif
+
 #include <stdlib.h>
 typedef struct sockaddr BIO_ADDR;
 

@@ -15,6 +15,7 @@ Botan
 Brainpool
 Bullseye
 Capitan
+Carmichael
 CentOS
 changelog
 Changelog
@@ -38,6 +39,7 @@ decrypted
 decrypting
 deprecations
 DER
+dereference
 deserialize
 deserialized
 Deserialization
@@ -50,6 +52,7 @@ Docstrings
 El
 Encodings
 endian
+Euler
 extendable
 facto
 fallback
@@ -60,6 +63,7 @@ Google
 hazmat
 Homebrew
 hostname
+hostnames
 incrementing
 indistinguishability
 initialisms
@@ -75,6 +79,7 @@ Koblitz
 Lange
 logins
 metadata
+MGF
 Monterey
 Mozilla
 multi
@@ -91,15 +96,18 @@ personalization
 RHEL
 parsers
 Parsers
+PEM
 pickleable
 plaintext
 Poly
 pre
 precompute
+precomputed
 preprocessor
 preprocessors
 presentational
 pseudorandom
+PSS
 pyOpenSSL
 pytest
 relicensed
@@ -109,8 +117,11 @@ Schneier
 scrypt
 serializer
 Serializers
+setuptools
 SHA
 Solaris
+Sonoma
+SPKI
 Sur
 syscall
 Tanja
@@ -119,12 +130,15 @@ Thawte
 timestamp
 timestamps
 toolchain
+totient
+Trixie
 tunable
 Ubuntu
 unencrypted
 unicode
 unpadded
 unpadding
+Ventura
 verifier
 Verifier
 Verisign

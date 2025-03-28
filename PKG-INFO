@@ -1,16 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.3
 Name: cryptography
-Version: 38.0.4
-Summary: cryptography is a package which provides cryptographic recipes and primitives to Python developers.
-Home-page: https://github.com/pyca/cryptography
-Author: The Python Cryptographic Authority and individual contributors
-Author-email: cryptography-dev@python.org
-License: BSD-3-Clause OR Apache-2.0
-Project-URL: Documentation, https://cryptography.io/
-Project-URL: Source, https://github.com/pyca/cryptography/
-Project-URL: Issues, https://github.com/pyca/cryptography/issues
-Project-URL: Changelog, https://cryptography.io/en/latest/changelog/
-Platform: UNKNOWN
+Version: 43.0.0
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Developers
 Classifier: License :: OSI Approved :: Apache Software License
@@ -24,26 +14,58 @@ Classifier: Operating System :: Microsoft :: Windows
 Classifier: Programming Language :: Python
 Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3 :: Only
-Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
 Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
 Classifier: Programming Language :: Python :: Implementation :: CPython
 Classifier: Programming Language :: Python :: Implementation :: PyPy
 Classifier: Topic :: Security :: Cryptography
-Requires-Python: >=3.6
-Description-Content-Type: text/x-rst
+Requires-Dist: cffi >=1.12 ; platform_python_implementation != 'PyPy'
+Requires-Dist: bcrypt >=3.1.5 ; extra == 'ssh'
+Requires-Dist: nox ; extra == 'nox'
+Requires-Dist: cryptography-vectors ==43.0.0 ; extra == 'test'
+Requires-Dist: pytest >=6.2.0 ; extra == 'test'
+Requires-Dist: pytest-benchmark ; extra == 'test'
+Requires-Dist: pytest-cov ; extra == 'test'
+Requires-Dist: pytest-xdist ; extra == 'test'
+Requires-Dist: pretend ; extra == 'test'
+Requires-Dist: certifi ; extra == 'test'
+Requires-Dist: pytest-randomly ; extra == 'test-randomorder'
+Requires-Dist: sphinx >=5.3.0 ; extra == 'docs'
+Requires-Dist: sphinx-rtd-theme >=1.1.1 ; extra == 'docs'
+Requires-Dist: pyenchant >=1.6.11 ; extra == 'docstest'
+Requires-Dist: readme-renderer ; extra == 'docstest'
+Requires-Dist: sphinxcontrib-spelling >=4.0.1 ; extra == 'docstest'
+Requires-Dist: build ; extra == 'sdist'
+Requires-Dist: ruff ; extra == 'pep8test'
+Requires-Dist: mypy ; extra == 'pep8test'
+Requires-Dist: check-sdist ; extra == 'pep8test'
+Requires-Dist: click ; extra == 'pep8test'
+Provides-Extra: ssh
+Provides-Extra: nox
 Provides-Extra: test
+Provides-Extra: test-randomorder
 Provides-Extra: docs
 Provides-Extra: docstest
 Provides-Extra: sdist
 Provides-Extra: pep8test
-Provides-Extra: ssh
 License-File: LICENSE
 License-File: LICENSE.APACHE
 License-File: LICENSE.BSD
-License-File: LICENSE.PSF
+Summary: cryptography is a package which provides cryptographic recipes and primitives to Python developers.
+Author: The cryptography developers <cryptography-dev@python.org>
+Author-email: The Python Cryptographic Authority and individual contributors <cryptography-dev@python.org>
+License: Apache-2.0 OR BSD-3-Clause
+Requires-Python: >=3.7
+Description-Content-Type: text/x-rst; charset=UTF-8
+Project-URL: homepage, https://github.com/pyca/cryptography
+Project-URL: documentation, https://cryptography.io/
+Project-URL: source, https://github.com/pyca/cryptography/
+Project-URL: issues, https://github.com/pyca/cryptography/issues
+Project-URL: changelog, https://cryptography.io/en/latest/changelog/
 
 pyca/cryptography
 =================
@@ -61,8 +83,8 @@ pyca/cryptography
 
 
 ``cryptography`` is a package which provides cryptographic recipes and
-primitives to Python developers.  Our goal is for it to be your "cryptographic
-standard library". It supports Python 3.6+ and PyPy3 7.2+.
+primitives to Python developers. Our goal is for it to be your "cryptographic
+standard library". It supports Python 3.7+ and PyPy3 7.3.11+.
 
 ``cryptography`` includes both high level recipes and low level interfaces to
 common cryptographic algorithms such as symmetric ciphers, message digests, and
@@ -77,9 +99,9 @@ key derivation functions. For example, to encrypt something with
     >>> f = Fernet(key)
     >>> token = f.encrypt(b"A really secret message. Not for prying eyes.")
     >>> token
-    '...'
+    b'...'
     >>> f.decrypt(token)
-    'A really secret message. Not for prying eyes.'
+    b'A really secret message. Not for prying eyes.'
 
 You can find more information in the `documentation`_.
 
@@ -113,5 +135,4 @@ documentation.
 .. _`issue tracker`: https://github.com/pyca/cryptography/issues
 .. _`cryptography-dev`: https://mail.python.org/mailman/listinfo/cryptography-dev
 .. _`security reporting`: https://cryptography.io/en/latest/security/
-
 

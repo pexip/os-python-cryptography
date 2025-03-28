@@ -2,9 +2,9 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import annotations
 
 import abc
-import typing
 
 from cryptography import utils
 from cryptography.exceptions import UnsupportedAlgorithm, _Reasons
@@ -16,7 +16,8 @@ from cryptography.hazmat.primitives.ciphers import algorithms
 
 
 class Mode(metaclass=abc.ABCMeta):
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def name(self) -> str:
         """
         A string naming this mode (e.g. "ECB", "CBC").
@@ -31,7 +32,8 @@ class Mode(metaclass=abc.ABCMeta):
 
 
 class ModeWithInitializationVector(Mode, metaclass=abc.ABCMeta):
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def initialization_vector(self) -> bytes:
         """
         The value of the initialization vector for this mode as bytes.
@@ -39,7 +41,8 @@ class ModeWithInitializationVector(Mode, metaclass=abc.ABCMeta):
 
 
 class ModeWithTweak(Mode, metaclass=abc.ABCMeta):
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def tweak(self) -> bytes:
         """
         The value of the tweak for this mode as bytes.
@@ -47,7 +50,8 @@ class ModeWithTweak(Mode, metaclass=abc.ABCMeta):
 
 
 class ModeWithNonce(Mode, metaclass=abc.ABCMeta):
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def nonce(self) -> bytes:
         """
         The value of the nonce for this mode as bytes.
@@ -55,8 +59,9 @@ class ModeWithNonce(Mode, metaclass=abc.ABCMeta):
 
 
 class ModeWithAuthenticationTag(Mode, metaclass=abc.ABCMeta):
-    @abc.abstractproperty
-    def tag(self) -> typing.Optional[bytes]:
+    @property
+    @abc.abstractmethod
+    def tag(self) -> bytes | None:
         """
         The value of the tag supplied to the constructor of this mode.
         """
@@ -72,12 +77,9 @@ def _check_aes_key_length(self: Mode, algorithm: CipherAlgorithm) -> None:
 def _check_iv_length(
     self: ModeWithInitializationVector, algorithm: BlockCipherAlgorithm
 ) -> None:
-    if len(self.initialization_vector) * 8 != algorithm.block_size:
-        raise ValueError(
-            "Invalid IV size ({}) for {}.".format(
-                len(self.initialization_vector), self.name
-            )
-        )
+    iv_len = len(self.initialization_vector)
+    if iv_len * 8 != algorithm.block_size:
+        raise ValueError(f"Invalid IV size ({iv_len}) for {self.name}.")
 
 
 def _check_nonce_length(
@@ -89,9 +91,7 @@ def _check_nonce_length(
             _Reasons.UNSUPPORTED_CIPHER,
         )
     if len(nonce) * 8 != algorithm.block_size:
-        raise ValueError(
-            "Invalid nonce size ({}) for {}.".format(len(nonce), name)
-        )
+        raise ValueError(f"Invalid nonce size ({len(nonce)}) for {name}.")
 
 
 def _check_iv_and_key_length(
@@ -221,7 +221,7 @@ class GCM(ModeWithInitializationVector, ModeWithAuthenticationTag):
     def __init__(
         self,
         initialization_vector: bytes,
-        tag: typing.Optional[bytes] = None,
+        tag: bytes | None = None,
         min_tag_length: int = 16,
     ):
         # OpenSSL 3.0.0 constrains GCM IVs to [64, 1024] bits inclusive
@@ -239,15 +239,14 @@ class GCM(ModeWithInitializationVector, ModeWithAuthenticationTag):
                 raise ValueError("min_tag_length must be >= 4")
             if len(tag) < min_tag_length:
                 raise ValueError(
-                    "Authentication tag must be {} bytes or longer.".format(
-                        min_tag_length
-                    )
+                    f"Authentication tag must be {min_tag_length} bytes or "
+                    "longer."
                 )
         self._tag = tag
         self._min_tag_length = min_tag_length
 
     @property
-    def tag(self) -> typing.Optional[bytes]:
+    def tag(self) -> bytes | None:
         return self._tag
 
     @property
@@ -264,7 +263,6 @@ class GCM(ModeWithInitializationVector, ModeWithAuthenticationTag):
         block_size_bytes = algorithm.block_size // 8
         if self._tag is not None and len(self._tag) > block_size_bytes:
             raise ValueError(
-                "Authentication tag cannot be more than {} bytes.".format(
-                    block_size_bytes
-                )
+                f"Authentication tag cannot be more than {block_size_bytes} "
+                "bytes."
             )

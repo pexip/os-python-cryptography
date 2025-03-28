@@ -62,7 +62,7 @@ PBKDF2
         ...     algorithm=hashes.SHA256(),
         ...     length=32,
         ...     salt=salt,
-        ...     iterations=390000,
+        ...     iterations=480000,
         ... )
         >>> key = kdf.derive(b"my great password")
         >>> # verify
@@ -70,7 +70,7 @@ PBKDF2
         ...     algorithm=hashes.SHA256(),
         ...     length=32,
         ...     salt=salt,
-        ...     iterations=390000,
+        ...     iterations=480000,
         ... )
         >>> kdf.verify(b"my great password", key)
 
@@ -247,7 +247,7 @@ ConcatKDF
     .. versionadded:: 1.0
 
     ConcatKDFHash (Concatenation Key Derivation Function) is defined by the
-    NIST Special Publication `NIST SP 800-56Ar2`_ document, to be used to
+    NIST Special Publication `NIST SP 800-56Ar3`_ document, to be used to
     derive keys for use after a Key Exchange negotiation operation.
 
     .. warning::
@@ -460,7 +460,8 @@ HKDF
         to be secret, but may cause stronger security guarantees if secret; see
         :rfc:`5869` and the `HKDF paper`_ for more details. If ``None`` is
         explicitly passed a default salt of ``algorithm.digest_size // 8`` null
-        bytes will be used.
+        bytes will be used. See `understanding HKDF`_ for additional detail about
+        the salt and info parameters.
 
     :param bytes info: Application specific context information.  If ``None``
         is explicitly passed an empty byte string will be used.
@@ -723,7 +724,7 @@ KBKDF
 .. class:: KBKDFCMAC(algorithm, mode, length, rlen, llen, location,\
            label, context, fixed)
 
-    .. versionadded:: 35.0
+    .. versionadded:: 35.0.0
 
     KBKDF (Key Based Key Derivation Function) is defined by the
     `NIST SP 800-108`_ document, to be used to derive additional
@@ -879,7 +880,7 @@ KBKDF
 
     .. attribute:: MiddleFixed
 
-        .. versionadded:: 38.0
+        .. versionadded:: 38.0.0
 
         The counter iteration variable will be concatenated in the middle
         of the fixed input data.
@@ -1024,9 +1025,9 @@ Interface
 
 .. [#nist] See `NIST SP 800-132`_.
 
-.. _`NIST SP 800-132`: https://csrc.nist.gov/publications/detail/sp/800-132/final
-.. _`NIST SP 800-108`: https://csrc.nist.gov/publications/detail/sp/800-108/final
-.. _`NIST SP 800-56Ar2`: https://csrc.nist.gov/publications/detail/sp/800-56a/rev-2/final
+.. _`NIST SP 800-132`: https://csrc.nist.gov/pubs/sp/800/132/final
+.. _`NIST SP 800-108`: https://csrc.nist.gov/pubs/sp/800/108/r1/final
+.. _`NIST SP 800-56Ar3`: https://csrc.nist.gov/pubs/sp/800/56/a/r3/final
 .. _`ANSI X9.63:2001`: https://webstore.ansi.org
 .. _`SEC 1 v2.0`: https://www.secg.org/sec1-v2.pdf
 .. _`more detailed description`: https://security.stackexchange.com/a/3993/43116
@@ -1035,5 +1036,6 @@ Interface
 .. _`HKDF`: https://en.wikipedia.org/wiki/HKDF
 .. _`HKDF paper`: https://eprint.iacr.org/2010/264
 .. _`here`: https://stackoverflow.com/a/30308723/1170681
-.. _`recommends`: https://tools.ietf.org/html/rfc7914#section-2
+.. _`recommends`: https://datatracker.ietf.org/doc/html/rfc7914#section-2
 .. _`The scrypt paper`: https://www.tarsnap.com/scrypt/scrypt.pdf
+.. _`understanding HKDF`: https://soatok.blog/2021/11/17/understanding-hkdf/

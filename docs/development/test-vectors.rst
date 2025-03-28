@@ -21,9 +21,6 @@ for various cryptographic algorithms. These are not included in the repository
 (or ``cryptography_vectors`` package), but rather cloned from Git in our
 continuous integration environments.
 
-We have ensured all test vectors are used as of commit
-``2196000605e45d91097147c9c71f26b72af58003``.
-
 Asymmetric ciphers
 ~~~~~~~~~~~~~~~~~~
 
@@ -33,7 +30,7 @@ Asymmetric ciphers
 * FIPS 186-2 and FIPS 186-3 DSA test vectors from `NIST CAVP`_.
 * FIPS 186-2 and FIPS 186-3 ECDSA test vectors from `NIST CAVP`_.
 * DH and ECDH and ECDH+KDF(17.4) test vectors from `NIST CAVP`_.
-* Ed25519 test vectors from the `Ed25519 website_`.
+* Ed25519 test vectors from the `Ed25519 website`_.
 * OpenSSL PEM RSA serialization vectors from the `OpenSSL example key`_ and
   `GnuTLS key parsing tests`_.
 * ``asymmetric/PEM_Serialization/rsa-bad-1025-q-is-2.pem`` from `badkeys`_.
@@ -51,6 +48,7 @@ Asymmetric ciphers
 * X25519 and X448 test vectors from :rfc:`7748`.
 * RSA OAEP with custom label from the `BoringSSL evp tests`_.
 * Ed448 test vectors from :rfc:`8032`.
+* Deterministic ECDSA (:rfc:`6979`) from `OpenSSL's RFC 6979 test vectors`_.
 
 
 Custom asymmetric vectors
@@ -72,12 +70,18 @@ Custom asymmetric vectors
 * ``asymmetric/PEM_Serialization/ec_public_key.pem`` and
   ``asymmetric/DER_Serialization/ec_public_key.der``- Contains the public key
   corresponding to ``ec_private_key.pem``, generated using OpenSSL.
+* ``asymmetric/PEM_Serialization/ec_public_key_rsa_delimiter.pem`` - Contains
+  the public key corresponding to ``ec_private_key.pem``, but with the wrong PEM
+  delimiter (``RSA PUBLIC KEY`` when it should be ``PUBLIC KEY``).
 * ``asymmetric/PEM_Serialization/rsa_private_key.pem`` - Contains an RSA 2048
   bit key generated using OpenSSL, protected by the secret "123456" with DES3
   encryption.
 * ``asymmetric/PEM_Serialization/rsa_public_key.pem`` and
   ``asymmetric/DER_Serialization/rsa_public_key.der``- Contains an RSA 2048
   bit public generated using OpenSSL from ``rsa_private_key.pem``.
+* ``asymmetric/PEM_Serialization/rsa_wrong_delimiter_public_key.pem`` - Contains
+  an RSA 2048 bit public key generated from ``rsa_private_key.pem``, but with
+  the wrong PEM delimiter (``RSA PUBLIC KEY`` when it should be ``PUBLIC KEY``).
 * ``asymmetric/PEM_Serialization/dsa_4096.pem`` - Contains a 4096-bit DSA
   private key generated using OpenSSL.
 * ``asymmetric/PEM_Serialization/dsaparam.pem`` - Contains 2048-bit DSA
@@ -107,12 +111,29 @@ Custom asymmetric vectors
   ``asymmetric/public/PKCS1/rsa.pub.der`` are PKCS1 conversions of the public
   key from ``asymmetric/PKCS8/unenc-rsa-pkcs8.pem`` using PEM and DER encoding.
 * ``x509/custom/ca/ca_key.pem`` - An unencrypted PCKS8 ``secp256r1`` key. It is
-  the private key for the certificate ``x509/custom/ca/ca.pem``. This key is
+  the private key for the certificate ``x509/custom/ca/ca.pem``.
+* ``pkcs12/ca/ca_key.pem`` - An unencrypted PCKS8 ``secp256r1`` key. It is
+  the private key for the certificate ``pkcs12/ca/ca.pem``. This key is
   encoded in several of the PKCS12 custom vectors.
 * ``x509/custom/ca/rsa_key.pem`` - An unencrypted PCKS8 4096 bit RSA key. It is
   the private key for the certificate ``x509/custom/ca/rsa_ca.pem``.
 * ``asymmetric/EC/compressed_points.txt`` - Contains compressed public points
   generated using OpenSSL.
+* ``asymmetric/EC/explicit_parameters_private_key.pem`` - Contains an EC
+  private key with an curve defined by explicit parameters.
+* ``asymmetric/EC/explicit_parameters_wap_wsg_idm_ecid_wtls11_private_key.pem`` -
+  Contains an EC private key with over the ``wap-wsg-idm-ecid-wtls11`` curve,
+  encoded with explicit parameters.
+* ``asymmetric/EC/secp128r1_private_key.pem`` - Contains an EC private key on
+  the curve ``secp128r1``.
+* ``asymmetric/EC/sect163k1-spki.pem`` - Contains an EC SPKI on the curve
+  ``sect163k1``.
+* ``asymmetric/EC/sect163r2-spki.pem`` - Contains an EC SPKI on the curve
+  ``sect163r2``.
+* ``asymmetric/EC/sect233k1-spki.pem`` - Contains an EC SPKI on the curve
+  ``sect233k1``.
+* ``asymmetric/EC/sect233r1-spki.pem`` - Contains an EC SPKI on the curve
+  ``sect233r1``.
 * ``asymmetric/X448/x448-pkcs8-enc.pem`` and
   ``asymmetric/X448/x448-pkcs8-enc.der`` contain an X448 key encrypted with
   AES 256 CBC with the password ``password``.
@@ -203,6 +224,10 @@ Key exchange
 * ``vectors/cryptoraphy_vectors/asymmetric/ECDH/brainpool.txt`` contains
   Brainpool vectors from :rfc:`7027`.
 
+* ``vectors/cryptography_vectors/asymmetric/DH/dhpub_cryptography_old.pem``
+  contains a Diffie-Hellman public key generated with a previous version of
+  ``cryptography``.
+
 X.509
 ~~~~~
 
@@ -220,13 +245,17 @@ X.509
   legacy PEM header format.
 * ``cryptography.io.chain.pem`` - The same as ``cryptography.io.pem``,
   but ``rapidssl_sha256_ca_g3.pem`` is concatenated to the end.
+* ``cryptography.io.with_headers.pem`` - The same as ``cryptography.io.pem``,
+  but with an unrelated (encrypted) private key concatenated to the end.
+* ``cryptography.io.chain_with_garbage.pem`` - The same as
+  ``cryptography.io.chain.pem``, but with other sections and text around it.
 * ``cryptography.io.with_garbage.pem`` - The same as ``cryptography.io.pem``,
   but with other sections and text around it.
 * ``rapidssl_sha256_ca_g3.pem`` - The intermediate CA that issued the
   ``cryptography.io.pem`` certificate.
 * ``cryptography.io.precert.pem`` - A pre-certificate with the CT poison
   extension for the cryptography website.
-* ``cryptography-scts.io.pem`` - A leaf certificate issued by Let's Encrypt for
+* ``cryptography-scts.pem`` - A leaf certificate issued by Let's Encrypt for
   the cryptography website which contains signed certificate timestamps.
 * ``wildcard_san.pem`` - A leaf certificate issued by a public CA for
   ``langui.sh`` that contains wildcard entries in the SAN extension.
@@ -283,6 +312,10 @@ X.509
   a subject DN with a bit string type.
 * ``cryptography-scts-tbs-precert.der`` - The "to-be-signed" pre-certificate
   bytes from ``cryptography-scts.pem``, with the SCT list extension removed.
+* ``belgian-eid-invalid-visiblestring.pem`` - A certificate with UTF-8
+  bytes in a ``VisibleString`` type.
+* ``ee-pss-sha1-cert.pem`` - An RSA PSS certificate using a SHA1 signature and
+  SHA1 for MGF1 from the OpenSSL test suite.
 
 Custom X.509 Vectors
 ~~~~~~~~~~~~~~~~~~~~
@@ -456,8 +489,10 @@ Custom X.509 Vectors
   information access extension with both a CA repository entry and a custom
   OID entry.
 * ``ca/ca.pem`` - A self-signed certificate with ``basicConstraints`` set to
-  true. Its private key is ``ca/ca_key.pem``. This certificate is encoded in
-  several of the PKCS12 custom vectors.
+  true. Its private key is ``ca/ca_key.pem``.
+* ``pkcs12/ca/ca.pem`` - A self-signed certificate with ``basicConstraints``
+  set to true. Its private key is ``pkcs12/ca/ca_key.pem``.  This key is
+  encoded in several of the PKCS12 custom vectors.
 * ``negative_serial.pem`` - A certificate with a serial number that is a
   negative number.
 * ``rsa_pss.pem`` - A certificate with an RSA PSS signature.
@@ -465,6 +500,8 @@ Custom X.509 Vectors
   using ``ed448-pkcs8.pem`` as key.
 * ``ca/rsa_ca.pem`` - A self-signed RSA certificate with ``basicConstraints``
   set to true. Its private key is ``ca/rsa_key.pem``.
+* ``ca/rsae_ca.pem`` - A self-signed RSA certificate using a (non-PSS) RSA
+  public key and a RSA PSS signature. Its private key is ``ca/rsa_key.pem``.
 * ``invalid-sct-version.der`` - A certificate with an SCT with an unknown
   version.
 * ``invalid-sct-length.der`` - A certificate with an SCT with an internal
@@ -474,8 +511,29 @@ Custom X.509 Vectors
   are longer than 2 characters.
 * ``rsa_pss_cert.pem`` - A self-signed certificate with an RSA PSS signature
   with ``asymmetric/PKCS8/rsa_pss_2048.pem`` as its key.
+* ``rsa_pss_cert_invalid_mgf.der`` - A self-signed certificate with an invalid
+  RSA PSS signature that has a non-MGF1 OID for its mask generation function in the
+  signature algorithm.
+* ``rsa_pss_cert_no_sig_params.der`` - A self-signed certificate with an invalid
+  RSA PSS signature algorithm that is missing signature parameters for PSS.
+* ``rsa_pss_cert_unsupported_mgf_hash.der`` - A self-signed certificate with an
+  unsupported MGF1 hash algorithm in the signature algorithm.
 * ``long-form-name-attribute.pem`` - A certificate with ``subject`` and ``issuer``
   names containing attributes whose value's tag is encoded in long-form.
+* ``mismatch_inner_outer_sig_algorithm.der`` - A leaf certificate derived from
+  ``x509/cryptography.io.pem`` but modifying the ``tbs_cert.signature_algorithm``
+  OID to not match the outer signature algorithm OID.
+* ``ms-certificate-template.pem`` - A certificate with a ``msCertificateTemplate``
+  extension.
+* ``rsa_pss_sha256_no_null.pem`` - A certificate with an RSA PSS signature
+  with no encoded ``NULL`` for the PSS hash algorithm parameters. This certificate
+  was generated by LibreSSL.
+* ``ecdsa_null_alg.pem`` - A certificate with an ECDSA signature with ``NULL``
+  algorithm parameters. This encoding is invalid, but was generated by Java 11.
+* ``dsa_null_alg_params.pem`` - A certificate with a DSA signature with ``NULL``
+  algorithm parameters. This encoding is invalid, but was generated by Java 20.
+* ``ekucrit-testuser-cert.pem`` - A leaf certificate containing a critical EKU.
+  This is an invalid certificate per CA/B 7.1.2.7.6.
 
 Custom X.509 Request Vectors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -598,6 +656,9 @@ Custom X.509 Certificate Revocation List Vectors
   signature on this CRL is invalid.
 * ``crl_bad_version.pem`` - Contains a CRL with an invalid version.
 * ``crl_almost_10k.pem`` - Contains a CRL with 9,999 entries.
+* ``crl_inner_outer_mismatch.der`` - A CRL created from
+  ``valid_signature_crl.pem`` but with a mismatched inner and
+  outer signature algorithm. The signature on this CRL is invalid.
 
 X.509 OCSP Test Vectors
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -648,96 +709,98 @@ Custom X.509 OCSP Test Vectors
   extensions.
 * ``x509/ocsp/resp-unknown-extension.der`` - An OCSP response containing an
   extension with an unknown OID.
-* ``x509/ocsp/resp-unknown-hash-alg.der`` - AN OCSP response containing an
+* ``x509/ocsp/resp-unknown-hash-alg.der`` - An OCSP response containing an
   invalid hash algorithm OID.
+* ``x509/ocsp/req-acceptable-responses.der`` - An OCSP request containing an
+  acceptable responses extension.
 
 Custom PKCS12 Test Vectors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 * ``pkcs12/cert-key-aes256cbc.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``)
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``)
   both encrypted with AES 256 CBC with the password ``cryptography``.
 * ``pkcs12/cert-none-key-none.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``)
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``)
   with no encryption. The password (used for integrity checking only) is
   ``cryptography``.
 * ``pkcs12/cert-rc2-key-3des.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) encrypted with RC2 and key
-  (``x509/custom/ca/ca_key.pem``) encrypted via 3DES with the password
+  (``pkcs12/ca/ca.pem``) encrypted with RC2 and key
+  (``pkcs12/ca/ca_key.pem``) encrypted via 3DES with the password
   ``cryptography``.
 * ``pkcs12/no-password.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``) with no
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``) with no
   encryption and no password.
 * ``pkcs12/no-cert-key-aes256cbc.p12`` - A PKCS12 file containing a key
-  (``x509/custom/ca/ca_key.pem``) encrypted via AES 256 CBC with the
+  (``pkcs12/ca/ca_key.pem``) encrypted via AES 256 CBC with the
   password ``cryptography`` and no certificate.
 * ``pkcs12/cert-aes256cbc-no-key.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) encrypted via AES 256 CBC with the
+  (``pkcs12/ca/ca.pem``) encrypted via AES 256 CBC with the
   password ``cryptography`` and no private key.
 * ``pkcs12/no-name-no-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``),
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``),
   as well as two additional certificates (``x509/cryptography.io.pem``
   and ``x509/letsencryptx3.pem``).
 * ``pkcs12/name-all-no-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``)
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``)
   with friendly name ``name``, as well as two additional certificates
   (``x509/cryptography.io.pem`` and ``x509/letsencryptx3.pem``)
   with friendly names ``name2`` and ``name3``, respectively.
 * ``pkcs12/name-1-no-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``)
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``)
   with friendly name ``name``, as well as two additional certificates
   (``x509/cryptography.io.pem`` and ``x509/letsencryptx3.pem``).
 * ``pkcs12/name-2-3-no-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``),
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``),
   as well as two additional certificates (``x509/cryptography.io.pem``
   and ``x509/letsencryptx3.pem``) with friendly names ``name2`` and
   ``name3``, respectively.
 * ``pkcs12/name-2-no-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``),
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``),
   as well as two additional certificates (``x509/cryptography.io.pem``
   and ``x509/letsencryptx3.pem``), the first having friendly name ``name2``.
 * ``pkcs12/name-3-no-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``),
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``),
   as well as two additional certificates (``x509/cryptography.io.pem``
   and ``x509/letsencryptx3.pem``), the latter having friendly name ``name3``.
 * ``pkcs12/name-unicode-no-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``)
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``)
   with friendly name ``☺``, as well as two additional certificates
   (``x509/cryptography.io.pem`` and ``x509/letsencryptx3.pem``)
   with friendly names ``ä`` and ``ç``, respectively.
 * ``pkcs12/no-name-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``),
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``),
   as well as two additional certificates (``x509/cryptography.io.pem``
   and ``x509/letsencryptx3.pem``),
   encrypted via AES 256 CBC with the password ``cryptography``.
 * ``pkcs12/name-all-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``)
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``)
   with friendly name ``name``, as well as two additional certificates
   (``x509/cryptography.io.pem`` and ``x509/letsencryptx3.pem``)
   with friendly names ``name2`` and ``name3`` respectively,
   encrypted via AES 256 CBC with the password ``cryptography``.
 * ``pkcs12/name-1-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``)
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``)
   with friendly name ``name``, as well as two additional certificates
   (``x509/cryptography.io.pem`` and ``x509/letsencryptx3.pem``),
   encrypted via AES 256 CBC with the password ``cryptography``.
 * ``pkcs12/name-2-3-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``),
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``),
   as well as two additional certificates (``x509/cryptography.io.pem``
-  and ``x509/letsencryptx3.pem``) with friendly names ``name2` and
+  and ``x509/letsencryptx3.pem``) with friendly names ``name2`` and
   ``name3`` respectively, encrypted via AES 256 CBC with the password
   ``cryptography``.
 * ``pkcs12/name-2-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``),
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``),
   as well as two additional certificates (``x509/cryptography.io.pem``
   and ``x509/letsencryptx3.pem``), the first having friendly name ``name2``,
   encrypted via AES 256 CBC with the password ``cryptography``.
 * ``pkcs12/name-3-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``),
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``),
   as well as two additional certificates (``x509/cryptography.io.pem``
   and ``x509/letsencryptx3.pem``), the latter having friendly name ``name2``,
   encrypted via AES 256 CBC with the password ``cryptography``.
 * ``pkcs12/name-unicode-pwd.p12`` - A PKCS12 file containing a cert
-  (``x509/custom/ca/ca.pem``) and key (``x509/custom/ca/ca_key.pem``)
+  (``pkcs12/ca/ca.pem``) and key (``pkcs12/ca/ca_key.pem``)
   with friendly name ``☺``, as well as two additional certificates
   (``x509/cryptography.io.pem`` and ``x509/letsencryptx3.pem``)
   with friendly names ``ä`` and ``ç`` respectively, encrypted via
@@ -789,6 +852,10 @@ Custom PKCS7 Test Vectors
 Custom OpenSSH Test Vectors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+* ``ed25519-aesgcm-psw.key`` and ``ed25519-aesgcm-psw.key.pub`` generated by
+  exporting an Ed25519 key from ``1password 8`` with the password "password".
+  This key is encrypted using the ``aes256-gcm@openssh.com`` algorithm.
+
 Generated by
 ``asymmetric/OpenSSH/gen.sh``
 using command-line tools from OpenSSH_7.6p1 package.
@@ -820,6 +887,43 @@ using command-line tools from OpenSSH_7.6p1 package.
 * ``rsa-psw.key``, ``rsa-psw.key.pub`` -
   Password-protected RSA-2048 private key and corresponding public key.
   Password is "password".
+
+Custom OpenSSH Certificate Test Vectors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ``p256-p256-duplicate-extension.pub`` - A certificate with a duplicate
+  extension.
+* ``p256-p256-non-lexical-extensions.pub`` - A certificate with extensions
+  in non-lexical order.
+* ``p256-p256-duplicate-crit-opts.pub`` - A certificate with a duplicate
+  critical option.
+* ``p256-p256-non-lexical-crit-opts.pub`` - A certificate with critical
+  options in non-lexical order.
+* ``p256-ed25519-non-singular-crit-opt-val.pub`` - A certificate with
+  a critical option that contains more than one value.
+* ``p256-ed25519-non-singular-ext-val.pub`` - A certificate with
+  an extension that contains more than one value.
+* ``dsa-p256.pub`` - A certificate with a DSA public key signed by a P256
+  CA.
+* ``p256-dsa.pub`` - A certificate with a P256 public key signed by a DSA
+  CA.
+* ``p256-p256-broken-signature-key-type.pub`` - A certificate with a P256
+  public key signed by a P256 CA, but the signature key type is set to
+  ``rsa-sha2-512``.
+* ``p256-p256-empty-principals.pub`` - A certificate with a P256 public
+  key signed by a P256 CA with an empty valid principals list.
+* ``p256-p256-invalid-cert-type.pub`` - A certificate with a P256 public
+  key signed by a P256 CA with an invalid certificate type.
+* ``p256-p384.pub`` - A certificate with a P256 public key signed by a P384
+  CA.
+* ``p256-p521.pub`` - A certificate with a P256 public key signed by a P521
+  CA.
+* ``p256-rsa-sha1.pub`` - A certificate with a P256 public key signed by a
+  RSA CA using SHA1.
+* ``p256-rsa-sha256.pub`` - A certificate with a P256 public key signed by
+  a RSA CA using SHA256.
+* ``p256-rsa-sha512.pub`` - A certificate with a P256 public key signed by
+  a RSA CA using SHA512.
 
 Hashes
 ~~~~~~
@@ -866,6 +970,9 @@ Symmetric ciphers
 
 * AES (CBC, CFB, ECB, GCM, OFB, CCM) from `NIST CAVP`_.
 * AES CTR from :rfc:`3686`.
+* AES-GCM-SIV (KEY-LENGTH: 128, 256) from OpenSSL's `evpciph_aes_gcm_siv.txt`_.
+* AES-GCM-SIV (KEY-LENGTH: 192) generated by this project.
+  See :doc:`/development/custom-vectors/aes-192-gcm-siv`
 * AES OCB3 from :rfc:`7253`, `dkg's additional OCB3 vectors`_, and `OpenSSL's OCB vectors`_.
 * AES SIV from OpenSSL's `evpciph_aes_siv.txt`_.
 * 3DES (CBC, CFB, ECB, OFB) from `NIST CAVP`_.
@@ -878,16 +985,20 @@ Symmetric ciphers
 * CAST5 (ECB) from :rfc:`2144`.
 * CAST5 (CBC, CFB, OFB) generated by this project.
   See: :doc:`/development/custom-vectors/cast5`
-* ChaCha20 from :rfc:`7539`.
+* ChaCha20 from :rfc:`7539` and generated by this project.
+  See: :doc:`/development/custom-vectors/chacha20`
 * ChaCha20Poly1305 from :rfc:`7539`, `OpenSSL's evpciph.txt`_, and the
   `BoringSSL ChaCha20Poly1305 tests`_.
 * IDEA (ECB) from the `NESSIE IDEA vectors`_ created by `NESSIE`_.
 * IDEA (CBC, CFB, OFB) generated by this project.
   See: :doc:`/development/custom-vectors/idea`
+* RC2-128-CBC generated by this project. See: :doc:`/development/custom-vectors/rc2`
 * SEED (ECB) from :rfc:`4269`.
 * SEED (CBC) from :rfc:`4196`.
 * SEED (CFB, OFB) generated by this project.
   See: :doc:`/development/custom-vectors/seed`
+* SM4 (CBC, CFB, CTR, ECB, OFB) from `draft-ribose-cfrg-sm4-10`_.
+* SM4 (GCM) from :rfc:`8998`.
 
 Two factor authentication
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -918,11 +1029,14 @@ Created Vectors
 .. toctree::
     :maxdepth: 1
 
+    custom-vectors/aes-192-gcm-siv
     custom-vectors/arc4
     custom-vectors/cast5
+    custom-vectors/chacha20
     custom-vectors/idea
     custom-vectors/seed
     custom-vectors/hkdf
+    custom-vectors/rc2
 
 
 If official test vectors appear in the future the custom generated vectors
@@ -940,7 +1054,7 @@ header format (substituting the correct information):
 
 .. _`NIST`: https://www.nist.gov/
 .. _`IETF`: https://www.ietf.org/
-.. _`Project Wycheproof`: https://github.com/google/wycheproof
+.. _`Project Wycheproof`: https://github.com/C2SP/wycheproof
 .. _`NIST CAVP`: https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program
 .. _`Bruce Schneier's vectors`: https://www.schneier.com/wp-content/uploads/2015/12/vectors-2.txt
 .. _`Camellia page`: https://info.isl.ntt.co.jp/crypt/eng/camellia/
@@ -950,21 +1064,22 @@ header format (substituting the correct information):
 .. _`BoringSSL ChaCha20Poly1305 tests`: https://boringssl.googlesource.com/boringssl/+/2e2a226ac9201ac411a84b5e79ac3a7333d8e1c9/crypto/cipher_extra/test/chacha20_poly1305_tests.txt
 .. _`BoringSSL evp tests`: https://boringssl.googlesource.com/boringssl/+/ce3773f9fe25c3b54390bc51d72572f251c7d7e6/crypto/evp/evp_tests.txt
 .. _`RIPEMD website`: https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
-.. _`draft RFC`: https://tools.ietf.org/html/draft-josefsson-scrypt-kdf-01
+.. _`draft RFC`: https://datatracker.ietf.org/doc/html/draft-josefsson-scrypt-kdf-01
 .. _`Specification repository`: https://github.com/fernet/spec
 .. _`errata`: https://www.rfc-editor.org/errata_search.php?rfc=6238
 .. _`OpenSSL example key`: https://github.com/openssl/openssl/blob/d02b48c63a58ea4367a0e905979f140b7d090f86/test/testrsa.pem
-.. _`GnuTLS key parsing tests`: https://gitlab.com/gnutls/gnutls/commit/f16ef39ef0303b02d7fa590a37820440c466ce8d
+.. _`GnuTLS key parsing tests`: https://gitlab.com/gnutls/gnutls/-/commit/f16ef39ef0303b02d7fa590a37820440c466ce8d
 .. _`enc-rsa-pkcs8.pem`: https://gitlab.com/gnutls/gnutls/blob/f8d943b38bf74eaaa11d396112daf43cb8aa82ae/tests/pkcs8-decode/encpkcs8.pem
 .. _`enc2-rsa-pkcs8.pem`: https://gitlab.com/gnutls/gnutls/blob/f8d943b38bf74eaaa11d396112daf43cb8aa82ae/tests/pkcs8-decode/enc2pkcs8.pem
 .. _`unenc-rsa-pkcs8.pem`: https://gitlab.com/gnutls/gnutls/blob/f8d943b38bf74eaaa11d396112daf43cb8aa82ae/tests/pkcs8-decode/unencpkcs8.pem
 .. _`pkcs12_s2k_pem.c`: https://gitlab.com/gnutls/gnutls/blob/f8d943b38bf74eaaa11d396112daf43cb8aa82ae/tests/pkcs12_s2k_pem.c
 .. _`Botan's ECC private keys`: https://github.com/randombit/botan/tree/4917f26a2b154e841cd27c1bcecdd41d2bdeb6ce/src/tests/data/ecc
-.. _`GnuTLS example keys`: https://gitlab.com/gnutls/gnutls/commit/ad2061deafdd7db78fd405f9d143b0a7c579da7b
+.. _`GnuTLS example keys`: https://gitlab.com/gnutls/gnutls/-/commit/ad2061deafdd7db78fd405f9d143b0a7c579da7b
 .. _`NESSIE IDEA vectors`: https://www.cosic.esat.kuleuven.be/nessie/testvectors/bc/idea/Idea-128-64.verified.test-vectors
 .. _`NESSIE`: https://en.wikipedia.org/wiki/NESSIE
+.. _`draft-ribose-cfrg-sm4-10`: https://datatracker.ietf.org/doc/html/draft-ribose-cfrg-sm4-10
 .. _`Ed25519 website`: https://ed25519.cr.yp.to/software.html
-.. _`NIST SP-800-38B`: https://csrc.nist.gov/publications/detail/sp/800-38b/archive/2005-05-01
+.. _`NIST SP-800-38B`: https://csrc.nist.gov/pubs/sp/800/38/b/final
 .. _`NIST PKI Testing`: https://csrc.nist.gov/Projects/PKI-Testing
 .. _`testx509.pem`: https://github.com/openssl/openssl/blob/master/test/testx509.pem
 .. _`DigiCert Global Root G3`: http://cacerts.digicert.com/DigiCertGlobalRootG3.crt
@@ -980,7 +1095,9 @@ header format (substituting the correct information):
 .. _`root-ed25519.pem`: https://github.com/openssl/openssl/blob/2a1e2fe145c6eb8e75aa2e1b3a8c3a49384b2852/test/certs/root-ed25519.pem
 .. _`server-ed25519-cert.pem`: https://github.com/openssl/openssl/blob/2a1e2fe145c6eb8e75aa2e1b3a8c3a49384b2852/test/certs/server-ed25519-cert.pem
 .. _`server-ed448-cert.pem`: https://github.com/openssl/openssl/blob/2a1e2fe145c6eb8e75aa2e1b3a8c3a49384b2852/test/certs/server-ed448-cert.pem
+.. _`evpciph_aes_gcm_siv.txt`: https://github.com/openssl/openssl/blob/a2b1ab6100d5f0fb50b61d241471eea087415632/test/recipes/30-test_evp_data/evpciph_aes_gcm_siv.txt
 .. _`evpciph_aes_siv.txt`: https://github.com/openssl/openssl/blob/d830526c711074fdcd82c70c24c31444366a1ed8/test/recipes/30-test_evp_data/evpciph_aes_siv.txt
 .. _`dkg's additional OCB3 vectors`: https://gitlab.com/dkg/ocb-test-vectors
 .. _`OpenSSL's OCB vectors`: https://github.com/openssl/openssl/commit/2f19ab18a29cf9c82cdd68bc8c7e5be5061b19be
 .. _`badkeys`: https://github.com/vcsjones/badkeys/tree/50f1cc5f8d13bf3a2046d689f6452decb15d9c3c
+.. _`OpenSSL's RFC 6979 test vectors`: https://github.com/openssl/openssl/blob/01690a7ff36c4d18c48b301cdf375c954105a1d9/test/recipes/30-test_evp_data/evppkey_ecdsa_rfc6979.txt

@@ -1,6 +1,22 @@
 Frequently asked questions
 ==========================
 
+What issues can you help with in your issue tracker?
+----------------------------------------------------
+
+The primary purpose of our issue tracker is to enable us to identify and
+resolve bugs and feature requests in ``cryptography``, so any time a user
+files a bug, we start by asking: Is this a ``cryptography`` bug, or is it a
+bug somewhere else?
+
+That said, we do our best to help users to debug issues that are in their code
+or environments. Please note, however, that there's a limit to our ability to
+assist users in resolving problems that are specific to their environments,
+particularly when we have no way to reproduce the issue.
+
+Lastly, we're not able to provide support for general Python or Python
+packaging issues.
+
 .. _faq-howto-handle-deprecation-warning:
 
 I cannot suppress the deprecation warning that ``cryptography`` emits on import
@@ -81,17 +97,6 @@ as secure as possible while retaining the advantages of OpenSSL, so we've
 chosen to rewrite non-cryptographic operations (such as ASN.1 parsing) in a
 high performance memory safe language: Rust.
 
-Installing ``cryptography`` produces a ``fatal error: 'openssl/opensslv.h' file not found`` error
--------------------------------------------------------------------------------------------------
-
-``cryptography`` provides wheels which include a statically linked copy of
-OpenSSL. If you see this error it is likely because your copy of ``pip`` is too
-old to find our wheel files. Upgrade your ``pip`` with ``pip install -U pip``
-and then try to install ``cryptography`` again.
-
-Users on unusual CPU architectures will need to compile ``cryptography``
-themselves. Please view our :doc:`/installation` documentation.
-
 ``cryptography`` raised an ``InternalError`` and I'm not sure what to do?
 -------------------------------------------------------------------------
 
@@ -102,23 +107,14 @@ If you have no other libraries using OpenSSL in your process, or they do not
 appear to be at fault, it's possible that this is a bug in ``cryptography``.
 Please file an `issue`_ with instructions on how to reproduce it.
 
-error: ``-Werror=sign-conversion``: No option ``-Wsign-conversion`` during installation
----------------------------------------------------------------------------------------
+Installing cryptography with OpenSSL 0.9.8, 1.0.0, 1.0.1, 1.0.2, 1.1.0 fails
+----------------------------------------------------------------------------
 
-The compiler you are using is too old and not supported by ``cryptography``.
-Please upgrade to a more recent version. If you are running OpenBSD 6.1 or
-earlier the default compiler is extremely old. Use ``pkg_add`` to install a
-newer ``gcc`` and then install ``cryptography`` using
-``CC=/path/to/newer/gcc pip install cryptography``.
-
-Installing cryptography with OpenSSL 0.9.8, 1.0.0, 1.0.1, 1.0.2 fails
----------------------------------------------------------------------
-
-The OpenSSL project has dropped support for the 0.9.8, 1.0.0, 1.0.1, and 1.0.2
-release series. Since they are no longer receiving security patches from
-upstream, ``cryptography`` is also dropping support for them. To fix this issue
-you should upgrade to a newer version of OpenSSL (1.1.0 or later). This may
-require you to upgrade to a newer operating system.
+The OpenSSL project has dropped support for the 0.9.8, 1.0.0, 1.0.1, 1.0.2,
+and 1.1.0 release series. Since they are no longer receiving security patches
+from upstream, ``cryptography`` is also dropping support for them. To fix this
+issue you should upgrade to a newer version of OpenSSL (1.1.1 or later). This
+may require you to upgrade to a newer operating system.
 
 Installing ``cryptography`` fails with ``error: Can not find Rust compiler``
 ----------------------------------------------------------------------------
@@ -154,7 +150,7 @@ Why can't I import my PEM file?
 -------------------------------
 
 PEM is a format (defined by several RFCs, but originally :rfc:`1421`) for
-encoding keys, certificates and others cryptographic data into a regular form.
+encoding keys, certificates, and others cryptographic data into a regular form.
 The data is encoded as base64 and wrapped with a header and footer.
 
 If you are having trouble importing PEM files, make sure your file fits
@@ -185,6 +181,7 @@ For example, this is a PEM file for a RSA Public Key: ::
 
 What happened to the backend argument?
 --------------------------------------
+
 ``cryptography`` stopped requiring the use of ``backend`` arguments in
 version 3.1 and deprecated their use in version 36.0. If you are on an older
 version that requires these arguments please view the appropriate documentation
@@ -194,10 +191,27 @@ Note that for forward compatibility ``backend`` is still silently accepted by
 functions that previously required it, but it is ignored and no longer
 documented.
 
+Will you upload wheels for my non-x86 non-ARM64 CPU architecture?
+-----------------------------------------------------------------
+
+Maybe! But there's some pre-requisites. For us to build wheels and upload them
+to PyPI, we consider it necessary to run our tests for that architecture as a
+part of our CI (i.e. for every commit). If we don't run the tests, it's hard
+to have confidence that everything works -- particularly with cryptography,
+which frequently employs per-architecture assembly code.
+
+For us to add something to CI we need a provider which offers builds on that
+architecture, which integrate into our workflows, has sufficient capacity, and
+performs well enough not to regress the contributor experience. We don't think
+this is an insurmountable bar, but it's also not one that can be cleared
+lightly.
+
+If you are interested in helping support a new CPU architecture, we encourage
+you to reach out, discuss, and contribute that support. We will attempt to be
+supportive, but we cannot commit to doing the work ourselves.
 
 .. _`NaCl`: https://nacl.cr.yp.to/
 .. _`PyNaCl`: https://pynacl.readthedocs.io
-.. _`WSGIApplicationGroup`: https://modwsgi.readthedocs.io/en/develop/configuration-directives/WSGIApplicationGroup.html
 .. _`issue`: https://github.com/pyca/cryptography/issues
 .. _`memory safety`: https://alexgaynor.net/2019/aug/12/introduction-to-memory-unsafety-for-vps-of-engineering/
 .. _`building .zip archives for Lambda`: https://docs.aws.amazon.com/lambda/latest/dg/python-package.html

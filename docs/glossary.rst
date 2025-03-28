@@ -93,13 +93,22 @@ Glossary
     bytes-like
         A bytes-like object contains binary data and supports the
         `buffer protocol`_. This includes ``bytes``, ``bytearray``, and
-        ``memoryview`` objects.
+        ``memoryview`` objects. It is :term:`unsafe` to pass a mutable object
+        (e.g., a ``bytearray`` or other implementer of the buffer protocol)
+        and to `mutate it concurrently`_ with the operation it has been
+        provided for.
 
     U-label
         The presentational unicode form of an internationalized domain
         name. U-labels use unicode characters outside the ASCII range and
         are encoded as A-labels when stored in certificates.
 
+    unsafe
+        This is a term used to describe an operation where the user must
+        ensure that the input is correct. Failure to do so can result in
+        crashes, hangs, and other security issues.
+
 .. _`hardware security module`: https://en.wikipedia.org/wiki/Hardware_security_module
 .. _`idna`: https://pypi.org/project/idna/
 .. _`buffer protocol`: https://docs.python.org/3/c-api/buffer.html
+.. _`mutate it concurrently`: https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/

@@ -8,11 +8,13 @@ import os
 
 import pytest
 
+from cryptography.exceptions import AlreadyFinalized, _Reasons
+from cryptography.hazmat.bindings._rust import openssl as rust_openssl
 from cryptography.hazmat.primitives.ciphers import algorithms, base, modes
 
-from .utils import _load_all_params, generate_encrypt_test
 from ...doubles import DummyMode
-from ...utils import load_nist_vectors
+from ...utils import load_nist_vectors, raises_unsupported_algorithm
+from .utils import _load_all_params, generate_encrypt_test
 
 
 @pytest.mark.supported(
@@ -61,9 +63,7 @@ class TestAESModeXTS:
             enc.update(b"0" * 15)
 
     @pytest.mark.supported(
-        only_if=lambda backend: (
-            backend._lib.CRYPTOGRAPHY_OPENSSL_111D_OR_GREATER
-        ),
+        only_if=lambda backend: not rust_openssl.CRYPTOGRAPHY_IS_LIBRESSL,
         skip_message="duplicate key encryption error added in OpenSSL 1.1.1d",
     )
     def test_xts_no_duplicate_keys_encryption(self, backend):
@@ -274,7 +274,7 @@ def test_buffer_protocol_alternate_modes(mode, backend):
     data = bytearray(b"sixteen_byte_msg")
     key = algorithms.AES(bytearray(os.urandom(32)))
     if not backend.cipher_supported(key, mode):
-        pytest.skip("AES in {} mode not supported".format(mode.name))
+        pytest.skip(f"AES in {mode.name} mode not supported")
     cipher = base.Cipher(key, mode, backend)
     enc = cipher.encryptor()
     ct = enc.update(data) + enc.finalize()
@@ -298,7 +298,7 @@ def test_buffer_protocol_alternate_modes(mode, backend):
 def test_alternate_aes_classes(mode, alg_cls, backend):
     alg = alg_cls(b"0" * (alg_cls.key_size // 8))
     if not backend.cipher_supported(alg, mode):
-        pytest.skip("AES in {} mode not supported".format(mode.name))
+        pytest.skip(f"AES in {mode.name} mode not supported")
     data = bytearray(b"sixteen_byte_msg")
     cipher = base.Cipher(alg, mode, backend)
     enc = cipher.encryptor()
@@ -306,3 +306,61 @@ def test_alternate_aes_classes(mode, alg_cls, backend):
     dec = cipher.decryptor()
     pt = dec.update(ct) + dec.finalize()
     assert pt == data
+
+
+def test_reset_nonce(backend):
+    data = b"helloworld" * 10
+    nonce = b"\x00" * 16
+    nonce_alt = b"\xee" * 16
+    cipher = base.Cipher(
+        algorithms.AES(b"\x00" * 16),
+        modes.CTR(nonce),
+    )
+    cipher_alt = base.Cipher(
+        algorithms.AES(b"\x00" * 16),
+        modes.CTR(nonce_alt),
+    )
+    enc = cipher.encryptor()
+    ct1 = enc.update(data)
+    assert len(ct1) == len(data)
+    for _ in range(2):
+        enc.reset_nonce(nonce)
+        assert enc.update(data) == ct1
+    # Reset the nonce to a different value
+    # and check it matches with a different context
+    enc_alt = cipher_alt.encryptor()
+    ct2 = enc_alt.update(data)
+    enc.reset_nonce(nonce_alt)
+    assert enc.update(data) == ct2
+    enc_alt.finalize()
+    enc.finalize()
+    with pytest.raises(AlreadyFinalized):
+        enc.reset_nonce(nonce)
+    dec = cipher.decryptor()
+    assert dec.update(ct1) == data
+    for _ in range(2):
+        dec.reset_nonce(nonce)
+        assert dec.update(ct1) == data
+    # Reset the nonce to a different value
+    # and check it matches with a different context
+    dec_alt = cipher_alt.decryptor()
+    dec.reset_nonce(nonce_alt)
+    assert dec.update(ct2) == dec_alt.update(ct2)
+    dec_alt.finalize()
+    dec.finalize()
+    with pytest.raises(AlreadyFinalized):
+        dec.reset_nonce(nonce)
+
+
+def test_reset_nonce_invalid_mode(backend):
+    iv = b"\x00" * 16
+    c = base.Cipher(
+        algorithms.AES(b"\x00" * 16),
+        modes.CBC(iv),
+    )
+    enc = c.encryptor()
+    with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_CIPHER):
+        enc.reset_nonce(iv)
+    dec = c.decryptor()
+    with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_CIPHER):
+        dec.reset_nonce(iv)

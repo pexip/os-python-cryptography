@@ -8,7 +8,6 @@ import os
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-
 from tests.utils import load_pkcs1_vectors, load_vectors_from_file
 
 
@@ -83,9 +82,8 @@ def build_vectors(mgf1alg, hashalg, filename):
                 ),
             )
             output.append(
-                "# OAEP Example {0} alg={1} mgf1={2}".format(
-                    count, hashalg.name, mgf1alg.name
-                )
+                f"# OAEP Example {count} alg={hashalg.name} "
+                f"mgf1={mgf1alg.name}"
             )
             count += 1
             output.append("# Message:")
@@ -119,5 +117,5 @@ for hashtuple in itertools.product(hashalgs, hashalgs):
 
     write_file(
         build_vectors(hashtuple[0], hashtuple[1], oaep_path),
-        "oaep-{0}-{1}.txt".format(hashtuple[0].name, hashtuple[1].name),
+        f"oaep-{hashtuple[0].name}-{hashtuple[1].name}.txt",
     )

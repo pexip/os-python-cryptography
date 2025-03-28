@@ -2,12 +2,14 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
-use crate::asn1::PyAsn1Error;
-use pyo3::types::IntoPyDict;
-use pyo3::ToPyObject;
 use std::collections::hash_map::DefaultHasher;
-use std::convert::{TryFrom, TryInto};
 use std::hash::{Hash, Hasher};
+
+use pyo3::types::{PyAnyMethods, PyDictMethods, PyListMethods};
+use pyo3::ToPyObject;
+
+use crate::error::CryptographyError;
+use crate::types;
 
 struct TLSReader<'a> {
     data: &'a [u8],
@@ -22,22 +24,22 @@ impl<'a> TLSReader<'a> {
         self.data.is_empty()
     }
 
-    fn read_byte(&mut self) -> Result<u8, PyAsn1Error> {
+    fn read_byte(&mut self) -> Result<u8, CryptographyError> {
         Ok(self.read_exact(1)?[0])
     }
 
-    fn read_exact(&mut self, length: usize) -> Result<&'a [u8], PyAsn1Error> {
+    fn read_exact(&mut self, length: usize) -> Result<&'a [u8], CryptographyError> {
         if length > self.data.len() {
-            return Err(PyAsn1Error::from(pyo3::exceptions::PyValueError::new_err(
-                "Invalid SCT length",
-            )));
+            return Err(CryptographyError::from(
+                pyo3::exceptions::PyValueError::new_err("Invalid SCT length"),
+            ));
         }
         let (result, data) = self.data.split_at(length);
         self.data = data;
         Ok(result)
     }
 
-    fn read_length_prefixed(&mut self) -> Result<TLSReader<'a>, PyAsn1Error> {
+    fn read_length_prefixed(&mut self) -> Result<TLSReader<'a>, CryptographyError> {
         let length = u16::from_be_bytes(self.read_exact(2)?.try_into().unwrap());
         Ok(TLSReader::new(self.read_exact(length.into())?))
     }
@@ -72,8 +74,7 @@ impl TryFrom<u8> for HashAlgorithm {
             6 => HashAlgorithm::Sha512,
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Invalid/unsupported hash algorithm for SCT: {}",
-                    value
+                    "Invalid/unsupported hash algorithm for SCT: {value}"
                 )))
             }
         })
@@ -120,15 +121,14 @@ impl TryFrom<u8> for SignatureAlgorithm {
             3 => SignatureAlgorithm::Ecdsa,
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Invalid/unsupported signature algorithm for SCT: {}",
-                    value
+                    "Invalid/unsupported signature algorithm for SCT: {value}"
                 )))
             }
         })
     }
 }
 
-#[pyo3::prelude::pyclass]
+#[pyo3::pyclass(frozen, module = "cryptography.hazmat.bindings._rust.x509")]
 pub(crate) struct Sct {
     log_id: [u8; 32],
     timestamp: u64,
@@ -141,13 +141,21 @@ pub(crate) struct Sct {
     pub(crate) sct_data: Vec<u8>,
 }
 
-#[pyo3::prelude::pymethods]
+#[pyo3::pymethods]
 impl Sct {
+    fn __eq__(&self, other: pyo3::PyRef<'_, Sct>) -> bool {
+        self.sct_data == other.sct_data
+    }
+
+    fn __hash__(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.sct_data.hash(&mut hasher);
+        hasher.finish()
+    }
+
     #[getter]
-    fn version<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
-        py.import("cryptography.x509.certificate_transparency")?
-            .getattr(crate::intern!(py, "Version"))?
-            .getattr(crate::intern!(py, "v1"))
+    fn version<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<pyo3::Bound<'p, pyo3::PyAny>> {
+        types::CERTIFICATE_TRANSPARENCY_VERSION_V1.get(py)
     }
 
     #[getter]
@@ -156,46 +164,48 @@ impl Sct {
     }
 
     #[getter]
-    fn timestamp<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
-        let datetime_class = py
-            .import("datetime")?
-            .getattr(crate::intern!(py, "datetime"))?;
-        datetime_class
-            .call_method1("utcfromtimestamp", (self.timestamp / 1000,))?
-            .call_method(
-                "replace",
-                (),
-                Some(vec![("microsecond", self.timestamp % 1000 * 1000)].into_py_dict(py)),
-            )
+    fn timestamp<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<pyo3::Bound<'p, pyo3::PyAny>> {
+        let utc = types::DATETIME_TIMEZONE_UTC.get(py)?;
+
+        let kwargs = pyo3::types::PyDict::new_bound(py);
+        kwargs.set_item("microsecond", self.timestamp % 1000 * 1000)?;
+        kwargs.set_item("tzinfo", None::<Option<pyo3::PyObject>>)?;
+
+        types::DATETIME_DATETIME
+            .get(py)?
+            .call_method1(
+                pyo3::intern!(py, "fromtimestamp"),
+                (self.timestamp / 1000, utc),
+            )?
+            .call_method("replace", (), Some(&kwargs))
     }
 
     #[getter]
-    fn entry_type<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
-        let et_class = py
-            .import("cryptography.x509.certificate_transparency")?
-            .getattr(crate::intern!(py, "LogEntryType"))?;
-        let attr_name = match self.entry_type {
-            LogEntryType::Certificate => "X509_CERTIFICATE",
-            LogEntryType::PreCertificate => "PRE_CERTIFICATE",
-        };
-        et_class.getattr(attr_name)
+    fn entry_type<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<pyo3::Bound<'p, pyo3::PyAny>> {
+        Ok(match self.entry_type {
+            LogEntryType::Certificate => types::LOG_ENTRY_TYPE_X509_CERTIFICATE.get(py)?,
+            LogEntryType::PreCertificate => types::LOG_ENTRY_TYPE_PRE_CERTIFICATE.get(py)?,
+        })
     }
 
     #[getter]
     fn signature_hash_algorithm<'p>(
         &self,
         py: pyo3::Python<'p>,
-    ) -> pyo3::PyResult<&'p pyo3::PyAny> {
-        let hashes_mod = py.import("cryptography.hazmat.primitives.hashes")?;
-        hashes_mod.call_method0(self.hash_algorithm.to_attr())
+    ) -> pyo3::PyResult<pyo3::Bound<'p, pyo3::PyAny>> {
+        types::HASHES_MODULE
+            .get(py)?
+            .call_method0(self.hash_algorithm.to_attr())
     }
 
     #[getter]
-    fn signature_algorithm<'p>(&self, py: pyo3::Python<'p>) -> pyo3::PyResult<&'p pyo3::PyAny> {
-        let sa_class = py
-            .import("cryptography.x509.certificate_transparency")?
-            .getattr(crate::intern!(py, "SignatureAlgorithm"))?;
-        sa_class.getattr(self.signature_algorithm.to_attr())
+    fn signature_algorithm<'p>(
+        &self,
+        py: pyo3::Python<'p>,
+    ) -> pyo3::PyResult<pyo3::Bound<'p, pyo3::PyAny>> {
+        types::SIGNATURE_ALGORITHM
+            .get(py)?
+            .getattr(self.signature_algorithm.to_attr())
     }
 
     #[getter]
@@ -209,45 +219,22 @@ impl Sct {
     }
 }
 
-#[pyo3::prelude::pyproto]
-impl pyo3::PyObjectProtocol for Sct {
-    fn __richcmp__(
-        &self,
-        other: pyo3::PyRef<Sct>,
-        op: pyo3::basic::CompareOp,
-    ) -> pyo3::PyResult<bool> {
-        match op {
-            pyo3::basic::CompareOp::Eq => Ok(self.sct_data == other.sct_data),
-            pyo3::basic::CompareOp::Ne => Ok(self.sct_data != other.sct_data),
-            _ => Err(pyo3::exceptions::PyTypeError::new_err(
-                "SCTs cannot be ordered",
-            )),
-        }
-    }
-
-    fn __hash__(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.sct_data.hash(&mut hasher);
-        hasher.finish()
-    }
-}
-
 pub(crate) fn parse_scts(
     py: pyo3::Python<'_>,
     data: &[u8],
     entry_type: LogEntryType,
-) -> Result<pyo3::PyObject, PyAsn1Error> {
+) -> Result<pyo3::PyObject, CryptographyError> {
     let mut reader = TLSReader::new(data).read_length_prefixed()?;
 
-    let py_scts = pyo3::types::PyList::empty(py);
+    let py_scts = pyo3::types::PyList::empty_bound(py);
     while !reader.is_empty() {
         let mut sct_data = reader.read_length_prefixed()?;
         let raw_sct_data = sct_data.data.to_vec();
         let version = sct_data.read_byte()?;
         if version != 0 {
-            return Err(PyAsn1Error::from(pyo3::exceptions::PyValueError::new_err(
-                "Invalid SCT version",
-            )));
+            return Err(CryptographyError::from(
+                pyo3::exceptions::PyValueError::new_err("Invalid SCT version"),
+            ));
         }
         let log_id = sct_data.read_exact(32)?.try_into().unwrap();
         let timestamp = u64::from_be_bytes(sct_data.read_exact(8)?.try_into().unwrap());
@@ -267,15 +254,9 @@ pub(crate) fn parse_scts(
             extension_bytes,
             sct_data: raw_sct_data,
         };
-        py_scts.append(pyo3::PyCell::new(py, sct)?)?;
+        py_scts.append(pyo3::Bound::new(py, sct)?)?;
     }
     Ok(py_scts.to_object(py))
-}
-
-pub(crate) fn add_to_module(module: &pyo3::prelude::PyModule) -> pyo3::PyResult<()> {
-    module.add_class::<Sct>()?;
-
-    Ok(())
 }
 
 #[cfg(test)]
