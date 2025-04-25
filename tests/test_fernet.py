@@ -4,21 +4,17 @@
 
 
 import base64
-import calendar
+import datetime
 import json
 import os
 import time
 
-import iso8601
-
 import pretend
-
 import pytest
 
+import cryptography_vectors
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from cryptography.hazmat.primitives.ciphers import algorithms, modes
-
-import cryptography_vectors
 
 
 def json_parametrize(keys, filename):
@@ -49,7 +45,7 @@ class TestFernet:
         f = Fernet(secret.encode("ascii"), backend=backend)
         actual_token = f._encrypt_from_parts(
             src.encode("ascii"),
-            calendar.timegm(iso8601.parse_date(now).utctimetuple()),
+            int(datetime.datetime.fromisoformat(now).timestamp()),
             bytes(iv),
         )
         assert actual_token == token.encode("ascii")
@@ -63,7 +59,7 @@ class TestFernet:
     ):
         # secret & token are both str
         f = Fernet(secret.encode("ascii"), backend=backend)
-        current_time = calendar.timegm(iso8601.parse_date(now).utctimetuple())
+        current_time = int(datetime.datetime.fromisoformat(now).timestamp())
         payload = f.decrypt_at_time(
             token,  # str
             ttl=ttl_sec,
@@ -89,7 +85,7 @@ class TestFernet:
     @json_parametrize(("secret", "token", "now", "ttl_sec"), "invalid.json")
     def test_invalid(self, secret, token, now, ttl_sec, backend, monkeypatch):
         f = Fernet(secret.encode("ascii"), backend=backend)
-        current_time = calendar.timegm(iso8601.parse_date(now).utctimetuple())
+        current_time = int(datetime.datetime.fromisoformat(now).timestamp())
         with pytest.raises(InvalidToken):
             f.decrypt_at_time(
                 token.encode("ascii"),
@@ -131,7 +127,7 @@ class TestFernet:
         monkeypatch.setattr(time, "time", pretend.raiser(ValueError))
         assert f.decrypt(token, ttl=None) == pt
 
-    def test_ttl_required_in_decrypt_at_time(self, monkeypatch, backend):
+    def test_ttl_required_in_decrypt_at_time(self, backend):
         f = Fernet(base64.urlsafe_b64encode(b"\x00" * 32), backend=backend)
         pt = b"encrypt me"
         token = f.encrypt(pt)
@@ -142,7 +138,7 @@ class TestFernet:
                 current_time=int(time.time()),
             )
 
-    @pytest.mark.parametrize("message", [b"", b"Abc!", b"\x00\xFF\x00\x80"])
+    @pytest.mark.parametrize("message", [b"", b"Abc!", b"\x00\xff\x00\x80"])
     def test_roundtrips(self, message, backend):
         f = Fernet(Fernet.generate_key(), backend=backend)
         assert f.decrypt(f.encrypt(message)) == message
@@ -152,7 +148,7 @@ class TestFernet:
         with pytest.raises(ValueError):
             Fernet(key, backend=backend)
 
-    def test_extract_timestamp(self, monkeypatch, backend):
+    def test_extract_timestamp(self, backend):
         f = Fernet(base64.urlsafe_b64encode(b"\x00" * 32), backend=backend)
         current_time = 1526138327
         token = f.encrypt_at_time(b"encrypt me", current_time)
@@ -202,7 +198,9 @@ class TestMultiFernet:
             f.decrypt_at_time(token, ttl=1, current_time=102)
         with pytest.raises(ValueError):
             f.decrypt_at_time(
-                token, ttl=None, current_time=100  # type: ignore[arg-type]
+                token,
+                ttl=None,  # type: ignore[arg-type]
+                current_time=100,
             )
 
     def test_no_fernets(self, backend):
@@ -252,7 +250,7 @@ class TestMultiFernet:
         with pytest.raises(InvalidToken):
             mf1.decrypt(rotated)
 
-    def test_rotate_preserves_timestamp(self, backend, monkeypatch):
+    def test_rotate_preserves_timestamp(self, backend):
         f1 = Fernet(base64.urlsafe_b64encode(b"\x00" * 32), backend=backend)
         f2 = Fernet(base64.urlsafe_b64encode(b"\x01" * 32), backend=backend)
 

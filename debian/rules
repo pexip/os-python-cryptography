@@ -1,7 +1,5 @@
 #!/usr/bin/make -f
 
-export DH_VERBOSE = 1
-
 include /usr/share/dpkg/pkg-info.mk
 include /usr/share/dpkg/architecture.mk
 include /usr/share/dpkg/buildflags.mk
@@ -17,15 +15,15 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow
 
 export PYBUILD_NAME=cryptography
 export PYBUILD_TEST_PYTEST=1
-export PYBUILD_TEST_ARGS={dir}/tests/
-export PYBUILD_BEFORE_TEST=cp -R {dir}/src/${PYBUILD_NAME}.egg-info {build_dir}
-export PYBUILD_AFTER_TEST=rm -r {build_dir}/.hypothesis
+# needs newer librust-openssl-dev (#1081226)
+export PYBUILD_TEST_ARGS={dir}/tests/ -k 'not (TestDHPublicKeySerialization and test_public_bytes_match)'
 
 %:
 	dh $@ --buildsystem=pybuild
 
 
 override_dh_auto_clean:
+	if [ -f src/rust/Cargo.lock.orig ] ; then mv src/rust/Cargo.lock.orig src/rust/Cargo.lock ; fi
 	dh_auto_clean
 	rm -rf src/rust/target
 	rm -rf debian/cargo_registry
@@ -43,7 +41,9 @@ override_dh_auto_configure:
 	$(CARGO) prepare-debian debian/cargo_registry --link-from-system
 	mkdir -p src/rust/target/release
 	ln -sf ../$(DEB_HOST_RUST_TYPE)/release/libcryptography_rust.so src/rust/target/release/libcryptography_rust.so
-	rm -f src/rust/Cargo.lock
+	mv src/rust/Cargo.lock src/rust/Cargo.lock.orig
+	# needed because we patch Cargo.toml
+	cargo generate-lockfile --manifest-path src/rust/Cargo.toml --offline
 	dh_auto_configure
 
 

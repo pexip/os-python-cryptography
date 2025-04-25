@@ -9,14 +9,12 @@ import os
 import textwrap
 
 import pretend
-
 import pytest
 
 import cryptography
 import cryptography.utils
-from cryptography.exceptions import UnsupportedAlgorithm, _Reasons
-
 import cryptography_vectors
+from cryptography.exceptions import UnsupportedAlgorithm, _Reasons
 
 from . import deprecated_module
 from .utils import (
@@ -39,6 +37,13 @@ from .utils import (
     load_x963_vectors,
     raises_unsupported_algorithm,
 )
+
+
+def test_int_to_bytes_rejects_zero_length():
+    with pytest.raises(ValueError):
+        cryptography.utils.int_to_bytes(123, 0)
+    with pytest.raises(ValueError):
+        cryptography.utils.int_to_bytes(0, 0)
 
 
 def test_check_backend_support_skip():
@@ -2723,7 +2728,7 @@ a4090a3a2f602a77ff3bac1417f7e25a683f667b3b91f105016a47afad46a0367b18e2bdf0c
         {
             "curve": "sect233k1",
             "d": int(
-                "1da7422b50e3ff051f2aaaed10acea6cbf6110c517da2f4e" "aca8b5b87",
+                "1da7422b50e3ff051f2aaaed10acea6cbf6110c517da2f4eaca8b5b87",
                 16,
             ),
             "x": int(
@@ -2740,7 +2745,7 @@ a4090a3a2f602a77ff3bac1417f7e25a683f667b3b91f105016a47afad46a0367b18e2bdf0c
         {
             "curve": "sect233k1",
             "d": int(
-                "530951158f7b1586978c196603c12d25607d2cb0557efadb" "23cd0ce8",
+                "530951158f7b1586978c196603c12d25607d2cb0557efadb23cd0ce8",
                 16,
             ),
             "x": int(
@@ -3778,7 +3783,7 @@ f47021022a6c9b45ed791d09d9540eb81ea065fc1959eca365001ee39928c343d75
                 ),
             },
             "Z": int(
-                "b1259ceedfb663d9515089cf727e7024fb3d86cbcec611b4" "ba0b4ab6",
+                "b1259ceedfb663d9515089cf727e7024fb3d86cbcec611b4ba0b4ab6",
                 16,
             ),
             "curve": "secp224r1",
@@ -4017,7 +4022,7 @@ ffdfa60dd7
                 16,
             ),
             "Z": int(
-                "43f23b2c760d686fc99cc008b63aea92f866e224265af60d" "2d8ae540",
+                "43f23b2c760d686fc99cc008b63aea92f866e224265af60d2d8ae540",
                 16,
             ),
             "DKM": int("ad65fa2d12541c3a21f3cd223efb", 16),

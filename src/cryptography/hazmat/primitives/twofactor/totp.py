@@ -2,13 +2,15 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import annotations
+
 import typing
 
 from cryptography.hazmat.primitives import constant_time
 from cryptography.hazmat.primitives.twofactor import InvalidToken
 from cryptography.hazmat.primitives.twofactor.hotp import (
     HOTP,
-    _ALLOWED_HASH_TYPES,
+    HOTPHashTypes,
     _generate_uri,
 )
 
@@ -18,7 +20,7 @@ class TOTP:
         self,
         key: bytes,
         length: int,
-        algorithm: _ALLOWED_HASH_TYPES,
+        algorithm: HOTPHashTypes,
         time_step: int,
         backend: typing.Any = None,
         enforce_key_length: bool = True,
@@ -28,7 +30,7 @@ class TOTP:
             key, length, algorithm, enforce_key_length=enforce_key_length
         )
 
-    def generate(self, time: typing.Union[int, float]) -> bytes:
+    def generate(self, time: int | float) -> bytes:
         counter = int(time / self._time_step)
         return self._hotp.generate(counter)
 
@@ -37,7 +39,7 @@ class TOTP:
             raise InvalidToken("Supplied TOTP value does not match.")
 
     def get_provisioning_uri(
-        self, account_name: str, issuer: typing.Optional[str]
+        self, account_name: str, issuer: str | None
     ) -> str:
         return _generate_uri(
             self._hotp,

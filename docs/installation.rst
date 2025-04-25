@@ -13,34 +13,32 @@ single most common cause of installation problems.
 Supported platforms
 -------------------
 
-Currently we test ``cryptography`` on Python 3.6+ and PyPy3 on these
+Currently we test ``cryptography`` on Python 3.7+ and PyPy3 7.3.11+ on these
 operating systems.
 
 * x86-64 RHEL 8.x
+* x86-64 CentOS 9 Stream
 * x86-64 Fedora (latest)
-* x86-64 macOS 12 Monterey
-* ARM64 macOS 12 Monterey
-* x86-64 Ubuntu 18.04, 20.04, 22.04, rolling
-* ARM64 Ubuntu 20.04
-* x86-64 Debian Stretch (9.x), Buster (10.x), Bullseye (11.x), Bookworm (12.x)
-  and Sid (unstable)
-* x86-64 Alpine (latest)
-* ARM64 Alpine (latest)
+* x86-64 macOS 13 Ventura and ARM64 macOS 14 Sonoma
+* x86-64 Ubuntu 20.04, 22.04, 24.04, rolling
+* ARM64 Ubuntu rolling
+* x86-64 Debian Bullseye (11.x), Bookworm (12.x), Trixie (13.x), and
+  Sid (unstable)
+* x86-64 and ARM64 Alpine (latest)
 * 32-bit and 64-bit Python on 64-bit Windows Server 2022
 
 We test compiling with ``clang`` as well as ``gcc`` and use the following
-OpenSSL releases:
+OpenSSL releases in addition to distribution provided releases from the
+above supported platforms:
 
-* ``OpenSSL 1.1.0-latest``
-* ``OpenSSL 1.1.1-latest``
 * ``OpenSSL 3.0-latest``
+* ``OpenSSL 3.1-latest``
+* ``OpenSSL 3.2-latest``
+* ``OpenSSL 3.3-latest``
 
-In addition we test against several versions of LibreSSL and the latest commit
-in BoringSSL.
-
-.. warning::
-
-    Cryptography 37.0.0 has deprecated support for OpenSSL 1.1.0.
+We also test against the latest commit of BoringSSL as well as versions of
+LibreSSL that are receiving security support at the time of a given
+``cryptography`` release.
 
 
 Building cryptography on Windows
@@ -57,15 +55,14 @@ just run
 If you prefer to compile it yourself you'll need to have OpenSSL installed.
 You can compile OpenSSL yourself as well or use `a binary distribution`_.
 Be sure to download the proper version for your architecture and Python
-(VC2015 is required for 3.6 and above). Wherever you place your copy of OpenSSL
-you'll need to set the ``LIB`` and ``INCLUDE`` environment variables to include
-the proper locations. For example:
+(VC2015 is required for 3.7 and above). Wherever you place your copy of OpenSSL
+you'll need to set the ``OPENSSL_DIR`` environment variable to include the
+proper location. For example:
 
 .. code-block:: console
 
     C:\> \path\to\vcvarsall.bat x86_amd64
-    C:\> set LIB=C:\OpenSSL-win64\lib;%LIB%
-    C:\> set INCLUDE=C:\OpenSSL-win64\include;%INCLUDE%
+    C:\> set OPENSSL_DIR=C:\OpenSSL-win64
     C:\> pip install cryptography
 
 You will also need to have :ref:`Rust installed and
@@ -81,11 +78,10 @@ Building cryptography on Linux
 
 .. note::
 
-    If you are on RHEL/CentOS/Fedora/Debian/Ubuntu or another distribution
-    derived from the preceding list, then you should **upgrade pip** and
-    attempt to install ``cryptography`` again before following the instructions
-    to compile it below. These platforms will receive a binary wheel and
-    require no compiler if you have an updated ``pip``!
+    You should **upgrade pip** and attempt to install ``cryptography`` again
+    before following the instructions to compile it below. Most Linux
+    platforms will receive a binary wheel and require no compiler if you have
+    an updated ``pip``!
 
 ``cryptography`` ships ``manylinux`` wheels (as of 2.0) so all dependencies
 are included. For users on **pip 19.3** or above running on a ``manylinux2014``
@@ -108,13 +104,13 @@ Alpine
 
 .. warning::
 
-    The Rust available by default in Alpine < 3.14 is older than the minimum
+    The Rust available by default in Alpine < 3.17 is older than the minimum
     supported version. See the :ref:`Rust installation instructions
     <installation:Rust>` for information about installing a newer Rust.
 
 .. code-block:: console
 
-    $ sudo apk add gcc musl-dev python3-dev libffi-dev openssl-dev cargo
+    $ sudo apk add gcc musl-dev python3-dev libffi-dev openssl-dev cargo pkgconfig
 
 If you get an error with ``openssl-dev`` you may have to use ``libressl-dev``.
 
@@ -123,30 +119,29 @@ Debian/Ubuntu
 
 .. warning::
 
-    The Rust available in some Debian versions is older than the minimum
-    supported version. Debian Bullseye is sufficiently new, but otherwise
-    please see the :ref:`Rust installation instructions <installation:Rust>`
-    for information about installing a newer Rust.
+    The Rust available in Debian versions prior to Bookworm are older than the
+    minimum supported version. See the :ref:`Rust installation instructions
+    <installation:Rust>` for information about installing a newer Rust.
 
 .. code-block:: console
 
     $ sudo apt-get install build-essential libssl-dev libffi-dev \
-        python3-dev cargo
+        python3-dev cargo pkg-config
 
 Fedora/RHEL/CentOS
 ~~~~~~~~~~~~~~~~~~
 
 .. warning::
 
-    For RHEL and CentOS you must be on version 8.3 or newer for the command
-    below to install a sufficiently new Rust. If your Rust is less than 1.48.0
+    For RHEL and CentOS you must be on version 8.8 or newer for the command
+    below to install a sufficiently new Rust. If your Rust is less than 1.65.0
     please see the :ref:`Rust installation instructions <installation:Rust>`
     for information about installing a newer Rust.
 
 .. code-block:: console
 
     $ sudo dnf install redhat-rpm-config gcc libffi-devel python3-devel \
-        openssl-devel cargo
+        openssl-devel cargo pkg-config
 
 
 Building
@@ -230,7 +225,7 @@ dependencies.
     ./config no-shared no-ssl2 no-ssl3 -fPIC --prefix=${CWD}/openssl
     make && make install
     cd ..
-    CFLAGS="-I${CWD}/openssl/include" LDFLAGS="-L${CWD}/openssl/lib" pip wheel --no-binary :all: cryptography
+    OPENSSL_DIR="${CWD}/openssl" pip wheel --no-cache-dir --no-binary cryptography cryptography
 
 Building cryptography on macOS
 ------------------------------
@@ -262,7 +257,9 @@ development headers.
 
 You will also need to have :ref:`Rust installed and
 available<installation:Rust>`, which can be obtained from `Homebrew`_,
-`MacPorts`_, or directly from the Rust website.
+`MacPorts`_, or directly from the Rust website. If you are linking against a
+``universal2`` archive of OpenSSL, the minimum supported Rust version is
+1.66.0.
 
 Finally you need OpenSSL, which you can obtain from `Homebrew`_ or `MacPorts`_.
 Cryptography does **not** support the OpenSSL/LibreSSL libraries Apple ships
@@ -274,15 +271,15 @@ To build cryptography and dynamically link it:
 
 .. code-block:: console
 
-    $ brew install openssl@1.1 rust
-    $ env LDFLAGS="-L$(brew --prefix openssl@1.1)/lib" CFLAGS="-I$(brew --prefix openssl@1.1)/include" pip install cryptography
+    $ brew install openssl@3 rust
+    $ env OPENSSL_DIR="$(brew --prefix openssl@3)" pip install cryptography
 
 `MacPorts`_:
 
 .. code-block:: console
 
     $ sudo port install openssl rust
-    $ env LDFLAGS="-L/opt/local/lib" CFLAGS="-I/opt/local/include" pip install cryptography
+    $ env OPENSSL_DIR="-L/opt/local" pip install cryptography
 
 You can also build cryptography statically:
 
@@ -290,15 +287,15 @@ You can also build cryptography statically:
 
 .. code-block:: console
 
-    $ brew install openssl@1.1 rust
-    $ env CRYPTOGRAPHY_SUPPRESS_LINK_FLAGS=1 LDFLAGS="$(brew --prefix openssl@1.1)/lib/libssl.a $(brew --prefix openssl@1.1)/lib/libcrypto.a" CFLAGS="-I$(brew --prefix openssl@1.1)/include" pip install cryptography
+    $ brew install openssl@3 rust
+    $ env OPENSSL_STATIC=1 OPENSSL_DIR="$(brew --prefix openssl@3)" pip install cryptography
 
 `MacPorts`_:
 
 .. code-block:: console
 
     $ sudo port install openssl rust
-    $ env CRYPTOGRAPHY_SUPPRESS_LINK_FLAGS=1 LDFLAGS="/opt/local/lib/libssl.a /opt/local/lib/libcrypto.a" CFLAGS="-I/opt/local/include" pip install cryptography
+    $ env OPENSSL_STATIC=1 OPENSSL_DIR="/opt/local" pip install cryptography
 
 If you need to rebuild ``cryptography`` for any reason be sure to clear the
 local `wheel cache`_.
@@ -315,7 +312,7 @@ Rust
     a Rust toolchain.
 
 Building ``cryptography`` requires having a working Rust toolchain. The current
-minimum supported Rust version is 1.48.0. **This is newer than the Rust some
+minimum supported Rust version is 1.65.0. **This is newer than the Rust some
 package managers ship**, so users may need to install with the
 instructions below.
 

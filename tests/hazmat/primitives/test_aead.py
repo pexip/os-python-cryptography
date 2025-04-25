@@ -4,7 +4,9 @@
 
 
 import binascii
+import mmap
 import os
+import sys
 
 import pytest
 
@@ -12,23 +14,19 @@ from cryptography.exceptions import InvalidTag, UnsupportedAlgorithm, _Reasons
 from cryptography.hazmat.primitives.ciphers.aead import (
     AESCCM,
     AESGCM,
+    AESGCMSIV,
     AESOCB3,
     AESSIV,
     ChaCha20Poly1305,
 )
 
-from .utils import _load_all_params
 from ...utils import (
     load_nist_ccm_vectors,
     load_nist_vectors,
     load_vectors_from_file,
     raises_unsupported_algorithm,
 )
-
-
-class FakeData(bytes):
-    def __len__(self):
-        return 2**31
+from .utils import _load_all_params
 
 
 def _aead_supported(cls):
@@ -37,6 +35,10 @@ def _aead_supported(cls):
         return True
     except UnsupportedAlgorithm:
         return False
+
+
+def large_mmap():
+    return mmap.mmap(-1, 2**32, prot=mmap.PROT_READ)
 
 
 @pytest.mark.skipif(
@@ -53,16 +55,22 @@ def test_chacha20poly1305_unsupported_on_older_openssl(backend):
     reason="Does not support ChaCha20Poly1305",
 )
 class TestChaCha20Poly1305:
+    @pytest.mark.skipif(
+        sys.platform not in {"linux", "darwin"} or sys.maxsize < 2**31,
+        reason="mmap and 64-bit platform required",
+    )
     def test_data_too_large(self):
         key = ChaCha20Poly1305.generate_key()
         chacha = ChaCha20Poly1305(key)
         nonce = b"0" * 12
 
-        with pytest.raises(OverflowError):
-            chacha.encrypt(nonce, FakeData(), b"")
+        large_data = large_mmap()
 
         with pytest.raises(OverflowError):
-            chacha.encrypt(nonce, b"", FakeData())
+            chacha.encrypt(nonce, large_data, b"")
+
+        with pytest.raises(OverflowError):
+            chacha.encrypt(nonce, b"", large_data)
 
     def test_generate_key(self):
         key = ChaCha20Poly1305.generate_key()
@@ -189,16 +197,22 @@ class TestChaCha20Poly1305:
     reason="Does not support AESCCM",
 )
 class TestAESCCM:
+    @pytest.mark.skipif(
+        sys.platform not in {"linux", "darwin"} or sys.maxsize < 2**31,
+        reason="mmap and 64-bit platform required",
+    )
     def test_data_too_large(self):
         key = AESCCM.generate_key(128)
         aesccm = AESCCM(key)
         nonce = b"0" * 12
 
-        with pytest.raises(OverflowError):
-            aesccm.encrypt(nonce, FakeData(), b"")
+        large_data = large_mmap()
 
         with pytest.raises(OverflowError):
-            aesccm.encrypt(nonce, b"", FakeData())
+            aesccm.encrypt(nonce, large_data, b"")
+
+        with pytest.raises(OverflowError):
+            aesccm.encrypt(nonce, b"", large_data)
 
     def test_default_tag_length(self, backend):
         key = AESCCM.generate_key(128)
@@ -284,6 +298,9 @@ class TestAESCCM:
         with pytest.raises(ValueError):
             aesccm.encrypt(nonce, pt, None)
 
+        with pytest.raises(ValueError):
+            aesccm.decrypt(nonce, pt, None)
+
     @pytest.mark.parametrize(
         ("nonce", "data", "associated_data"),
         [
@@ -362,16 +379,28 @@ def _load_gcm_vectors():
 
 
 class TestAESGCM:
+    @pytest.mark.skipif(
+        sys.platform not in {"linux", "darwin"} or sys.maxsize < 2**31,
+        reason="mmap and 64-bit platform required",
+    )
     def test_data_too_large(self):
         key = AESGCM.generate_key(128)
         aesgcm = AESGCM(key)
         nonce = b"0" * 12
 
-        with pytest.raises(OverflowError):
-            aesgcm.encrypt(nonce, FakeData(), b"")
+        large_data = large_mmap()
 
         with pytest.raises(OverflowError):
-            aesgcm.encrypt(nonce, b"", FakeData())
+            aesgcm.encrypt(nonce, large_data, b"")
+
+        with pytest.raises(OverflowError):
+            aesgcm.encrypt(nonce, b"", large_data)
+
+    def test_decrypt_data_too_short(self):
+        key = AESGCM.generate_key(128)
+        aesgcm = AESGCM(key)
+        with pytest.raises(InvalidTag):
+            aesgcm.decrypt(b"0" * 12, b"0", None)
 
     def test_vectors(self, backend, subtests):
         vectors = _load_gcm_vectors()
@@ -428,6 +457,8 @@ class TestAESGCM:
         aesgcm = AESGCM(key)
         with pytest.raises(ValueError):
             aesgcm.encrypt(b"\x00" * length, b"hi", None)
+        with pytest.raises(ValueError):
+            aesgcm.decrypt(b"\x00" * length, b"hi", None)
 
     def test_bad_key(self, backend):
         with pytest.raises(TypeError):
@@ -464,10 +495,22 @@ class TestAESGCM:
         computed_pt = aesgcm.decrypt(nonce, ct, ad)
         assert computed_pt == pt
         aesgcm2 = AESGCM(bytearray(key))
-        ct2 = aesgcm2.encrypt(bytearray(nonce), pt, ad)
+        ct2 = aesgcm2.encrypt(bytearray(nonce), bytearray(pt), bytearray(ad))
         assert ct2 == ct
-        computed_pt2 = aesgcm2.decrypt(bytearray(nonce), ct2, ad)
+        b_nonce = bytearray(nonce)
+        b_ct2 = bytearray(ct2)
+        b_ad = bytearray(ad)
+        computed_pt2 = aesgcm2.decrypt(b_nonce, b_ct2, b_ad)
         assert computed_pt2 == pt
+        aesgcm3 = AESGCM(memoryview(key))
+        m_nonce = memoryview(nonce)
+        m_pt = memoryview(pt)
+        m_ad = memoryview(ad)
+        ct3 = aesgcm3.encrypt(m_nonce, m_pt, m_ad)
+        assert ct3 == ct
+        m_ct3 = memoryview(ct3)
+        computed_pt3 = aesgcm3.decrypt(m_nonce, m_ct3, m_ad)
+        assert computed_pt3 == pt
 
 
 @pytest.mark.skipif(
@@ -484,16 +527,22 @@ def test_aesocb3_unsupported_on_older_openssl(backend):
     reason="Does not support AESOCB3",
 )
 class TestAESOCB3:
+    @pytest.mark.skipif(
+        sys.platform not in {"linux", "darwin"} or sys.maxsize < 2**31,
+        reason="mmap and 64-bit platform required",
+    )
     def test_data_too_large(self):
         key = AESOCB3.generate_key(128)
         aesocb3 = AESOCB3(key)
         nonce = b"0" * 12
 
-        with pytest.raises(OverflowError):
-            aesocb3.encrypt(nonce, FakeData(), b"")
+        large_data = large_mmap()
 
         with pytest.raises(OverflowError):
-            aesocb3.encrypt(nonce, b"", FakeData())
+            aesocb3.encrypt(nonce, large_data, b"")
+
+        with pytest.raises(OverflowError):
+            aesocb3.encrypt(nonce, b"", large_data)
 
     def test_vectors(self, backend, subtests):
         vectors = []
@@ -547,6 +596,38 @@ class TestAESOCB3:
                     aesocb3.decrypt(nonce, ct, b"nonsense")
 
     @pytest.mark.parametrize(
+        ("key_len", "expected"),
+        [
+            (128, b"g\xe9D\xd22V\xc5\xe0\xb6\xc6\x1f\xa2/\xdf\x1e\xa2"),
+            (192, b"\xf6s\xf2\xc3\xe7\x17J\xae{\xae\x98l\xa9\xf2\x9e\x17"),
+            (256, b"\xd9\x0e\xb8\xe9\xc9w\xc8\x8by\xddy=\x7f\xfa\x16\x1c"),
+        ],
+    )
+    def test_rfc7253(self, backend, key_len, expected):
+        # This is derived from page 18 of RFC 7253, with a tag length of
+        # 128 bits.
+
+        k = AESOCB3(b"\x00" * ((key_len - 8) // 8) + b"\x80")
+
+        c = b""
+
+        for i in range(0, 128):
+            s = b"\x00" * i
+            n = (3 * i + 1).to_bytes(12, "big")
+            c += k.encrypt(n, s, s)
+            n = (3 * i + 2).to_bytes(12, "big")
+            c += k.encrypt(n, s, b"")
+            n = (3 * i + 3).to_bytes(12, "big")
+            c += k.encrypt(n, b"", s)
+
+        assert len(c) == 22400
+
+        n = (385).to_bytes(12, "big")
+        output = k.encrypt(n, b"", c)
+
+        assert output == expected
+
+    @pytest.mark.parametrize(
         ("nonce", "data", "associated_data"),
         [
             [object(), b"data", b""],
@@ -570,6 +651,11 @@ class TestAESOCB3:
             aesocb3.encrypt(b"\x00" * 11, b"hi", None)
         with pytest.raises(ValueError):
             aesocb3.encrypt(b"\x00" * 16, b"hi", None)
+
+        with pytest.raises(ValueError):
+            aesocb3.decrypt(b"\x00" * 11, b"hi", None)
+        with pytest.raises(ValueError):
+            aesocb3.decrypt(b"\x00" * 16, b"hi", None)
 
     def test_bad_key(self, backend):
         with pytest.raises(TypeError):
@@ -616,16 +702,35 @@ class TestAESOCB3:
     not _aead_supported(AESSIV),
     reason="Does not support AESSIV",
 )
-class TestAESSIV(object):
+class TestAESSIV:
+    @pytest.mark.skipif(
+        sys.platform not in {"linux", "darwin"} or sys.maxsize < 2**31,
+        reason="mmap and 64-bit platform required",
+    )
     def test_data_too_large(self):
         key = AESSIV.generate_key(256)
         aessiv = AESSIV(key)
 
-        with pytest.raises(OverflowError):
-            aessiv.encrypt(FakeData(), None)
+        large_data = large_mmap()
 
         with pytest.raises(OverflowError):
-            aessiv.encrypt(b"", [FakeData()])
+            aessiv.encrypt(large_data, None)
+
+        with pytest.raises(OverflowError):
+            aessiv.encrypt(b"irrelevant", [large_data])
+
+        with pytest.raises(OverflowError):
+            aessiv.decrypt(b"very very irrelevant", [large_data])
+
+    def test_no_empty_encryption(self):
+        key = AESSIV.generate_key(256)
+        aessiv = AESSIV(key)
+
+        with pytest.raises(ValueError):
+            aessiv.encrypt(b"", None)
+
+        with pytest.raises(InvalidTag):
+            aessiv.decrypt(b"", None)
 
     def test_vectors(self, backend, subtests):
         vectors = load_vectors_from_file(
@@ -638,10 +743,11 @@ class TestAESSIV(object):
                 aad1 = vector.get("aad", None)
                 aad2 = vector.get("aad2", None)
                 aad3 = vector.get("aad3", None)
-                aad = []
-                for a in [aad1, aad2, aad3]:
-                    if a is not None:
-                        aad.append(binascii.unhexlify(a))
+                aad = [
+                    binascii.unhexlify(a)
+                    for a in (aad1, aad2, aad3)
+                    if a is not None
+                ]
                 ct = binascii.unhexlify(vector["ciphertext"])
                 tag = binascii.unhexlify(vector["tag"])
                 pt = binascii.unhexlify(vector.get("plaintext", b""))
@@ -663,10 +769,11 @@ class TestAESSIV(object):
                 aad1 = vector.get("aad", None)
                 aad2 = vector.get("aad2", None)
                 aad3 = vector.get("aad3", None)
-                aad = []
-                for a in [aad1, aad2, aad3]:
-                    if a is not None:
-                        aad.append(binascii.unhexlify(a))
+                aad = [
+                    binascii.unhexlify(a)
+                    for a in (aad1, aad2, aad3)
+                    if a is not None
+                ]
 
                 ct = binascii.unhexlify(vector["ciphertext"])
                 aessiv = AESSIV(key)
@@ -674,7 +781,7 @@ class TestAESSIV(object):
                     badkey = AESSIV(AESSIV.generate_key(256))
                     badkey.decrypt(ct, aad)
                 with pytest.raises(InvalidTag):
-                    aessiv.decrypt(ct, aad + [b""])
+                    aessiv.decrypt(ct, [*aad, b""])
                 with pytest.raises(InvalidTag):
                     aessiv.decrypt(ct, [b"nonsense"])
                 with pytest.raises(InvalidTag):
@@ -733,4 +840,157 @@ class TestAESSIV(object):
         ct2 = aessiv.encrypt(pt, ad)
         assert ct2 == ct
         computed_pt2 = aessiv.decrypt(ct2, ad)
+        assert computed_pt2 == pt
+
+
+@pytest.mark.skipif(
+    not _aead_supported(AESGCMSIV),
+    reason="Does not support AESGCMSIV",
+)
+class TestAESGCMSIV:
+    @pytest.mark.skipif(
+        sys.platform not in {"linux", "darwin"} or sys.maxsize < 2**31,
+        reason="mmap and 64-bit platform required",
+    )
+    def test_data_too_large(self):
+        key = AESGCMSIV.generate_key(256)
+        nonce = os.urandom(12)
+        aesgcmsiv = AESGCMSIV(key)
+
+        large_data = large_mmap()
+
+        with pytest.raises(OverflowError):
+            aesgcmsiv.encrypt(nonce, large_data, None)
+
+        with pytest.raises(OverflowError):
+            aesgcmsiv.encrypt(nonce, b"irrelevant", large_data)
+
+        with pytest.raises(OverflowError):
+            aesgcmsiv.decrypt(nonce, b"very very irrelevant", large_data)
+
+    def test_invalid_nonce_length(self, backend):
+        key = AESGCMSIV.generate_key(128)
+        aesgcmsiv = AESGCMSIV(key)
+        pt = b"hello"
+        nonce = os.urandom(14)
+        with pytest.raises(ValueError):
+            aesgcmsiv.encrypt(nonce, pt, None)
+
+        with pytest.raises(ValueError):
+            aesgcmsiv.decrypt(nonce, pt, None)
+
+    def test_no_empty_encryption(self):
+        key = AESGCMSIV.generate_key(256)
+        aesgcmsiv = AESGCMSIV(key)
+        nonce = os.urandom(12)
+
+        with pytest.raises(ValueError):
+            aesgcmsiv.encrypt(nonce, b"", None)
+
+        with pytest.raises(InvalidTag):
+            aesgcmsiv.decrypt(nonce, b"", None)
+
+    def test_vectors(self, backend, subtests):
+        vectors = _load_all_params(
+            os.path.join("ciphers", "AES", "GCM-SIV"),
+            [
+                "openssl.txt",
+                "aes-192-gcm-siv.txt",
+            ],
+            load_nist_vectors,
+        )
+        for vector in vectors:
+            with subtests.test():
+                key = binascii.unhexlify(vector["key"])
+                nonce = binascii.unhexlify(vector["iv"])
+                aad = binascii.unhexlify(vector.get("aad", b""))
+                ct = binascii.unhexlify(vector["ciphertext"])
+                tag = binascii.unhexlify(vector["tag"])
+                pt = binascii.unhexlify(vector.get("plaintext", b""))
+                aesgcmsiv = AESGCMSIV(key)
+                computed_ct = aesgcmsiv.encrypt(nonce, pt, aad)
+                assert computed_ct[:-16] == ct
+                assert computed_ct[-16:] == tag
+                computed_pt = aesgcmsiv.decrypt(nonce, computed_ct, aad)
+                assert computed_pt == pt
+
+    def test_vectors_invalid(self, backend, subtests):
+        vectors = _load_all_params(
+            os.path.join("ciphers", "AES", "GCM-SIV"),
+            [
+                "openssl.txt",
+                "aes-192-gcm-siv.txt",
+            ],
+            load_nist_vectors,
+        )
+        for vector in vectors:
+            with subtests.test():
+                key = binascii.unhexlify(vector["key"])
+                nonce = binascii.unhexlify(vector["iv"])
+                aad = binascii.unhexlify(vector.get("aad", b""))
+                ct = binascii.unhexlify(vector["ciphertext"])
+                aesgcmsiv = AESGCMSIV(key)
+                with pytest.raises(InvalidTag):
+                    badkey = AESGCMSIV(AESGCMSIV.generate_key(256))
+                    badkey.decrypt(nonce, ct, aad)
+                with pytest.raises(InvalidTag):
+                    aesgcmsiv.decrypt(nonce, ct, b"nonsense")
+                with pytest.raises(InvalidTag):
+                    aesgcmsiv.decrypt(nonce, b"nonsense", aad)
+
+    @pytest.mark.parametrize(
+        ("nonce", "data", "associated_data"),
+        [
+            [object(), b"data", b""],
+            [b"0" * 12, object(), b""],
+            [b"0" * 12, b"data", object()],
+        ],
+    )
+    def test_params_not_bytes(self, nonce, data, associated_data, backend):
+        key = AESGCMSIV.generate_key(256)
+        aesgcmsiv = AESGCMSIV(key)
+        with pytest.raises(TypeError):
+            aesgcmsiv.encrypt(nonce, data, associated_data)
+
+        with pytest.raises(TypeError):
+            aesgcmsiv.decrypt(nonce, data, associated_data)
+
+    def test_bad_key(self, backend):
+        with pytest.raises(TypeError):
+            AESGCMSIV(object())  # type:ignore[arg-type]
+
+        with pytest.raises(ValueError):
+            AESGCMSIV(b"0" * 31)
+
+    def test_bad_generate_key(self, backend):
+        with pytest.raises(TypeError):
+            AESGCMSIV.generate_key(object())  # type:ignore[arg-type]
+
+        with pytest.raises(ValueError):
+            AESGCMSIV.generate_key(129)
+
+    def test_associated_data_none_equal_to_empty_bytestring(self, backend):
+        key = AESGCMSIV.generate_key(256)
+        aesgcmsiv = AESGCMSIV(key)
+        nonce = os.urandom(12)
+        ct1 = aesgcmsiv.encrypt(nonce, b"some_data", None)
+        ct2 = aesgcmsiv.encrypt(nonce, b"some_data", b"")
+        assert ct1 == ct2
+        pt1 = aesgcmsiv.decrypt(nonce, ct1, None)
+        pt2 = aesgcmsiv.decrypt(nonce, ct2, b"")
+        assert pt1 == pt2
+
+    def test_buffer_protocol(self, backend):
+        key = AESGCMSIV.generate_key(256)
+        aesgcmsiv = AESGCMSIV(key)
+        nonce = os.urandom(12)
+        pt = b"encrypt me"
+        ad = b"additional"
+        ct = aesgcmsiv.encrypt(nonce, pt, ad)
+        computed_pt = aesgcmsiv.decrypt(nonce, ct, ad)
+        assert computed_pt == pt
+        aesgcmsiv = AESGCMSIV(bytearray(key))
+        ct2 = aesgcmsiv.encrypt(nonce, pt, ad)
+        assert ct2 == ct
+        computed_pt2 = aesgcmsiv.decrypt(nonce, ct2, ad)
         assert computed_pt2 == pt

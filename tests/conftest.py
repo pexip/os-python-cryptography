@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+import contextlib
 
 import pytest
 
@@ -18,14 +19,15 @@ def pytest_configure(config):
 def pytest_report_header(config):
     return "\n".join(
         [
-            "OpenSSL: {}".format(openssl_backend.openssl_version_text()),
-            "FIPS Enabled: {}".format(openssl_backend._fips_enabled),
+            f"OpenSSL: {openssl_backend.openssl_version_text()}",
+            f"FIPS Enabled: {openssl_backend._fips_enabled}",
         ]
     )
 
 
 def pytest_addoption(parser):
     parser.addoption("--wycheproof-root", default=None)
+    parser.addoption("--x509-limbo-root", default=None)
     parser.addoption("--enable-fips", default=False)
 
 
@@ -35,23 +37,32 @@ def pytest_runtest_setup(item):
             pytest.skip(marker.kwargs["reason"])
 
 
-@pytest.fixture()
+@pytest.fixture(autouse=True)
 def backend(request):
     check_backend_support(openssl_backend, request)
 
     # Ensure the error stack is clear before the test
-    errors = openssl_backend._consume_errors_with_text()
+    errors = openssl_backend._consume_errors()
     assert not errors
     yield openssl_backend
     # Ensure the error stack is clear after the test
-    errors = openssl_backend._consume_errors_with_text()
+    errors = openssl_backend._consume_errors()
     assert not errors
 
 
-@pytest.fixture
-def disable_rsa_checks(backend):
-    # Use this fixture to skip RSA key checks in tests that need the
-    # performance.
-    backend._rsa_skip_check_key = True
-    yield
-    backend._rsa_skip_check_key = False
+@pytest.fixture()
+def subtests():
+    # This is a miniature version of the pytest-subtests package, but
+    # optimized for lower overhead.
+    #
+    # When tests are skipped, these are not logged in the final pytest output.
+    yield SubTests()
+
+
+class SubTests:
+    @contextlib.contextmanager
+    def test(self):
+        try:
+            yield
+        except pytest.skip.Exception:
+            pass

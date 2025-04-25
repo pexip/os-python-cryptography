@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import annotations
 
 INCLUDES = """
 #include <openssl/x509_vfy.h>
@@ -13,15 +14,10 @@ INCLUDES = """
  * together with another opaque typedef for the same name in the TYPES section.
  * Note that the result is an opaque type.
  */
-typedef STACK_OF(ASN1_OBJECT) Cryptography_STACK_OF_ASN1_OBJECT;
 typedef STACK_OF(X509_OBJECT) Cryptography_STACK_OF_X509_OBJECT;
 """
 
 TYPES = """
-static const long Cryptography_HAS_110_VERIFICATION_PARAMS;
-static const long Cryptography_HAS_X509_STORE_CTX_GET_ISSUER;
-
-typedef ... Cryptography_STACK_OF_ASN1_OBJECT;
 typedef ... Cryptography_STACK_OF_X509_OBJECT;
 
 typedef ... X509_OBJECT;
@@ -31,11 +27,6 @@ typedef ... X509_STORE_CTX;
 
 typedef int (*X509_STORE_CTX_get_issuer_fn)(X509 **, X509_STORE_CTX *, X509 *);
 
-/* While these are defined in the source as ints, they're tagged here
-   as longs, just in case they ever grow to large, such as what we saw
-   with OP_ALL. */
-
-/* Verification error codes */
 static const int X509_V_OK;
 static const int X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT;
 static const int X509_V_ERR_UNABLE_TO_GET_CRL;
@@ -94,8 +85,12 @@ static const int X509_V_ERR_EMAIL_MISMATCH;
 static const int X509_V_ERR_IP_ADDRESS_MISMATCH;
 static const int X509_V_ERR_APPLICATION_VERIFICATION;
 
+
+/* While these are defined in the source as ints, they're tagged here
+   as longs, just in case they ever grow to large, such as what we saw
+   with OP_ALL. */
+
 /* Verification parameters */
-static const long X509_V_FLAG_USE_CHECK_TIME;
 static const long X509_V_FLAG_CRL_CHECK;
 static const long X509_V_FLAG_CRL_CHECK_ALL;
 static const long X509_V_FLAG_IGNORE_CRITICAL;
@@ -103,19 +98,9 @@ static const long X509_V_FLAG_X509_STRICT;
 static const long X509_V_FLAG_ALLOW_PROXY_CERTS;
 static const long X509_V_FLAG_POLICY_CHECK;
 static const long X509_V_FLAG_EXPLICIT_POLICY;
-static const long X509_V_FLAG_INHIBIT_ANY;
 static const long X509_V_FLAG_INHIBIT_MAP;
-static const long X509_V_FLAG_NOTIFY_POLICY;
-static const long X509_V_FLAG_EXTENDED_CRL_SUPPORT;
-static const long X509_V_FLAG_USE_DELTAS;
 static const long X509_V_FLAG_CHECK_SS_SIGNATURE;
-static const long X509_V_FLAG_TRUSTED_FIRST;
 static const long X509_V_FLAG_PARTIAL_CHAIN;
-static const long X509_V_FLAG_NO_ALT_CHAINS;
-static const long X509_V_FLAG_NO_CHECK_TIME;
-
-static const long X509_LU_X509;
-static const long X509_LU_CRL;
 
 static const long X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT;
 static const long X509_CHECK_FLAG_NO_WILDCARDS;
@@ -135,8 +120,6 @@ static const long X509_PURPOSE_CRL_SIGN;
 static const long X509_PURPOSE_ANY;
 static const long X509_PURPOSE_OCSP_HELPER;
 static const long X509_PURPOSE_TIMESTAMP_SIGN;
-static const long X509_PURPOSE_MIN;
-static const long X509_PURPOSE_MAX;
 """
 
 FUNCTIONS = """
@@ -153,6 +136,7 @@ int X509_STORE_set_flags(X509_STORE *, unsigned long);
 /* Included due to external consumer, see
    https://github.com/pyca/pyopenssl/issues/1031 */
 int X509_STORE_set_purpose(X509_STORE *, int);
+int X509_STORE_up_ref(X509_STORE *);
 void X509_STORE_free(X509_STORE *);
 
 /* X509_STORE_CTX */
@@ -161,79 +145,30 @@ void X509_STORE_CTX_cleanup(X509_STORE_CTX *);
 void X509_STORE_CTX_free(X509_STORE_CTX *);
 int X509_STORE_CTX_init(X509_STORE_CTX *, X509_STORE *, X509 *,
                         Cryptography_STACK_OF_X509 *);
-void X509_STORE_CTX_set_cert(X509_STORE_CTX *, X509 *);
-X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(X509_STORE_CTX *);
-void X509_STORE_CTX_set0_param(X509_STORE_CTX *, X509_VERIFY_PARAM *);
-int X509_STORE_CTX_set_default(X509_STORE_CTX *, const char *);
-void X509_STORE_CTX_set_verify_cb(X509_STORE_CTX *,
-                                  int (*)(int, X509_STORE_CTX *));
 Cryptography_STACK_OF_X509 *X509_STORE_CTX_get1_chain(X509_STORE_CTX *);
 int X509_STORE_CTX_get_error(X509_STORE_CTX *);
 void X509_STORE_CTX_set_error(X509_STORE_CTX *, int);
 int X509_STORE_CTX_get_error_depth(X509_STORE_CTX *);
 X509 *X509_STORE_CTX_get_current_cert(X509_STORE_CTX *);
-int X509_STORE_CTX_set_ex_data(X509_STORE_CTX *, int, void *);
 void *X509_STORE_CTX_get_ex_data(X509_STORE_CTX *, int);
-int X509_STORE_CTX_get1_issuer(X509 **, X509_STORE_CTX *, X509 *);
 
 /* X509_VERIFY_PARAM */
 X509_VERIFY_PARAM *X509_VERIFY_PARAM_new(void);
 int X509_VERIFY_PARAM_set_flags(X509_VERIFY_PARAM *, unsigned long);
-int X509_VERIFY_PARAM_clear_flags(X509_VERIFY_PARAM *, unsigned long);
-unsigned long X509_VERIFY_PARAM_get_flags(X509_VERIFY_PARAM *);
-int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *, int);
-int X509_VERIFY_PARAM_set_trust(X509_VERIFY_PARAM *, int);
 void X509_VERIFY_PARAM_set_time(X509_VERIFY_PARAM *, time_t);
-int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *, ASN1_OBJECT *);
-int X509_VERIFY_PARAM_set1_policies(X509_VERIFY_PARAM *,
-                                    Cryptography_STACK_OF_ASN1_OBJECT *);
-void X509_VERIFY_PARAM_set_depth(X509_VERIFY_PARAM *, int);
-int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *);
 void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *);
 
-/* X509_STORE_CTX */
-void X509_STORE_CTX_set0_crls(X509_STORE_CTX *,
-                              Cryptography_STACK_OF_X509_CRL *);
-
-/* X509_VERIFY_PARAM */
 int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *, const char *,
                                 size_t);
 void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *, unsigned int);
-int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *, const char *,
-                                 size_t);
 int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *, const unsigned char *,
                               size_t);
-int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *, const char *);
 
 int sk_X509_OBJECT_num(Cryptography_STACK_OF_X509_OBJECT *);
-X509_OBJECT *sk_X509_OBJECT_value(Cryptography_STACK_OF_X509_OBJECT *, int);
-X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *);
 Cryptography_STACK_OF_X509_OBJECT *X509_STORE_get0_objects(X509_STORE *);
-X509 *X509_OBJECT_get0_X509(X509_OBJECT *);
 
-/* added in 1.1.0 */
 X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *);
-X509_STORE_CTX_get_issuer_fn X509_STORE_get_get_issuer(X509_STORE *);
-void X509_STORE_set_get_issuer(X509_STORE *, X509_STORE_CTX_get_issuer_fn);
 """
 
 CUSTOMIZATIONS = """
-#if CRYPTOGRAPHY_IS_LIBRESSL && CRYPTOGRAPHY_LIBRESSL_LESS_THAN_322
-static const long Cryptography_HAS_110_VERIFICATION_PARAMS = 0;
-#ifndef X509_CHECK_FLAG_NEVER_CHECK_SUBJECT
-static const long X509_CHECK_FLAG_NEVER_CHECK_SUBJECT = 0;
-#endif
-#else
-static const long Cryptography_HAS_110_VERIFICATION_PARAMS = 1;
-#endif
-
-#if CRYPTOGRAPHY_IS_LIBRESSL
-static const long Cryptography_HAS_X509_STORE_CTX_GET_ISSUER = 0;
-typedef void *X509_STORE_CTX_get_issuer_fn;
-X509_STORE_CTX_get_issuer_fn (*X509_STORE_get_get_issuer)(X509_STORE *) = NULL;
-void (*X509_STORE_set_get_issuer)(X509_STORE *,
-                                  X509_STORE_CTX_get_issuer_fn) = NULL;
-#else
-static const long Cryptography_HAS_X509_STORE_CTX_GET_ISSUER = 1;
-#endif
 """

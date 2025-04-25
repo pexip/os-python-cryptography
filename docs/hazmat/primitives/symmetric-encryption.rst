@@ -140,36 +140,44 @@ Algorithms
         :class:`~cryptography.hazmat.primitives.ciphers.aead.ChaCha20Poly1305`
         does this for you.
 
-    ChaCha20 is a stream cipher used in several IETF protocols. It is
-    standardized in :rfc:`7539`.
+    ChaCha20 is a stream cipher used in several IETF protocols. While it is
+    standardized in :rfc:`7539`, **this implementation is not RFC-compliant**.
+    This implementation uses a ``64`` :term:`bits` counter and a ``64``
+    :term:`bits` nonce as defined in the `original version`_ of the algorithm,
+    rather than the ``32/96`` counter/nonce split defined in :rfc:`7539`.
 
     :param key: The secret key. This must be kept secret. ``256``
         :term:`bits` (32 bytes) in length.
     :type key: :term:`bytes-like`
 
     :param nonce: Should be unique, a :term:`nonce`. It is
-        critical to never reuse a ``nonce`` with a given key.  Any reuse of a
+        critical to never reuse a ``nonce`` with a given key. Any reuse of a
         nonce with the same key compromises the security of every message
         encrypted with that key. The nonce does not need to be kept secret
         and may be included with the ciphertext. This must be ``128``
-        :term:`bits` in length.
+        :term:`bits` in length. The 128-bit value is a concatenation of the
+        8-byte little-endian counter and the 8-byte nonce.
     :type nonce: :term:`bytes-like`
 
-        .. note::
+    .. note::
 
-            In :rfc:`7539` the nonce is defined as a 96-bit value that is later
-            concatenated with a block counter (encoded as a 32-bit
-            little-endian). If you have a separate nonce and block counter
-            you will need to concatenate it yourself before passing it. For
-            example, if you have an initial block counter of 2 and a 96-bit
-            nonce the concatenated nonce would be
-            ``struct.pack("<i", 2) + nonce``.
+        In the `original version`_ of the algorithm the nonce is defined as a
+        64-bit value that is later concatenated with a block counter (encoded
+        as a 64-bit little-endian). If you have a separate nonce and block
+        counter you will need to concatenate it yourself before passing it.
+        For example, if you have an initial block counter of 2 and a 64-bit
+        nonce the concatenated nonce would be
+        ``struct.pack("<Q", 2) + nonce``.
+
 
     .. doctest::
 
+        >>> import struct, os
         >>> from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-        >>> nonce = os.urandom(16)
-        >>> algorithm = algorithms.ChaCha20(key, nonce)
+        >>> nonce = os.urandom(8)
+        >>> counter = 0
+        >>> full_nonce = struct.pack("<Q", counter) + nonce
+        >>> algorithm = algorithms.ChaCha20(key, full_nonce)
         >>> cipher = Cipher(algorithm, mode=None)
         >>> encryptor = cipher.encryptor()
         >>> ct = encryptor.update(b"a secret message")
@@ -178,6 +186,12 @@ Algorithms
         b'a secret message'
 
 .. class:: TripleDES(key)
+
+    .. warning::
+
+        This algorithm has been deprecated and moved to the :doc:`/hazmat/decrepit/index`
+        module. If you need to continue using it then update your code to
+        use the new module path. It will be removed from this namespace in 48.0.0.
 
     Triple DES (Data Encryption Standard), sometimes referred to as 3DES, is a
     block cipher standardized by NIST. Triple DES has known crypto-analytic
@@ -197,6 +211,12 @@ Algorithms
 
     .. versionadded:: 0.2
 
+    .. warning::
+
+        This algorithm has been deprecated and moved to the :doc:`/hazmat/decrepit/index`
+        module. If you need to continue using it then update your code to
+        use the new module path. It will be removed from this namespace in 45.0.0.
+
     CAST5 (also known as CAST-128) is a block cipher approved for use in the
     Canadian government by the `Communications Security Establishment`_. It is
     a variable key length cipher and supports keys from 40-128 :term:`bits` in
@@ -209,6 +229,12 @@ Algorithms
 .. class:: SEED(key)
 
     .. versionadded:: 0.4
+
+    .. warning::
+
+        This algorithm has been deprecated and moved to the :doc:`/hazmat/decrepit/index`
+        module. If you need to continue using it then update your code to
+        use the new module path. It will be removed from this namespace in 45.0.0.
 
     SEED is a block cipher developed by the Korea Information Security Agency
     (KISA). It is defined in :rfc:`4269` and is used broadly throughout South
@@ -244,6 +270,12 @@ Weak ciphers
 
 .. class:: Blowfish(key)
 
+    .. warning::
+
+        This algorithm has been deprecated and moved to the :doc:`/hazmat/decrepit/index`
+        module. If you need to continue using it then update your code to
+        use the new module path. It will be removed from this namespace in 45.0.0.
+
     Blowfish is a block cipher developed by Bruce Schneier. It is known to be
     susceptible to attacks when using weak keys. The author has recommended
     that users of Blowfish move to newer algorithms such as :class:`AES`.
@@ -253,6 +285,12 @@ Weak ciphers
     :type key: :term:`bytes-like`
 
 .. class:: ARC4(key)
+
+    .. warning::
+
+        This algorithm has been deprecated and moved to the :doc:`/hazmat/decrepit/index`
+        module. If you need to continue using it then update your code to
+        use the new module path. It will be removed from this namespace in 48.0.0.
 
     ARC4 (Alleged RC4) is a stream cipher with serious weaknesses in its
     initial stream output. Its use is strongly discouraged. ARC4 does not use
@@ -275,6 +313,12 @@ Weak ciphers
         b'a secret message'
 
 .. class:: IDEA(key)
+
+    .. warning::
+
+        This algorithm has been deprecated and moved to the :doc:`/hazmat/decrepit/index`
+        module. If you need to continue using it then update your code to
+        use the new module path. It will be removed from this namespace in 45.0.0.
 
     IDEA (`International Data Encryption Algorithm`_) is a block cipher created
     in 1991. It is an optional component of the `OpenPGP`_ standard. This cipher
@@ -618,8 +662,6 @@ Interfaces
             into. This buffer should be ``len(data) + n - 1`` bytes where ``n``
             is the block size (in bytes) of the cipher and mode combination.
         :return int: Number of bytes written.
-        :raises NotImplementedError: This is raised if the version of ``cffi``
-            used is too old (this can happen on older PyPy releases).
         :raises ValueError: This is raised if the supplied buffer is too small.
 
         .. doctest::
@@ -650,6 +692,27 @@ Interfaces
         Once ``finalize`` is called this object can no longer be used and
         :meth:`update` and :meth:`finalize` will raise an
         :class:`~cryptography.exceptions.AlreadyFinalized` exception.
+
+    .. method:: reset_nonce(nonce)
+
+        .. versionadded:: 43.0.0
+
+        This method allows changing the nonce for an already existing context.
+        Normally the nonce is set when the context is created and internally
+        incremented as data as passed. However, in some scenarios the same key
+        is used repeatedly but the nonce changes non-sequentially (e.g. ``QUIC``),
+        which requires updating the context with the new nonce.
+
+        This method only works for contexts using
+        :class:`~cryptography.hazmat.primitives.ciphers.algorithms.ChaCha20` or
+        :class:`~cryptography.hazmat.primitives.ciphers.modes.CTR` mode.
+
+        :param nonce: The nonce to update the context with.
+        :type data: :term:`bytes-like`
+        :raises cryptography.exceptions.UnsupportedAlgorithm: If the
+            algorithm does not support updating the nonce.
+        :raises ValueError: If the nonce is not the correct length for the
+            algorithm.
 
 .. class:: AEADCipherContext
 
@@ -840,13 +903,14 @@ Exceptions
 
 
 .. _`described by Colin Percival`: https://www.daemonology.net/blog/2009-06-11-cryptographic-right-answers.html
-.. _`recommends a 96-bit IV length`: https://csrc.nist.gov/publications/detail/sp/800-38d/final
+.. _`recommends a 96-bit IV length`: https://csrc.nist.gov/pubs/sp/800/38/d/final
 .. _`NIST SP-800-38D`: https://csrc.nist.gov/publications/detail/sp/800-38d/final
 .. _`Communications Security Establishment`: https://www.cse-cst.gc.ca
 .. _`encrypt`: https://ssd.eff.org/en/module/what-should-i-know-about-encryption
-.. _`CRYPTREC`: https://www.cryptrec.go.jp/english/
+.. _`CRYPTREC`: https://www.cryptrec.go.jp/en/
+.. _`original version`: https://en.wikipedia.org/wiki/Salsa20#ChaCha_variant
 .. _`significant patterns in the output`: https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#Electronic_codebook_(ECB)
 .. _`International Data Encryption Algorithm`: https://en.wikipedia.org/wiki/International_Data_Encryption_Algorithm
 .. _`OpenPGP`: https://www.openpgp.org/
 .. _`disk encryption`: https://en.wikipedia.org/wiki/Disk_encryption_theory#XTS
-.. _`draft-ribose-cfrg-sm4-10`: https://tools.ietf.org/html/draft-ribose-cfrg-sm4-10
+.. _`draft-ribose-cfrg-sm4-10`: https://datatracker.ietf.org/doc/html/draft-ribose-cfrg-sm4-10

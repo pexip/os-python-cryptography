@@ -14,8 +14,8 @@ pyca/cryptography
 
 
 ``cryptography`` is a package which provides cryptographic recipes and
-primitives to Python developers.  Our goal is for it to be your "cryptographic
-standard library". It supports Python 3.6+ and PyPy3 7.2+.
+primitives to Python developers. Our goal is for it to be your "cryptographic
+standard library". It supports Python 3.7+ and PyPy3 7.3.11+.
 
 ``cryptography`` includes both high level recipes and low level interfaces to
 common cryptographic algorithms such as symmetric ciphers, message digests, and
@@ -30,9 +30,9 @@ key derivation functions. For example, to encrypt something with
     >>> f = Fernet(key)
     >>> token = f.encrypt(b"A really secret message. Not for prying eyes.")
     >>> token
-    '...'
+    b'...'
     >>> f.decrypt(token)
-    'A really secret message. Not for prying eyes.'
+    b'A really secret message. Not for prying eyes.'
 
 You can find more information in the `documentation`_.
 

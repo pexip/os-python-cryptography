@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-
 import binascii
 
 import pytest
@@ -11,7 +10,6 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, hmac
 
 from .utils import wycheproof_tests
-
 
 _HMAC_ALGORITHMS = {
     "HMACSHA1": hashes.SHA1(),
@@ -42,7 +40,7 @@ def test_hmac(backend, wycheproof):
     if wycheproof.testgroup["tagSize"] // 8 != hash_algo.digest_size:
         pytest.skip("Truncated HMAC not supported")
     if not backend.hmac_supported(hash_algo):
-        pytest.skip("Hash {} not supported".format(hash_algo.name))
+        pytest.skip(f"Hash {hash_algo.name} not supported")
 
     h = hmac.HMAC(
         key=binascii.unhexlify(wycheproof.testcase["key"]),

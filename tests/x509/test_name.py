@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # This file is dual licensed under the terms of the Apache License, Version
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
@@ -160,6 +159,7 @@ class TestRFC4514:
                 "2.5.4.10=abc",
                 Name([NameAttribute(NameOID.ORGANIZATION_NAME, "abc")]),
             ),
+            ("", Name([])),
         ]:
             with subtests.test():
                 result = Name.from_rfc4514_string(value)

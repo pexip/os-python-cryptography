@@ -129,7 +129,7 @@ has support for implementing key rotation via :class:`MultiFernet`.
 
         :param bytes or str token: The Fernet token. This is the result of
                                    calling :meth:`encrypt`.
-        :returns int: The UNIX timestamp of the token.
+        :returns int: The Unix timestamp of the token.
         :raises cryptography.fernet.InvalidToken: If the ``token``'s signature
                                                   is invalid this exception
                                                   is raised.
@@ -237,7 +237,7 @@ password through a key derivation function such as
     ...     algorithm=hashes.SHA256(),
     ...     length=32,
     ...     salt=salt,
-    ...     iterations=390000,
+    ...     iterations=480000,
     ... )
     >>> key = base64.urlsafe_b64encode(kdf.derive(password))
     >>> f = Fernet(key)
@@ -252,7 +252,7 @@ to derive the same key from the password in the future.
 
 The iteration count used should be adjusted to be as high as your server can
 tolerate. A good default is at least 480,000 iterations, which is what `Django
-recommends as of July 2022`_.
+recommends as of December 2022`_.
 
 Implementation
 --------------
@@ -280,5 +280,5 @@ unsuitable for very large files at this time.
 
 
 .. _`Fernet`: https://github.com/fernet/spec/
-.. _`Django recommends as of July 2022`: https://github.com/django/django/blob/main/django/contrib/auth/hashers.py
+.. _`Django recommends as of December 2022`: https://github.com/django/django/blob/main/django/contrib/auth/hashers.py
 .. _`specification`: https://github.com/fernet/spec/blob/master/Spec.md

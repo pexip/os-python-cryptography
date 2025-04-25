@@ -1,3 +1,170 @@
+python-cryptography (43.0.0-3) unstable; urgency=medium
+
+  [ Peter Michael Green ]
+  * Fix overly strict build-dependency for cc crate (Closes: #1104046).
+
+  [ Andrey Rakhmatullin ]
+  * Bump Standards-Version to 4.7.2.
+  * Remove Rules-Requires-Root.
+  * Remove no longer needed Python 3 mentions from the package description.
+
+ -- Andrey Rakhmatullin <wrar@debian.org>  Fri, 25 Apr 2025 11:17:42 +0500
+
+python-cryptography (43.0.0-2) unstable; urgency=medium
+
+  * Restore B-D: python3-setuptools (Closes: #1100262).
+  * Update to librust-asn1-0.20-dev, add upstream patches for compatibility
+    with it (Closes: #1101438).
+  * Disable DH_VERBOSE.
+
+ -- Andrey Rakhmatullin <wrar@debian.org>  Sat, 29 Mar 2025 01:20:16 +0500
+
+python-cryptography (43.0.0-1) unstable; urgency=medium
+
+  * New upstream version.
+  * Update and rearrange Build-Depends:
+    + Removed:
+      - librust-asn1-derive-0.15-dev (obsolete)
+      - librust-ouroboros-0.15-dev (obsolete)
+      - librust-paste-dev (obsolete)
+      - librust-pyo3-macros-0.20-dev (not an explicit dep)
+      - python3-hypothesis (obsolete)
+      - python3-iso8601 (obsolete)
+      - python3-pytest-subtests (obsolete)
+      - python3-setuptools (changed in this version)
+      - python3-setuptools-rust (changed in this version)
+      - python3-tz (obsolete)
+      - tzdata (obsolete)
+    + Added:
+      - librust-cc-1.1-dev (forgotten explicit dep)
+      - librust-foreign-types-0.3-dev (forgotten explicit dep)
+      - python3-bcrypt (optional dep)
+      - python3-certifi (forgotten explicit dep; fixes building with nodoc)
+      - python3-maturin (changed in this version)
+    + Moved to Build-Depends-Indep:
+      - dh-sequence-sphinxdoc
+      - python3-doc
+      - python3-sphinx
+      - python3-sphinx-rtd-theme
+    + Version updates (Closes: #1080395):
+      - librust-asn1-0.17-dev (from 0.15)
+      - librust-pyo3-0.22-dev (from 0.20)
+      - librust-pyo3-0.22+default-dev (from 0.20)
+  * Change upstream version reqs to ones provided by Debian:
+    + asn1 0.16.2 -> 0.17.0
+    + openssl 0.10.65 -> 0.10.63
+    + openssl-sys 0.9.103 -> 0.9.101
+  * Skip tests that fail with librust-openssl-dev < 0.10.65.
+  * Add python3-bcrypt to Depends.
+  * Move documentation build-deps into Build-Depends-Indep.
+  * Bump Standards-Version to 4.7.0.
+
+ -- Andrey Rakhmatullin <wrar@debian.org>  Tue, 10 Sep 2024 23:55:34 +0500
+
+python-cryptography (42.0.5-2) unstable; urgency=medium
+
+  * Patch: upstream fix for 32-bit archs tests
+
+ -- Jérémy Lal <kapouer@melix.org>  Tue, 19 Mar 2024 23:15:50 +0100
+
+python-cryptography (42.0.5-1) unstable; urgency=medium
+
+  * Team upload.
+  * Bump setuptools-rust, rust-pem, rust-openssl, rust-openssl-sys deps
+  * Testsuite: autopkgtest-pkg-pybuild
+
+  [ Andreas Tille ]
+  * New upstream version
+    Closes: #1059308 (CVE-2023-50782)
+    Closes: #1064778 (CVE-2024-26130)
+    Closes: #1063771, #1018159
+  * watch file standard 4 (routine-update)
+    Closes: #1046569
+ 
+  [ Michael R. Crusoe ]
+  * Reorder sequence of d/control fields by cme (routine-update)
+  * d/{tests/,}control: update dependency on python3-cryptography-vectors
+  * marked intersphinx patch as not needing forwarding
+
+  [ Andrey Rakhmatullin ]
+  * Add myself to Uploaders.
+
+  [ Jérémy Lal ]
+  * Testsuite: autopkgtest-pkg-pybuild
+
+ -- Jérémy Lal <kapouer@melix.org>  Tue, 19 Mar 2024 10:58:04 +0100
+
+python-cryptography (41.0.7-5) unstable; urgency=medium
+
+  * AMAU, Closes: #1064979
+
+  [ Andreas Tille ]
+  * Enable building twice in a row
+
+ -- Jérémy Lal <kapouer@melix.org>  Thu, 07 Mar 2024 13:42:35 +0100
+
+python-cryptography (41.0.7-4) unstable; urgency=medium
+
+  * orphan
+
+ -- Sandro Tosi <morph@debian.org>  Wed, 28 Feb 2024 12:23:58 -0500
+
+python-cryptography (41.0.7-3) unstable; urgency=medium
+
+  * Upgrade to pyo3 0.20. Closes: #1063365
+
+ -- Jérémy Lal <kapouer@melix.org>  Thu, 08 Feb 2024 15:34:30 +0100
+
+python-cryptography (41.0.7-2) unstable; urgency=medium
+
+  * patch: drop pem 1.0 workaround, depends pem 1.1. Closes: 1060294.
+  * autopkgtest: fix version of cryptography-vectors
+
+ -- Jérémy Lal <kapouer@melix.org>  Tue, 09 Jan 2024 01:14:48 +0100
+
+python-cryptography (41.0.7-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version 41.0.7
+  * patch: remove n/a, disable a test to keep building with pem 1.0
+  * Update deps
+  * Bump Standards-Version
+
+  [ Sandro Tosi ]
+  * New upstream release; Closes: #1031049
+    - fixes CVE-2023-23931
+  * debian/watch
+    - remove pgpsigurlmangle, .asc file no longer on PyPI
+
+  [ Nicolas Dandrimont ]
+  * New upstream version 41.0.3
+
+ -- Jérémy Lal <kapouer@melix.org>  Sun, 07 Jan 2024 13:24:39 +0100
+
+python-cryptography (38.0.4-4) unstable; urgency=medium
+
+  * Team Upload.
+
+  [ Peter Michael Green ]
+  * Don't depend on librust-indoc-dev, it's not used directly,
+    instead depend on the "default" feature of librust-pyo3-dev.
+  * Apply adjusted upstream patch for py03 0.19 and bump
+    dependencies accordingly (Closes: #1038746, #1042160)
+
+  [ Nicolas Dandrimont ]
+  * Fix tests when using recent tzdata (dropping the US timezone
+    symlinks)
+
+ -- Nicolas Dandrimont <olasd@debian.org>  Tue, 08 Aug 2023 17:16:11 +0200
+
+python-cryptography (38.0.4-3) unstable; urgency=medium
+
+  [ Salvatore Bonaccorso ]
+  * Don't allow update_into to mutate immutable objects (CVE-2023-23931)
+    (Closes: #1031049)
+
+ -- Sandro Tosi <morph@debian.org>  Tue, 28 Feb 2023 00:36:13 -0500
+
 python-cryptography (38.0.4-2) unstable; urgency=medium
 
   * Team upload.

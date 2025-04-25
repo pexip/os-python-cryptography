@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-
 import binascii
 
 import pytest
@@ -10,8 +9,8 @@ import pytest
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 
-from .utils import wycheproof_tests
 from ..hazmat.primitives.test_aead import _aead_supported
+from .utils import wycheproof_tests
 
 
 @pytest.mark.skipif(

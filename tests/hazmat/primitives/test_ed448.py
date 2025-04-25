@@ -4,6 +4,7 @@
 
 
 import binascii
+import copy
 import os
 
 import pytest
@@ -15,6 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.ed448 import (
     Ed448PublicKey,
 )
 
+from ...doubles import DummyKeySerializationEncryption
 from ...utils import (
     load_nist_vectors,
     load_vectors_from_file,
@@ -84,6 +86,12 @@ class TestEd448Signing:
         with pytest.raises(InvalidSignature):
             key.public_key().verify(b"0" * 64, b"test data")
 
+    def test_sign_verify_buffer(self, backend):
+        key = Ed448PrivateKey.generate()
+        data = bytearray(b"test data")
+        signature = key.sign(data)
+        key.public_key().verify(bytearray(signature), data)
+
     def test_generate(self, backend):
         key = Ed448PrivateKey.generate()
         assert key
@@ -108,12 +116,14 @@ class TestEd448Signing:
             )
             == sk
         )
+        assert private_key.private_bytes_raw() == sk
         assert (
             private_key.public_key().public_bytes(
                 serialization.Encoding.Raw, serialization.PublicFormat.Raw
             )
             == pk
         )
+        assert private_key.public_key().public_bytes_raw() == pk
         public_key = Ed448PublicKey.from_public_bytes(pk)
         assert (
             public_key.public_bytes(
@@ -121,6 +131,7 @@ class TestEd448Signing:
             )
             == pk
         )
+        assert public_key.public_bytes_raw() == pk
 
     @pytest.mark.parametrize(
         ("encoding", "fmt", "encryption", "passwd", "load_func"),
@@ -189,18 +200,24 @@ class TestEd448Signing:
 
     def test_invalid_private_bytes(self, backend):
         key = Ed448PrivateKey.generate()
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.Raw,
                 None,  # type: ignore[arg-type]
+            )
+        with pytest.raises(ValueError):
+            key.private_bytes(
+                serialization.Encoding.Raw,
+                serialization.PrivateFormat.Raw,
+                DummyKeySerializationEncryption(),
             )
 
         with pytest.raises(ValueError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.PKCS8,
-                None,  # type: ignore[arg-type]
+                DummyKeySerializationEncryption(),
             )
 
         with pytest.raises(ValueError):
@@ -257,3 +274,40 @@ class TestEd448Signing:
         key = Ed448PublicKey.from_public_bytes(public_bytes)
         with pytest.raises(InvalidSignature):
             key.verify(signature, b"8")
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.ed448_supported(),
+    skip_message="Requires OpenSSL with Ed448 support",
+)
+def test_public_key_equality(backend):
+    key_bytes = load_vectors_from_file(
+        os.path.join("asymmetric", "Ed448", "ed448-pkcs8.der"),
+        lambda derfile: derfile.read(),
+        mode="rb",
+    )
+    key1 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key2 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key3 = Ed448PrivateKey.generate().public_key()
+    assert key1 == key2
+    assert key1 != key3
+    assert key1 != object()
+
+    with pytest.raises(TypeError):
+        key1 < key2  # type: ignore[operator]
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.ed448_supported(),
+    skip_message="Requires OpenSSL with Ed448 support",
+)
+def test_public_key_copy(backend):
+    key_bytes = load_vectors_from_file(
+        os.path.join("asymmetric", "Ed448", "ed448-pkcs8.der"),
+        lambda derfile: derfile.read(),
+        mode="rb",
+    )
+    key1 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key2 = copy.copy(key1)
+
+    assert key1 == key2
