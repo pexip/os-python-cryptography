@@ -5,6 +5,13 @@ We take the security of ``cryptography`` seriously. The following are a set of
 policies we have adopted to ensure that security issues are addressed in a
 timely fashion.
 
+Known vulnerabilities
+---------------------
+
+A list of all known vulnerabilities in ``cryptography`` can be found on
+`osv.dev`_, as well as other ecosystem vulnerability databases. They can
+automatically be scanned for using tools such as `pip-audit`_ or `osv-scan`_.
+
 Infrastructure
 --------------
 
@@ -52,14 +59,12 @@ Reporting a security issue
 We ask that you do not report security issues to our normal GitHub issue
 tracker.
 
-If you believe you've identified a security issue with ``cryptography``, please
-report it to ``alex.gaynor@gmail.com`` and/or ``paul.l.kehrer@gmail.com``. You
-should verify that your MTA uses TLS to ensure the confidentiality of your
-message.
+If you believe you've identified a security issue with ``cryptography``,
+please report it via our `security advisory page`_.
 
-Once you've submitted an issue via email, you should receive an acknowledgment
-within 48 hours, and depending on the action to be taken, you may receive
-further follow-up emails.
+Once you've submitted an issue, you should receive an acknowledgment within 48
+hours, and depending on the action to be taken, you may receive further
+follow-up.
 
 Supported Versions
 ------------------
@@ -89,4 +94,8 @@ The steps for issuing a security release are described in our
 :doc:`/doing-a-release` documentation.
 
 
+.. _`osv.dev`: https://osv.dev/list?ecosystem=PyPI&q=cryptography
+.. _`pip-audit`: https://pypi.org/project/pip-audit/
+.. _`osv-scan`: https://google.github.io/osv-scanner/
+.. _`security advisory page`: https://github.com/pyca/cryptography/security/advisories/new
 .. _`main`: https://github.com/pyca/cryptography

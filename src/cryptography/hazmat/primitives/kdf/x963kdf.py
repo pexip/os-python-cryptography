@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import annotations
 
 import typing
 
@@ -20,14 +21,12 @@ class X963KDF(KeyDerivationFunction):
         self,
         algorithm: hashes.HashAlgorithm,
         length: int,
-        sharedinfo: typing.Optional[bytes],
+        sharedinfo: bytes | None,
         backend: typing.Any = None,
     ):
         max_len = algorithm.digest_size * (2**32 - 1)
         if length > max_len:
-            raise ValueError(
-                "Cannot derive keys larger than {} bits.".format(max_len)
-            )
+            raise ValueError(f"Cannot derive keys larger than {max_len} bits.")
         if sharedinfo is not None:
             utils._check_bytes("sharedinfo", sharedinfo)
 

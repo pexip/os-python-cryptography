@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-
 import binascii
 
 import pytest
@@ -21,6 +20,12 @@ _CURVES = {
     "secp521r1": ec.SECP521R1(),
     "secp224k1": None,
     "secp256k1": ec.SECP256K1(),
+    "sect283r1": ec.SECT283R1(),
+    "sect409r1": ec.SECT409R1(),
+    "sect571r1": ec.SECT571R1(),
+    "sect283k1": ec.SECT283K1(),
+    "sect409k1": ec.SECT409K1(),
+    "sect571k1": ec.SECT571K1(),
     "brainpoolP224r1": None,
     "brainpoolP256r1": ec.BrainpoolP256R1(),
     "brainpoolP320r1": None,
@@ -31,6 +36,7 @@ _CURVES = {
     "brainpoolP320t1": None,
     "brainpoolP384t1": None,
     "brainpoolP512t1": None,
+    "FRP256v1": None,
 }
 
 
@@ -46,6 +52,12 @@ _CURVES = {
     "ecdh_secp256r1_test.json",
     "ecdh_secp384r1_test.json",
     "ecdh_secp521r1_test.json",
+    "ecdh_sect283k1_test.json",
+    "ecdh_sect283r1_test.json",
+    "ecdh_sect409k1_test.json",
+    "ecdh_sect409r1_test.json",
+    "ecdh_sect571k1_test.json",
+    "ecdh_sect571r1_test.json",
 )
 def test_ecdh(backend, wycheproof):
     curve = _CURVES[wycheproof.testgroup["curve"]]
@@ -54,12 +66,15 @@ def test_ecdh(backend, wycheproof):
             "Unsupported curve ({})".format(wycheproof.testgroup["curve"])
         )
     _skip_exchange_algorithm_unsupported(backend, ec.ECDH(), curve)
-
-    private_key = ec.derive_private_key(
-        int(wycheproof.testcase["private"], 16), curve, backend
+    private_key = wycheproof.cache_value_to_group(
+        f"private_key_{wycheproof.testcase['private']}",
+        lambda: ec.derive_private_key(
+            int(wycheproof.testcase["private"], 16), curve
+        ),
     )
 
     try:
+        # caching these values shows no performance improvement
         public_key = serialization.load_der_public_key(
             binascii.unhexlify(wycheproof.testcase["public"]), backend
         )
@@ -90,8 +105,11 @@ def test_ecdh_ecpoint(backend, wycheproof):
     assert isinstance(curve, ec.EllipticCurve)
     _skip_exchange_algorithm_unsupported(backend, ec.ECDH(), curve)
 
-    private_key = ec.derive_private_key(
-        int(wycheproof.testcase["private"], 16), curve, backend
+    private_key = wycheproof.cache_value_to_group(
+        f"private_key_{wycheproof.testcase['private']}",
+        lambda: ec.derive_private_key(
+            int(wycheproof.testcase["private"], 16), curve
+        ),
     )
 
     if wycheproof.invalid:
@@ -102,6 +120,7 @@ def test_ecdh_ecpoint(backend, wycheproof):
         return
 
     assert wycheproof.valid or wycheproof.acceptable
+    # caching these values shows no performance improvement
     public_key = ec.EllipticCurvePublicKey.from_encoded_point(
         curve, binascii.unhexlify(wycheproof.testcase["public"])
     )

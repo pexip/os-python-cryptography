@@ -146,6 +146,30 @@ X.509 Reference
     -----END CERTIFICATE-----
     """.strip()
 
+    rsa_pss_pem_cert = b"""
+    -----BEGIN CERTIFICATE-----
+    MIIDfTCCAjCgAwIBAgIUP4D/5rcT93vdYGPhsKf+hbes/JgwQgYJKoZIhvcNAQEK
+    MDWgDzANBglghkgBZQMEAgEFAKEcMBoGCSqGSIb3DQEBCDANBglghkgBZQMEAgEF
+    AKIEAgIA3jAaMRgwFgYDVQQDDA9jcnlwdG9ncmFwaHkuaW8wHhcNMjIwNDMwMjAz
+    MTE4WhcNMzMwNDEyMjAzMTE4WjAaMRgwFgYDVQQDDA9jcnlwdG9ncmFwaHkuaW8w
+    ggEgMAsGCSqGSIb3DQEBCgOCAQ8AMIIBCgKCAQEAt1jpboUoNppBVamc+nA+zEjl
+    jn/gPbRFCvyveRd8Yr0p8y1mlmjKXcQlXcHPVM4TopgFXqDykIHXxJxLV56ysb4K
+    UGe0nxpmhEso5ZGUgkDIIoH0NAQAsS8rS2ZzNJcLrLGrMY6DRgFsa+G6h2DvMwgl
+    nsX++a8FIm7Vu+OZnfWpDEuhJU4TRtHVviJSYkFMckyYBB48k1MU+0b4pezHconZ
+    mMEisBFFbwarNvowf2i/tRESe3myKXfiJsZZ2UzdE3FqycSgw1tx8qV/Z8myozUW
+    uihIdw8TGbbsJhEeVFxQEP/DVzC6HHDI3EVpr2jPYeIE60hhZwM7jUmQscLerQID
+    AQABo1MwUTAdBgNVHQ4EFgQUb1QD8QEIQn5DALIAujTDATssNcQwHwYDVR0jBBgw
+    FoAUb1QD8QEIQn5DALIAujTDATssNcQwDwYDVR0TAQH/BAUwAwEB/zBCBgkqhkiG
+    9w0BAQowNaAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFl
+    AwQCAQUAogQCAgDeA4IBAQAvKBXlx07tdmtfhNTPn16dupBIS5344ZE4tfGSE5Ir
+    iA1X0bukKQ6V+6xJXGreaIw0wvwtIeI/R0JwcR114HBDqjt40vklyNSpGCJzgkfD
+    Q/d8JXN/MLyQrk+5F9JMy+HuZAgefAQAjugC6389Klpqx2Z1CgwmALhjIs48GnMp
+    Iz9vU2O6RDkMBlBRdmfkJVjhhPvJYpDDW1ic5O3pxtMoiC1tAHHMm4gzM1WCFeOh
+    cDNxABlvVNPTnqkOhKBmmwRaBwdvvksgeu2RyBNR0KEy44gWzYB9/Ter2t4Z8ASq
+    qCv8TuYr2QGaCnI2FVS5S9n6l4JNkFHqPMtuhrkr3gEz
+    -----END CERTIFICATE-----
+    """.strip()
+
 Loading Certificates
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -172,7 +196,7 @@ Loading Certificates
 .. function:: load_pem_x509_certificates(data)
     :canonical: cryptography.x509.base.load_pem_x509_certificates
 
-    .. versionadded:: 39.0
+    .. versionadded:: 39.0.0
 
     Deserialize one or more certificates from PEM encoded data.
 
@@ -331,13 +355,7 @@ X.509 Certificate Object
         The public key associated with the certificate.
 
         :returns: One of
-            :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.x25519.X25519PublicKey` or
-            :class:`~cryptography.hazmat.primitives.asymmetric.x448.X448PublicKey`
+            :data:`~cryptography.hazmat.primitives.asymmetric.types.CertificatePublicKeyTypes`.
 
         .. doctest::
 
@@ -346,9 +364,31 @@ X.509 Certificate Object
             >>> isinstance(public_key, rsa.RSAPublicKey)
             True
 
+    .. attribute:: public_key_algorithm_oid
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns the :class:`ObjectIdentifier` of the public key algorithm found
+        inside the certificate. This will be one of the OIDs from
+        :class:`~cryptography.x509.oid.PublicKeyAlgorithmOID`.
+
+        .. doctest::
+
+            >>> cert.public_key_algorithm_oid
+            <ObjectIdentifier(oid=1.2.840.113549.1.1.1, name=rsaEncryption)>
+
     .. attribute:: not_valid_before
 
         :type: :class:`datetime.datetime`
+
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.Certificate.not_valid_before_utc`.
+
 
         A naïve datetime representing the beginning of the validity period for
         the certificate in UTC. This value is inclusive.
@@ -358,9 +398,29 @@ X.509 Certificate Object
             >>> cert.not_valid_before
             datetime.datetime(2010, 1, 1, 8, 30)
 
+    .. attribute:: not_valid_before_utc
+
+        .. versionadded:: 42.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing the beginning of the validity
+        period for the certificate in UTC. This value is inclusive.
+
+        .. doctest::
+
+            >>> cert.not_valid_before_utc
+            datetime.datetime(2010, 1, 1, 8, 30, tzinfo=datetime.timezone.utc)
+
     .. attribute:: not_valid_after
 
         :type: :class:`datetime.datetime`
+
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.Certificate.not_valid_after_utc`.
 
         A naïve datetime representing the end of the validity period for the
         certificate in UTC. This value is inclusive.
@@ -369,6 +429,20 @@ X.509 Certificate Object
 
             >>> cert.not_valid_after
             datetime.datetime(2030, 12, 31, 8, 30)
+
+    .. attribute:: not_valid_after_utc
+
+        .. versionadded:: 42.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing the end of the validity period
+        for the certificate in UTC. This value is inclusive.
+
+        .. doctest::
+
+            >>> cert.not_valid_after_utc
+            datetime.datetime(2030, 12, 31, 8, 30, tzinfo=datetime.timezone.utc)
 
     .. attribute:: issuer
 
@@ -418,6 +492,34 @@ X.509 Certificate Object
 
             >>> cert.signature_algorithm_oid
             <ObjectIdentifier(oid=1.2.840.113549.1.1.11, name=sha256WithRSAEncryption)>
+
+    .. attribute:: signature_algorithm_parameters
+
+        .. versionadded:: 41.0.0
+
+        Returns the parameters of the signature algorithm used to sign the
+        certificate. For RSA signatures it will return either a
+        :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15` or
+        :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS` object.
+
+        For ECDSA signatures it will
+        return an :class:`~cryptography.hazmat.primitives.asymmetric.ec.ECDSA`.
+
+        For EdDSA and DSA signatures it will return ``None``.
+
+        These objects can be used to verify signatures on the certificate.
+
+        :returns: None,
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15`,
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS`, or
+            :class:`~cryptography.hazmat.primitives.asymmetric.ec.ECDSA`
+
+        .. doctest::
+
+            >>> from cryptography.hazmat.primitives.asymmetric import padding
+            >>> pss_cert = x509.load_pem_x509_certificate(rsa_pss_pem_cert)
+            >>> isinstance(pss_cert.signature_algorithm_parameters, padding.PSS)
+            True
 
     .. attribute:: extensions
 
@@ -486,10 +588,39 @@ X.509 Certificate Object
        An :class:`~cryptography.exceptions.InvalidSignature` exception will be
        raised if the signature fails to verify.
 
+    .. method:: verify_directly_issued_by(issuer)
+
+        .. versionadded:: 40.0.0
+
+        :param issuer: The issuer certificate to check against.
+        :type issuer: :class:`~cryptography.x509.Certificate`
+
+        .. warning::
+            This method verifies that the certificate issuer name matches the
+            issuer subject name and that the certificate is signed by the
+            issuer's private key. **No other validation is performed.**
+            Callers are responsible for performing any additional
+            validations required for their use case (e.g. checking the validity
+            period, whether the signer is allowed to issue certificates,
+            that the issuing certificate has a strong public key, etc).
+
+        Validates that the certificate is signed by the provided issuer and
+        that the issuer's subject name matches the issuer name of the
+        certificate.
+
+        :return: None
+        :raise ValueError: If the issuer name on the certificate does
+            not match the subject name of the issuer or the signature
+            algorithm is unsupported.
+        :raise TypeError: If the issuer does not have a supported public
+            key type.
+        :raise cryptography.exceptions.InvalidSignature: If the
+            signature fails to verify.
+
 
     .. attribute:: tbs_precertificate_bytes
 
-        .. versionadded:: 38.0
+        .. versionadded:: 38.0.0
 
         :type: bytes
 
@@ -600,6 +731,27 @@ X.509 CRL (Certificate Revocation List) Object
             >>> crl.signature_algorithm_oid
             <ObjectIdentifier(oid=1.2.840.113549.1.1.11, name=sha256WithRSAEncryption)>
 
+    .. attribute:: signature_algorithm_parameters
+
+        .. versionadded:: 42.0.0
+
+        Returns the parameters of the signature algorithm used to sign the
+        certificate revocation list. For RSA signatures it will return either a
+        :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15` or
+        :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS` object.
+
+        For ECDSA signatures it will
+        return an :class:`~cryptography.hazmat.primitives.asymmetric.ec.ECDSA`.
+
+        For EdDSA and DSA signatures it will return ``None``.
+
+        These objects can be used to verify the CRL signature.
+
+        :returns: None,
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15`,
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS`, or
+            :class:`~cryptography.hazmat.primitives.asymmetric.ec.ECDSA`
+
     .. attribute:: issuer
 
         :type: :class:`Name`
@@ -615,6 +767,12 @@ X.509 CRL (Certificate Revocation List) Object
 
         :type: :class:`datetime.datetime`
 
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.CertificateRevocationList.next_update_utc`.
+
         A naïve datetime representing when the next update to this CRL is
         expected.
 
@@ -623,9 +781,29 @@ X.509 CRL (Certificate Revocation List) Object
             >>> crl.next_update
             datetime.datetime(2016, 1, 1, 0, 0)
 
+    .. attribute:: next_update_utc
+
+        .. versionadded:: 42.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing when the next update to this
+        CRL is expected.
+
+        .. doctest::
+
+            >>> crl.next_update_utc
+            datetime.datetime(2016, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+
     .. attribute:: last_update
 
         :type: :class:`datetime.datetime`
+
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.CertificateRevocationList.last_update_utc`.
 
         A naïve datetime representing when this CRL was last updated.
 
@@ -633,6 +811,19 @@ X.509 CRL (Certificate Revocation List) Object
 
             >>> crl.last_update
             datetime.datetime(2015, 1, 1, 0, 0)
+
+    .. attribute:: last_update_utc
+
+        .. versionadded:: 42.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing when this CRL was last updated.
+
+        .. doctest::
+
+            >>> crl.last_update_utc
+            datetime.datetime(2015, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
 
     .. attribute:: extensions
 
@@ -707,10 +898,10 @@ X.509 Certificate Builder
         >>> public_key = private_key.public_key()
         >>> builder = x509.CertificateBuilder()
         >>> builder = builder.subject_name(x509.Name([
-        ...     x509.NameAttribute(NameOID.COMMON_NAME, u'cryptography.io'),
+        ...     x509.NameAttribute(NameOID.COMMON_NAME, 'cryptography.io'),
         ... ]))
         >>> builder = builder.issuer_name(x509.Name([
-        ...     x509.NameAttribute(NameOID.COMMON_NAME, u'cryptography.io'),
+        ...     x509.NameAttribute(NameOID.COMMON_NAME, 'cryptography.io'),
         ... ]))
         >>> builder = builder.not_valid_before(datetime.datetime.today() - one_day)
         >>> builder = builder.not_valid_after(datetime.datetime.today() + (one_day * 30))
@@ -718,7 +909,7 @@ X.509 Certificate Builder
         >>> builder = builder.public_key(public_key)
         >>> builder = builder.add_extension(
         ...     x509.SubjectAlternativeName(
-        ...         [x509.DNSName(u'cryptography.io')]
+        ...         [x509.DNSName('cryptography.io')]
         ...     ),
         ...     critical=False
         ... )
@@ -750,13 +941,7 @@ X.509 Certificate Builder
         Sets the subject's public key.
 
         :param public_key: The subject's public key. This can be one of
-            :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.x25519.X25519PublicKey` or
-            :class:`~cryptography.hazmat.primitives.asymmetric.x448.X448PublicKey`.
+            :data:`~cryptography.hazmat.primitives.asymmetric.types.CertificatePublicKeyTypes`.
 
     .. method:: serial_number(serial_number)
 
@@ -803,17 +988,13 @@ X.509 Certificate Builder
         :param critical: Set to ``True`` if the extension must be understood and
              handled by whoever reads the certificate.
 
-    .. method:: sign(private_key, algorithm)
+    .. method:: sign(private_key, algorithm, *, rsa_padding=None)
 
         Sign the certificate using the CA's private key.
 
-        :param private_key: The
-            :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey` or
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PrivateKey`
-            that will be used to sign the certificate.
+        :param private_key: The key that will be used to sign the certificate,
+            one of
+            :data:`~cryptography.hazmat.primitives.asymmetric.types.CertificateIssuerPrivateKeyTypes`.
 
         :param algorithm: The
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm` that
@@ -825,6 +1006,22 @@ X.509 Certificate Builder
             and an instance of a
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
             otherwise.
+
+        :param rsa_padding:
+
+            .. versionadded:: 41.0.0
+
+            This is a keyword-only argument. If ``private_key`` is an
+            ``RSAPrivateKey`` then this can be set to either
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15` or
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS` to sign
+            with those respective paddings. If this is ``None`` then RSA
+            keys will default to ``PKCS1v15`` padding. All other key types **must**
+            not pass a value other than ``None``.
+
+        :type rsa_padding: ``None``,
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15`,
+            or :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS`
 
         :returns: :class:`~cryptography.x509.Certificate`
 
@@ -842,11 +1039,7 @@ X.509 CSR (Certificate Signing Request) Object
         The public key associated with the request.
 
         :returns: One of
-            :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PublicKey` or
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PublicKey`.
+            :data:`~cryptography.hazmat.primitives.asymmetric.types.CertificatePublicKeyTypes`.
 
         .. doctest::
 
@@ -854,6 +1047,21 @@ X.509 CSR (Certificate Signing Request) Object
             >>> public_key = csr.public_key()
             >>> isinstance(public_key, rsa.RSAPublicKey)
             True
+
+    .. attribute:: public_key_algorithm_oid
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns the :class:`ObjectIdentifier` of the public key algorithm found
+        inside the certificate. This will be one of the OIDs from
+        :class:`~cryptography.x509.oid.PublicKeyAlgorithmOID`.
+
+        .. doctest::
+
+            >>> csr.public_key_algorithm_oid
+            <ObjectIdentifier(oid=1.2.840.113549.1.1.1, name=rsaEncryption)>
 
     .. attribute:: subject
 
@@ -893,6 +1101,27 @@ X.509 CSR (Certificate Signing Request) Object
             >>> csr.signature_algorithm_oid
             <ObjectIdentifier(oid=1.2.840.113549.1.1.11, name=sha256WithRSAEncryption)>
 
+    .. attribute:: signature_algorithm_parameters
+
+        .. versionadded:: 42.0.0
+
+        Returns the parameters of the signature algorithm used to sign the
+        certificate signing request. For RSA signatures it will return either a
+        :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15` or
+        :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS` object.
+
+        For ECDSA signatures it will
+        return an :class:`~cryptography.hazmat.primitives.asymmetric.ec.ECDSA`.
+
+        For EdDSA and DSA signatures it will return ``None``.
+
+        These objects can be used to verify signatures on the signing request.
+
+        :returns: None,
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15`,
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS`, or
+            :class:`~cryptography.hazmat.primitives.asymmetric.ec.ECDSA`
+
     .. attribute:: extensions
 
         :type: :class:`Extensions`
@@ -907,7 +1136,7 @@ X.509 CSR (Certificate Signing Request) Object
 
     .. attribute:: attributes
 
-        .. versionadded:: 36.0
+        .. versionadded:: 36.0.0
 
         :type: :class:`Attributes`
 
@@ -972,7 +1201,7 @@ X.509 Certificate Revocation List Builder
         ... )
         >>> builder = x509.CertificateRevocationListBuilder()
         >>> builder = builder.issuer_name(x509.Name([
-        ...     x509.NameAttribute(NameOID.COMMON_NAME, u'cryptography.io CA'),
+        ...     x509.NameAttribute(NameOID.COMMON_NAME, 'cryptography.io CA'),
         ... ]))
         >>> builder = builder.last_update(datetime.datetime.today())
         >>> builder = builder.next_update(datetime.datetime.today() + one_day)
@@ -1034,17 +1263,13 @@ X.509 Certificate Revocation List Builder
             obtained from an existing CRL or created with
             :class:`~cryptography.x509.RevokedCertificateBuilder`.
 
-    .. method:: sign(private_key, algorithm)
+    .. method:: sign(private_key, algorithm, *, rsa_padding=None)
 
         Sign this CRL using the CA's private key.
 
-        :param private_key: The
-            :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey` or
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PrivateKey`
-            that will be used to sign the certificate.
+        :param private_key: The private key that will be used to sign the
+            certificate, one of
+            :data:`~cryptography.hazmat.primitives.asymmetric.types.CertificateIssuerPrivateKeyTypes`.
 
         :param algorithm: The
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm` that
@@ -1056,6 +1281,22 @@ X.509 Certificate Revocation List Builder
             and an instance of a
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
             otherwise.
+
+        :param rsa_padding:
+
+            .. versionadded:: 42.0.0
+
+            This is a keyword-only argument. If ``private_key`` is an
+            ``RSAPrivateKey`` then this can be set to either
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15` or
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS` to sign
+            with those respective paddings. If this is ``None`` then RSA
+            keys will default to ``PKCS1v15`` padding. All other key types **must**
+            not pass a value other than ``None``.
+
+        :type rsa_padding: ``None``,
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15`,
+            or :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS`
 
         :returns: :class:`~cryptography.x509.CertificateRevocationList`
 
@@ -1082,12 +1323,32 @@ X.509 Revoked Certificate Object
 
         :type: :class:`datetime.datetime`
 
+        .. warning::
+
+            This property is deprecated and will be removed in a future
+            version. Please switch to the timezone-aware variant
+            :meth:`~cryptography.x509.RevokedCertificate.revocation_date_utc`.
+
         A naïve datetime representing the date this certificates was revoked.
 
         .. doctest::
 
             >>> revoked_certificate.revocation_date
             datetime.datetime(2015, 1, 1, 0, 0)
+
+    .. attribute:: revocation_date_utc
+
+        .. versionadded:: 42.0.0
+
+        :type: :class:`datetime.datetime`
+
+        A timezone-aware datetime representing the date this certificates was
+        revoked.
+
+        .. doctest::
+
+            >>> revoked_certificate.revocation_date_utc
+            datetime.datetime(2015, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
 
     .. attribute:: extensions
 
@@ -1175,7 +1436,7 @@ X.509 CSR (Certificate Signing Request) Builder Object
         ... )
         >>> builder = x509.CertificateSigningRequestBuilder()
         >>> builder = builder.subject_name(x509.Name([
-        ...     x509.NameAttribute(NameOID.COMMON_NAME, u'cryptography.io'),
+        ...     x509.NameAttribute(NameOID.COMMON_NAME, 'cryptography.io'),
         ... ]))
         >>> builder = builder.add_extension(
         ...     x509.BasicConstraints(ca=False, path_length=None), critical=True,
@@ -1215,17 +1476,13 @@ X.509 CSR (Certificate Signing Request) Builder Object
         :returns: A new
             :class:`~cryptography.x509.CertificateSigningRequestBuilder`.
 
-    .. method:: sign(private_key, algorithm)
+    .. method:: sign(private_key, algorithm, *, rsa_padding=None)
 
-        :param private_key: The
-            :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey` or
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PrivateKey`
+        :param private_key: The private key
             that will be used to sign the request.  When the request is
             signed by a certificate authority, the private key's associated
-            public key will be stored in the resulting certificate.
+            public key will be stored in the resulting certificate. One of
+            :data:`~cryptography.hazmat.primitives.asymmetric.types.CertificateIssuerPrivateKeyTypes`.
 
         :param algorithm: The
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
@@ -1237,6 +1494,22 @@ X.509 CSR (Certificate Signing Request) Builder Object
             and an instance of a
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
             otherwise.
+
+        :param rsa_padding:
+
+            .. versionadded:: 42.0.0
+
+            This is a keyword-only argument. If ``private_key`` is an
+            ``RSAPrivateKey`` then this can be set to either
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15` or
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS` to sign
+            with those respective paddings. If this is ``None`` then RSA
+            keys will default to ``PKCS1v15`` padding. All other key types **must**
+            not pass a value other than ``None``.
+
+        :type rsa_padding: ``None``,
+            :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15`,
+            or :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS`
 
         :returns: A new
             :class:`~cryptography.x509.CertificateSigningRequest`.
@@ -1283,7 +1556,7 @@ X.509 CSR (Certificate Signing Request) Builder Object
 
     .. classmethod:: from_rfc4514_string(data, attr_name_overrides=None)
 
-        .. versionadded: 37.0
+        .. versionadded: 37.0.0
 
         :param str data: An :rfc:`4514` string.
         :param attr_name_overrides: Specify custom OID to name mappings, which
@@ -1322,7 +1595,7 @@ X.509 CSR (Certificate Signing Request) Builder Object
     .. method:: rfc4514_string(attr_name_overrides=None)
 
         .. versionadded:: 2.5
-        .. versionchanged:: 36.0
+        .. versionchanged:: 36.0.0
 
             Added ``attr_name_overrides`` parameter.
 
@@ -1388,13 +1661,15 @@ X.509 CSR (Certificate Signing Request) Builder Object
 
     .. attribute:: value
 
-        :type: str
+        :type: ``str`` or ``bytes``
 
-        The value of the attribute.
+        The value of the attribute. This will generally be a ``str``, the only
+        times it can be a ``bytes`` is when :attr:`oid` is
+        ``X500_UNIQUE_IDENTIFIER``.
 
     .. attribute:: rfc4514_attribute_name
 
-        .. versionadded:: 35.0
+        .. versionadded:: 35.0.0
 
         :type: str
 
@@ -1404,7 +1679,7 @@ X.509 CSR (Certificate Signing Request) Builder Object
     .. method:: rfc4514_string(attr_name_overrides=None)
 
         .. versionadded:: 2.5
-        .. versionchanged:: 36.0
+        .. versionchanged:: 36.0.0
 
             Added ``attr_name_overrides`` parameter.
 
@@ -1437,7 +1712,7 @@ X.509 CSR (Certificate Signing Request) Builder Object
     .. method:: rfc4514_string(attr_name_overrides=None)
 
         .. versionadded:: 2.5
-        .. versionchanged:: 36.0
+        .. versionchanged:: 36.0.0
 
             Added ``attr_name_overrides`` parameter.
 
@@ -1681,7 +1956,7 @@ X.509 Extensions
 
     .. method:: public_bytes()
 
-        .. versionadded:: 36.0
+        .. versionadded:: 36.0.0
 
         :return bytes:
 
@@ -2007,11 +2282,7 @@ X.509 Extensions
         section 4.2.1.2.
 
         :param public_key: One of
-            :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PublicKey` or
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PublicKey`.
+            :data:`~cryptography.hazmat.primitives.asymmetric.types.CertificateIssuerPublicKeyTypes`.
 
         .. doctest::
 
@@ -2092,11 +2363,7 @@ X.509 Extensions
         recommendation in :rfc:`5280` section 4.2.1.2.
 
         :param public_key: One of
-            :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey`,
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PublicKey` or
-            :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PublicKey`.
+            :data:`~cryptography.hazmat.primitives.asymmetric.types.CertificatePublicKeyTypes`.
 
         .. doctest::
 
@@ -2138,6 +2405,7 @@ X.509 Extensions
 
             >>> from cryptography import x509
             >>> from cryptography.hazmat.primitives import hashes
+            >>> from cryptography.x509.oid import ExtensionOID
             >>> cert = x509.load_pem_x509_certificate(cryptography_cert_pem)
             >>> # Get the subjectAltName extension from the certificate
             >>> ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
@@ -2668,6 +2936,34 @@ X.509 Extensions
 
         Returns the DER encoded bytes payload of the extension.
 
+.. class:: MSCertificateTemplate(template_id, major_version, minor_version)
+    :canonical: cryptography.x509.extensions.MSCertificateTemplate
+
+    .. versionadded:: 41.0.0
+
+    The Microsoft certificate template extension is a proprietary Microsoft
+    PKI extension that is used to provide information about the template
+    associated with the certificate.
+
+    .. attribute:: oid
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns
+        :attr:`~cryptography.x509.oid.ExtensionOID.MS_CERTIFICATE_TEMPLATE`.
+
+    .. attribute:: template_id
+
+        :type: :class:`ObjectIdentifier`
+
+    .. attribute:: major_version
+
+        :type: int or None
+
+    .. attribute:: minor_version
+
+        :type: int or None
+
 .. class:: CertificatePolicies(policies)
     :canonical: cryptography.x509.extensions.CertificatePolicies
 
@@ -2686,7 +2982,7 @@ X.509 Extensions
 
         def contains_domain_validated(policies):
             return any(
-                policy.oid.dotted_string == "2.23.140.1.2.1"
+                policy.policy_identifier.dotted_string == "2.23.140.1.2.1"
                 for policy in policies
             )
 
@@ -2853,6 +3149,14 @@ These extensions are only valid within a :class:`RevokedCertificate` object.
 
         :type: :class:`datetime.datetime`
 
+    .. attribute:: invalidity_date_utc
+
+        .. versionadded:: 43.0.0
+
+        :type: :class:`datetime.datetime`
+
+        The invalidity date in UTC as a timezone-aware datetime object.
+
 OCSP Extensions
 ~~~~~~~~~~~~~~~
 
@@ -2879,13 +3183,36 @@ OCSP Extensions
 
         :type: bytes
 
+.. class:: OCSPAcceptableResponses(response)
+    :canonical: cryptography.x509.extensions.OCSPAcceptableResponses
+
+    .. versionadded:: 41.0.0
+
+    OCSP acceptable responses is an extension that is only valid inside
+    :class:`~cryptography.x509.ocsp.OCSPRequest` objects. This allows an OCSP
+    client to tell the server what types of responses it supports. In practice
+    this is rarely used, because there is only one kind of OCSP response in
+    wide use.
+
+    .. attribute:: oid
+
+        :type: :class:`ObjectIdentifier`
+
+        Returns
+        :attr:`~cryptography.x509.oid.OCSPExtensionOID.ACCEPTABLE_RESPONSES`.
+
+    .. attribute:: nonce
+
+        :type: bytes
+
+
 X.509 Request Attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. class:: Attributes
     :canonical: cryptography.x509.base.Attributes
 
-    .. versionadded:: 36.0
+    .. versionadded:: 36.0.0
 
     An Attributes instance is an ordered list of attributes.  The object
     is iterable to get every attribute. Each returned element is an
@@ -2893,7 +3220,7 @@ X.509 Request Attributes
 
     .. method:: get_attribute_for_oid(oid)
 
-        .. versionadded:: 36.0
+        .. versionadded:: 36.0.0
 
         :param oid: An :class:`ObjectIdentifier` instance.
 
@@ -2906,7 +3233,7 @@ X.509 Request Attributes
 .. class:: Attribute
     :canonical: cryptography.x509.base.Attribute
 
-    .. versionadded:: 36.0
+    .. versionadded:: 36.0.0
 
     An attribute associated with an X.509 request.
 
@@ -2962,6 +3289,12 @@ instances. The following common OIDs are available as constants.
 
         Corresponds to the dotted string ``"2.5.4.9"``.
 
+    .. attribute:: ORGANIZATION_IDENTIFIER
+
+        .. versionadded:: 42.0.0
+
+        Corresponds to the dotted string ``"2.5.4.97"``.
+
     .. attribute:: ORGANIZATION_NAME
 
         Corresponds to the dotted string ``"2.5.4.10"``.
@@ -2974,7 +3307,7 @@ instances. The following common OIDs are available as constants.
 
         Corresponds to the dotted string ``"2.5.4.5"``. This is distinct from
         the serial number of the certificate itself (which can be obtained with
-        :func:`~cryptography.x509.Certificate.serial_number`).
+        :attr:`~cryptography.x509.Certificate.serial_number`).
 
     .. attribute:: SURNAME
 
@@ -2987,6 +3320,12 @@ instances. The following common OIDs are available as constants.
     .. attribute:: TITLE
 
         Corresponds to the dotted string ``"2.5.4.12"``.
+
+    .. attribute:: INITIALS
+
+        .. versionadded:: 41.0.0
+
+        Corresponds to the dotted string ``"2.5.4.43"``.
 
     .. attribute:: GENERATION_QUALIFIER
 
@@ -3184,14 +3523,14 @@ instances. The following common OIDs are available as constants.
 
     .. attribute:: DSA_WITH_SHA384
 
-        .. versionadded:: 36.0
+        .. versionadded:: 36.0.0
 
         Corresponds to the dotted string ``"2.16.840.1.101.3.4.3.3"``. This is
         a SHA384 digest signed by a DSA key.
 
     .. attribute:: DSA_WITH_SHA512
 
-        .. versionadded:: 36.0
+        .. versionadded:: 36.0.0
 
         Corresponds to the dotted string ``"2.16.840.1.101.3.4.3.4"``. This is
         a SHA512 digest signed by a DSA key.
@@ -3262,7 +3601,7 @@ instances. The following common OIDs are available as constants.
 
     .. attribute:: SMARTCARD_LOGON
 
-        .. versionadded:: 35.0
+        .. versionadded:: 35.0.0
 
         Corresponds to the dotted string ``"1.3.6.1.4.1.311.20.2.2"``. This
         is used to denote that a certificate may be used for ``PKINIT`` access
@@ -3270,7 +3609,7 @@ instances. The following common OIDs are available as constants.
 
     .. attribute:: KERBEROS_PKINIT_KDC
 
-        .. versionadded:: 35.0
+        .. versionadded:: 35.0.0
 
         Corresponds to the dotted string ``"1.3.6.1.5.2.3.5"``. This
         is used to denote that a certificate may be used as a Kerberos
@@ -3279,7 +3618,7 @@ instances. The following common OIDs are available as constants.
 
     .. attribute:: IPSEC_IKE
 
-        .. versionadded:: 37.0
+        .. versionadded:: 37.0.0
 
         Corresponds to the dotted string ``"1.3.6.1.5.5.7.3.17"``. This
         is used to denote that a certificate may be assigned to an IPSEC SA,
@@ -3288,7 +3627,7 @@ instances. The following common OIDs are available as constants.
 
     .. attribute:: CERTIFICATE_TRANSPARENCY
 
-        .. versionadded:: 38.0
+        .. versionadded:: 38.0.0
 
         Corresponds to the dotted string ``"1.3.6.1.4.1.11129.2.4.4"``. This
         is used to denote that a certificate may be used as a pre-certificate
@@ -3486,6 +3825,12 @@ instances. The following common OIDs are available as constants.
 
         Corresponds to the dotted string ``"2.5.29.9"``.
 
+    .. attribute:: MS_CERTIFICATE_TEMPLATE
+
+        .. versionadded:: 41.0.0
+
+        Corresponds to the dotted string ``"1.3.6.1.4.1.311.21.7"``.
+
 
 .. class:: CRLEntryExtensionOID
     :canonical: cryptography.hazmat._oid.CRLEntryExtensionOID
@@ -3514,6 +3859,12 @@ instances. The following common OIDs are available as constants.
 
         Corresponds to the dotted string ``"1.3.6.1.5.5.7.48.1.2"``.
 
+    .. attribute:: ACCEPTABLE_RESPONSES
+
+        .. versionadded:: 41.0.0
+
+        Corresponds to the dotted string ``"1.3.6.1.5.5.7.48.1.4"``.
+
 
 .. class:: AttributeOID
     :canonical: cryptography.hazmat._oid.AttributeOID
@@ -3527,6 +3878,65 @@ instances. The following common OIDs are available as constants.
     .. attribute:: UNSTRUCTURED_NAME
 
         Corresponds to the dotted string ``"1.2.840.113549.1.9.2"``.
+
+
+.. class:: PublicKeyAlgorithmOID
+    :canonical: cryptography.hazmat._oid.PublicKeyAlgorithmOID
+
+    .. versionadded:: 43.0.0
+
+    .. attribute:: DSA
+
+        Corresponds to the dotted string ``"1.2.840.10040.4.1"``. This is a
+        :class:`~cryptography.hazmat.primitives.asymmetric.dsa.DSAPublicKey`
+        public key.
+
+    .. attribute:: EC_PUBLIC_KEY
+
+        Corresponds to the dotted string ``"1.2.840.10045.2.1"``. This is a
+        :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey`
+        public key.
+
+    .. attribute:: RSAES_PKCS1_v1_5
+
+        Corresponds to the dotted string ``"1.2.840.113549.1.1.1"``. This is a
+        :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey`
+        public key with
+        :class:`~cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15`
+        padding.
+
+    .. attribute:: RSASSA_PSS
+
+        Corresponds to the dotted string ``"1.2.840.113549.1.1.10"``. This is a
+        :class:`~cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey`
+        public key with
+        :class:`~cryptography.hazmat.primitives.asymmetric.padding.PSS`
+        padding.
+
+    .. attribute:: X25519
+
+        Corresponds to the dotted string ``"1.3.101.110"``. This is a
+        :class:`~cryptography.hazmat.primitives.asymmetric.x25519.X25519PublicKey`
+        public key.
+
+    .. attribute:: X448
+
+        Corresponds to the dotted string ``"1.3.101.111"``. This is a
+        :class:`~cryptography.hazmat.primitives.asymmetric.x448.X448PublicKey`
+        public key.
+
+    .. attribute:: ED25519
+
+        Corresponds to the dotted string ``"1.3.101.112"``. This is a
+        :class:`~cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PublicKey`
+        public key.
+
+    .. attribute:: ED448
+
+        Corresponds to the dotted string ``"1.3.101.113"``. This is a
+        :class:`~cryptography.hazmat.primitives.asymmetric.ed448.Ed448PublicKey`
+        public key.
+
 
 Helper Functions
 ~~~~~~~~~~~~~~~~
@@ -3606,6 +4016,6 @@ Exceptions
         types can be found in `RFC 5280 section 4.2.1.6`_.
 
 
-.. _`RFC 5280 section 4.2.1.1`: https://tools.ietf.org/html/rfc5280#section-4.2.1.1
-.. _`RFC 5280 section 4.2.1.6`: https://tools.ietf.org/html/rfc5280#section-4.2.1.6
+.. _`RFC 5280 section 4.2.1.1`: https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1
+.. _`RFC 5280 section 4.2.1.6`: https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.6
 .. _`CABForum Guidelines`: https://cabforum.org/baseline-requirements-documents/

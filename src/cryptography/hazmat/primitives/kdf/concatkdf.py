@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import annotations
 
 import typing
 
@@ -18,13 +19,11 @@ def _int_to_u32be(n: int) -> bytes:
 def _common_args_checks(
     algorithm: hashes.HashAlgorithm,
     length: int,
-    otherinfo: typing.Optional[bytes],
+    otherinfo: bytes | None,
 ) -> None:
     max_length = algorithm.digest_size * (2**32 - 1)
     if length > max_length:
-        raise ValueError(
-            "Cannot derive keys larger than {} bits.".format(max_length)
-        )
+        raise ValueError(f"Cannot derive keys larger than {max_length} bits.")
     if otherinfo is not None:
         utils._check_bytes("otherinfo", otherinfo)
 
@@ -57,7 +56,7 @@ class ConcatKDFHash(KeyDerivationFunction):
         self,
         algorithm: hashes.HashAlgorithm,
         length: int,
-        otherinfo: typing.Optional[bytes],
+        otherinfo: bytes | None,
         backend: typing.Any = None,
     ):
         _common_args_checks(algorithm, length, otherinfo)
@@ -88,8 +87,8 @@ class ConcatKDFHMAC(KeyDerivationFunction):
         self,
         algorithm: hashes.HashAlgorithm,
         length: int,
-        salt: typing.Optional[bytes],
-        otherinfo: typing.Optional[bytes],
+        salt: bytes | None,
+        otherinfo: bytes | None,
         backend: typing.Any = None,
     ):
         _common_args_checks(algorithm, length, otherinfo)
@@ -98,9 +97,7 @@ class ConcatKDFHMAC(KeyDerivationFunction):
         self._otherinfo: bytes = otherinfo if otherinfo is not None else b""
 
         if algorithm.block_size is None:
-            raise TypeError(
-                "{} is unsupported for ConcatKDF".format(algorithm.name)
-            )
+            raise TypeError(f"{algorithm.name} is unsupported for ConcatKDF")
 
         if salt is None:
             salt = b"\x00" * algorithm.block_size

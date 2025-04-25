@@ -289,7 +289,8 @@ Key interfaces
         Sign one block of data which can be verified later by others using the
         public key.
 
-        :param bytes data: The message string to sign.
+        :param data: The message string to sign.
+        :type data: :term:`bytes-like`
 
         :param algorithm: An instance of
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm` or
@@ -315,7 +316,6 @@ Key interfaces
         :attr:`~cryptography.hazmat.primitives.serialization.Encoding.DER`),
         format (
         :attr:`~cryptography.hazmat.primitives.serialization.PrivateFormat.TraditionalOpenSSL`,
-        :attr:`~cryptography.hazmat.primitives.serialization.PrivateFormat.OpenSSH`
         or
         :attr:`~cryptography.hazmat.primitives.serialization.PrivateFormat.PKCS8`)
         and encryption algorithm (such as
@@ -335,13 +335,6 @@ Key interfaces
             interface.
 
         :return bytes: Serialized key.
-
-
-.. class:: DSAPrivateKeyWithSerialization
-
-    .. versionadded:: 0.8
-
-    Alias for :class:`DSAPrivateKey`.
 
 
 .. class:: DSAPublicKey
@@ -399,28 +392,24 @@ Key interfaces
         Verify one block of data was signed by the private key
         associated with this public key.
 
-        :param bytes signature: The signature to verify.
+        :param signature: The signature to verify.
+        :type signature: :term:`bytes-like`
 
-        :param bytes data: The message string that was signed.
+        :param data: The message string that was signed.
+        :type data: :term:`bytes-like`
 
         :param algorithm: An instance of
             :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm` or
             :class:`~cryptography.hazmat.primitives.asymmetric.utils.Prehashed`
             if the ``data`` you want to sign has already been hashed.
 
+        :returns: None
         :raises cryptography.exceptions.InvalidSignature: If the signature does
             not validate.
-
-
-.. class:: DSAPublicKeyWithSerialization
-
-    .. versionadded:: 0.8
-
-    Alias for :class:`DSAPublicKey`.
 
 
 .. _`DSA`: https://en.wikipedia.org/wiki/Digital_Signature_Algorithm
 .. _`public-key`: https://en.wikipedia.org/wiki/Public-key_cryptography
 .. _`FIPS 186-4`: https://csrc.nist.gov/publications/detail/fips/186/4/final
 .. _`at least 2048`: https://www.cosic.esat.kuleuven.be/ecrypt/ecrypt2/documents/D.SPA.20.pdf
-.. _`ongoing protestations`: https://buttondown.email/cryptography-dispatches/archive/cryptography-dispatches-dsa-is-past-its-prime/
+.. _`ongoing protestations`: https://words.filippo.io/dispatches/dsa/

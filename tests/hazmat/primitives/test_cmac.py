@@ -7,15 +7,23 @@ import binascii
 
 import pytest
 
-from cryptography.exceptions import AlreadyFinalized, InvalidSignature
+from cryptography.exceptions import (
+    AlreadyFinalized,
+    InvalidSignature,
+    _Reasons,
+)
+from cryptography.hazmat.decrepit.ciphers.algorithms import ARC4, TripleDES
 from cryptography.hazmat.primitives.ciphers.algorithms import (
     AES,
-    ARC4,
-    TripleDES,
 )
 from cryptography.hazmat.primitives.cmac import CMAC
 
-from ...utils import load_nist_vectors, load_vectors_from_file
+from ...doubles import DummyBlockCipherAlgorithm
+from ...utils import (
+    load_nist_vectors,
+    load_vectors_from_file,
+    raises_unsupported_algorithm,
+)
 
 vectors_aes128 = load_vectors_from_file(
     "CMAC/nist-800-38b-aes128.txt", load_nist_vectors
@@ -135,6 +143,9 @@ class TestCMAC:
         key = b"0102030405"
         with pytest.raises(TypeError):
             CMAC(ARC4(key), backend)  # type: ignore[arg-type]
+
+        with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_CIPHER):
+            CMAC(DummyBlockCipherAlgorithm(b"bad"), backend)
 
     @pytest.mark.supported(
         only_if=lambda backend: backend.cmac_algorithm_supported(
