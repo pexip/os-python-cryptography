@@ -304,7 +304,7 @@ Padding
 
     .. attribute:: DIGEST_LENGTH
 
-        .. versionadded:: 37.0
+        .. versionadded:: 37.0.0
 
         Pass this attribute to ``salt_length`` to set the salt length to the
         byte length of the digest passed when calling ``sign``. Note that this
@@ -312,10 +312,18 @@ Padding
 
     .. attribute:: AUTO
 
-        .. versionadded:: 37.0
+        .. versionadded:: 37.0.0
 
         Pass this attribute to ``salt_length`` to automatically determine the
         salt length when verifying. Raises ``ValueError`` if used when signing.
+
+    .. attribute:: mgf
+
+        :type: :class:`~cryptography.hazmat.primitives.asymmetric.padding.MGF`
+
+        .. versionadded:: 42.0.0
+
+        The padding's mask generation function (MGF).
 
 .. class:: OAEP(mgf, algorithm, label)
 
@@ -334,6 +342,22 @@ Padding
 
     :param bytes label: A label to apply. This is a rarely used field and
         should typically be set to ``None`` or ``b""``, which are equivalent.
+
+    .. attribute:: algorithm
+
+        :type: :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`
+
+        .. versionadded:: 42.0.0
+
+        The padding's hash algorithm.
+
+    .. attribute:: mgf
+
+        :type: :class:`~cryptography.hazmat.primitives.asymmetric.padding.MGF`
+
+        .. versionadded:: 42.0.0
+
+        The padding's mask generation function (MGF).
 
 .. class:: PKCS1v15()
 
@@ -368,6 +392,11 @@ Padding
 
 Mask generation functions
 -------------------------
+
+.. class:: MGF
+
+    .. versionadded:: 37.0.0
+
 
 .. class:: MGF1(algorithm)
 
@@ -525,6 +554,23 @@ this without having to do the math themselves.
     Computes the ``dmq1`` parameter from the RSA private exponent (``d``) and
     prime ``q``.
 
+.. function:: rsa_recover_private_exponent(e, p, q)
+
+    .. versionadded:: 43.0.0
+
+    Computes the RSA private_exponent (``d``) given the public exponent (``e``)
+    and the RSA primes ``p`` and ``q``.
+
+    .. note::
+
+        This implementation uses the Carmichael totient function to return the
+        smallest working value of ``d``. Older RSA implementations, including the
+        original RSA paper, often used the Euler totient function, which results
+        in larger but equally functional private exponents. The private exponents
+        resulting from the Carmichael totient function, as returned here, are
+        slightly more computationally efficient to use, and some modern standards
+        require them.
+
 .. function:: rsa_recover_prime_factors(n, e, d)
 
     .. versionadded:: 0.8
@@ -591,7 +637,8 @@ Key interfaces
         Sign one block of data which can be verified later by others using the
         public key.
 
-        :param bytes data: The message string to sign.
+        :param data: The message string to sign.
+        :type data: :term:`bytes-like`
 
         :param padding: An instance of
             :class:`~cryptography.hazmat.primitives.asymmetric.padding.AsymmetricPadding`.
@@ -640,13 +687,6 @@ Key interfaces
             interface.
 
         :return bytes: Serialized key.
-
-
-.. class:: RSAPrivateKeyWithSerialization
-
-    .. versionadded:: 0.8
-
-    Alias for :class:`RSAPrivateKey`.
 
 
 .. class:: RSAPublicKey
@@ -717,9 +757,11 @@ Key interfaces
         Verify one block of data was signed by the private key
         associated with this public key.
 
-        :param bytes signature: The signature to verify.
+        :param signature: The signature to verify.
+        :type signature: :term:`bytes-like`
 
-        :param bytes data: The message string that was signed.
+        :param data: The message string that was signed.
+        :type data: :term:`bytes-like`
 
         :param padding: An instance of
             :class:`~cryptography.hazmat.primitives.asymmetric.padding.AsymmetricPadding`.
@@ -729,6 +771,7 @@ Key interfaces
             :class:`~cryptography.hazmat.primitives.asymmetric.utils.Prehashed`
             if the ``data`` you want to verify has already been hashed.
 
+        :returns: None
         :raises cryptography.exceptions.InvalidSignature: If the signature does
             not validate.
 
@@ -781,13 +824,6 @@ Key interfaces
 
         :raises cryptography.exceptions.UnsupportedAlgorithm: If signature
             data recovery is not supported with the provided ``padding`` type.
-
-.. class:: RSAPublicKeyWithSerialization
-
-    .. versionadded:: 0.8
-
-    Alias for :class:`RSAPublicKey`.
-
 
 .. _`RSA`: https://en.wikipedia.org/wiki/RSA_(cryptosystem)
 .. _`public-key`: https://en.wikipedia.org/wiki/Public-key_cryptography

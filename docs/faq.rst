@@ -1,6 +1,22 @@
 Frequently asked questions
 ==========================
 
+What issues can you help with in your issue tracker?
+----------------------------------------------------
+
+The primary purpose of our issue tracker is to enable us to identify and
+resolve bugs and feature requests in ``cryptography``, so any time a user
+files a bug, we start by asking: Is this a ``cryptography`` bug, or is it a
+bug somewhere else?
+
+That said, we do our best to help users to debug issues that are in their code
+or environments. Please note, however, that there's a limit to our ability to
+assist users in resolving problems that are specific to their environments,
+particularly when we have no way to reproduce the issue.
+
+Lastly, we're not able to provide support for general Python or Python
+packaging issues.
+
 .. _faq-howto-handle-deprecation-warning:
 
 I cannot suppress the deprecation warning that ``cryptography`` emits on import
@@ -81,17 +97,6 @@ as secure as possible while retaining the advantages of OpenSSL, so we've
 chosen to rewrite non-cryptographic operations (such as ASN.1 parsing) in a
 high performance memory safe language: Rust.
 
-Installing ``cryptography`` produces a ``fatal error: 'openssl/opensslv.h' file not found`` error
--------------------------------------------------------------------------------------------------
-
-``cryptography`` provides wheels which include a statically linked copy of
-OpenSSL. If you see this error it is likely because your copy of ``pip`` is too
-old to find our wheel files. Upgrade your ``pip`` with ``pip install -U pip``
-and then try to install ``cryptography`` again.
-
-Users on unusual CPU architectures will need to compile ``cryptography``
-themselves. Please view our :doc:`/installation` documentation.
-
 ``cryptography`` raised an ``InternalError`` and I'm not sure what to do?
 -------------------------------------------------------------------------
 
@@ -101,15 +106,6 @@ OpenSSL. Try removing the other libraries and see if the problem persists.
 If you have no other libraries using OpenSSL in your process, or they do not
 appear to be at fault, it's possible that this is a bug in ``cryptography``.
 Please file an `issue`_ with instructions on how to reproduce it.
-
-error: ``-Werror=sign-conversion``: No option ``-Wsign-conversion`` during installation
----------------------------------------------------------------------------------------
-
-The compiler you are using is too old and not supported by ``cryptography``.
-Please upgrade to a more recent version. If you are running OpenBSD 6.1 or
-earlier the default compiler is extremely old. Use ``pkg_add`` to install a
-newer ``gcc`` and then install ``cryptography`` using
-``CC=/path/to/newer/gcc pip install cryptography``.
 
 Installing cryptography with OpenSSL 0.9.8, 1.0.0, 1.0.1, 1.0.2, 1.1.0 fails
 ----------------------------------------------------------------------------
@@ -154,7 +150,7 @@ Why can't I import my PEM file?
 -------------------------------
 
 PEM is a format (defined by several RFCs, but originally :rfc:`1421`) for
-encoding keys, certificates and others cryptographic data into a regular form.
+encoding keys, certificates, and others cryptographic data into a regular form.
 The data is encoded as base64 and wrapped with a header and footer.
 
 If you are having trouble importing PEM files, make sure your file fits

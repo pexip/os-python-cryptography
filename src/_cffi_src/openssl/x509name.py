@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import annotations
 
 INCLUDES = """
 #include <openssl/x509.h>
@@ -10,11 +11,9 @@ INCLUDES = """
  * See the comment above Cryptography_STACK_OF_X509 in x509.py
  */
 typedef STACK_OF(X509_NAME) Cryptography_STACK_OF_X509_NAME;
-typedef STACK_OF(X509_NAME_ENTRY) Cryptography_STACK_OF_X509_NAME_ENTRY;
 """
 
 TYPES = """
-typedef ... Cryptography_STACK_OF_X509_NAME_ENTRY;
 typedef ... X509_NAME;
 typedef ... X509_NAME_ENTRY;
 typedef ... Cryptography_STACK_OF_X509_NAME;
@@ -38,23 +37,15 @@ char *X509_NAME_oneline(const X509_NAME *, char *, int);
 
 ASN1_OBJECT *X509_NAME_ENTRY_get_object(const X509_NAME_ENTRY *);
 ASN1_STRING *X509_NAME_ENTRY_get_data(const X509_NAME_ENTRY *);
-int X509_NAME_add_entry(X509_NAME *, X509_NAME_ENTRY *, int, int);
 
 int X509_NAME_add_entry_by_NID(X509_NAME *, int, int, const unsigned char *,
                                int, int, int);
-
-X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_OBJ(X509_NAME_ENTRY **,
-                                               const ASN1_OBJECT *, int,
-                                               const unsigned char *, int);
 
 Cryptography_STACK_OF_X509_NAME *sk_X509_NAME_new_null(void);
 int sk_X509_NAME_num(Cryptography_STACK_OF_X509_NAME *);
 int sk_X509_NAME_push(Cryptography_STACK_OF_X509_NAME *, X509_NAME *);
 X509_NAME *sk_X509_NAME_value(Cryptography_STACK_OF_X509_NAME *, int);
 void sk_X509_NAME_free(Cryptography_STACK_OF_X509_NAME *);
-Cryptography_STACK_OF_X509_NAME_ENTRY *sk_X509_NAME_ENTRY_new_null(void);
-int sk_X509_NAME_ENTRY_push(Cryptography_STACK_OF_X509_NAME_ENTRY *,
-                            X509_NAME_ENTRY *);
 """
 
 CUSTOMIZATIONS = """
