@@ -7,5 +7,3 @@ downgrade-deps.patch
 getrandom-tolerance.patch
 api_compat_300.patch
 pexip-dodgy-int.patch
-CVE-2023-23931.patch
-upstream-0001-upgrade-pyo3-asn1.patch
