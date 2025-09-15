@@ -496,7 +496,7 @@ fn public_key_from_numbers(
     let mut point = openssl::ec::EcPoint::new(curve)?;
     let mut bn_ctx = openssl::bn::BigNumContext::new()?;
     point
-        .set_affine_coordinates_gfp(curve, &x, &y, &mut bn_ctx)
+        .set_affine_coordinates(curve, &x, &y, &mut bn_ctx)
         .map_err(|_| {
             pyo3::exceptions::PyValueError::new_err(
                 "Invalid EC key. Point is not on the curve specified.",
