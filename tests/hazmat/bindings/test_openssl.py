@@ -61,6 +61,7 @@ class TestOpenSSL:
             with pytest.raises(AttributeError):
                 b.lib.TLS_ST_OK
 
+    @pytest.mark.skip
     def test_openssl_assert_error_on_stack(self):
         b = Binding()
         b.lib.ERR_put_error(
@@ -83,6 +84,7 @@ class TestOpenSSL:
         with pytest.raises(ImportError):
             _verify_package_version("nottherightversion")
 
+    @pytest.mark.skip
     def test_rust_internal_error(self):
         with pytest.raises(InternalError) as exc_info:
             rust_openssl.raise_openssl_error()

@@ -157,7 +157,6 @@ int SSL_write(SSL *, const void *, int);
 int SSL_read(SSL *, void *, int);
 int SSL_peek(SSL *, void *, int);
 X509 *SSL_get_certificate(const SSL *);
-X509 *SSL_get_peer_certificate(const SSL *);
 int SSL_get_ex_data_X509_STORE_CTX_idx(void);
 void SSL_set_verify(SSL *, int, int (*)(int, X509_STORE_CTX *));
 int SSL_get_verify_mode(const SSL *);
@@ -308,8 +307,6 @@ long SSL_total_renegotiations(SSL *);
 long SSL_CTX_set_min_proto_version(SSL_CTX *, int);
 long SSL_CTX_set_max_proto_version(SSL_CTX *, int);
 
-long SSL_CTX_set_tmp_ecdh(SSL_CTX *, EC_KEY *);
-long SSL_CTX_set_tmp_dh(SSL_CTX *, DH *);
 long SSL_CTX_set_session_cache_mode(SSL_CTX *, long);
 long SSL_CTX_get_session_cache_mode(SSL_CTX *);
 long SSL_CTX_add_extra_chain_cert(SSL_CTX *, X509 *);

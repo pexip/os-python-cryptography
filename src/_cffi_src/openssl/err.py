@@ -9,7 +9,6 @@ INCLUDES = """
 """
 
 TYPES = """
-static const int EVP_F_EVP_ENCRYPTFINAL_EX;
 static const int EVP_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH;
 
 static const int ERR_LIB_EVP;
@@ -24,13 +23,9 @@ static const int Cryptography_HAS_UNEXPECTED_EOF_WHILE_READING;
 """
 
 FUNCTIONS = """
-const char *ERR_lib_error_string(unsigned long);
-const char *ERR_func_error_string(unsigned long);
-const char *ERR_reason_error_string(unsigned long);
 unsigned long ERR_get_error(void);
 unsigned long ERR_peek_error(void);
 void ERR_clear_error(void);
-void ERR_put_error(int, int, int, const char *, int);
 
 int ERR_GET_REASON(unsigned long);
 """

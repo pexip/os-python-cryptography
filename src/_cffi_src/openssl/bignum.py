@@ -9,8 +9,6 @@ INCLUDES = """
 """
 
 TYPES = """
-static const long Cryptography_HAS_PRIME_CHECKS;
-
 typedef ... BN_CTX;
 typedef ... BIGNUM;
 typedef int... BN_ULONG;
@@ -30,15 +28,7 @@ int BN_hex2bn(BIGNUM **, const char *);
 /* The following 3 prime methods are exposed for Tribler. */
 int BN_generate_prime_ex(BIGNUM *, int, int, const BIGNUM *,
                          const BIGNUM *, BN_GENCB *);
-int BN_is_prime_ex(const BIGNUM *, int, BN_CTX *, BN_GENCB *);
-const int BN_prime_checks_for_size(int);
 """
 
 CUSTOMIZATIONS = """
-#if CRYPTOGRAPHY_IS_BORINGSSL
-static const long Cryptography_HAS_PRIME_CHECKS = 0;
-int (*BN_prime_checks_for_size)(int) = NULL;
-#else
-static const long Cryptography_HAS_PRIME_CHECKS = 1;
-#endif
 """

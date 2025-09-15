@@ -9,19 +9,12 @@ INCLUDES = """
 """
 
 TYPES = """
-typedef ... RSA;
 typedef ... BN_GENCB;
-static const int RSA_F4;
 
 static const int Cryptography_HAS_IMPLICIT_RSA_REJECTION;
 """
 
 FUNCTIONS = """
-RSA *RSA_new(void);
-void RSA_free(RSA *);
-int RSA_generate_key_ex(RSA *, int, BIGNUM *, BN_GENCB *);
-int RSA_check_key(const RSA *);
-int RSA_print(BIO *, const RSA *, int);
 """
 
 CUSTOMIZATIONS = """

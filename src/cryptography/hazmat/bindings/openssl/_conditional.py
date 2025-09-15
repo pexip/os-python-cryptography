@@ -130,12 +130,6 @@ def cryptography_has_ssl_cookie() -> list[str]:
     ]
 
 
-def cryptography_has_prime_checks() -> list[str]:
-    return [
-        "BN_prime_checks_for_size",
-    ]
-
-
 def cryptography_has_unexpected_eof_while_reading() -> list[str]:
     return ["SSL_R_UNEXPECTED_EOF_WHILE_READING"]
 
@@ -172,7 +166,6 @@ CONDITIONAL_NAMES = {
     ),
     "Cryptography_HAS_DTLS_GET_DATA_MTU": cryptography_has_dtls_get_data_mtu,
     "Cryptography_HAS_SSL_COOKIE": cryptography_has_ssl_cookie,
-    "Cryptography_HAS_PRIME_CHECKS": cryptography_has_prime_checks,
     "Cryptography_HAS_UNEXPECTED_EOF_WHILE_READING": (
         cryptography_has_unexpected_eof_while_reading
     ),
