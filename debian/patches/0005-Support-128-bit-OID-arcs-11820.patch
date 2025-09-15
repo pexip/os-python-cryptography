@@ -1,0 +1,28 @@
+From: Robby Cornelissen <robby.cornelissen@gmail.com>
+Date: Thu, 24 Oct 2024 13:36:14 +0900
+Subject: Support 128-bit OID arcs (#11820)
+
+* Support 128-bit OID arcs
+
+* Update Cargo.lock to reflect updated rust-asn1 dependency
+---
+ tests/x509/test_x509.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/tests/x509/test_x509.py b/tests/x509/test_x509.py
+index 91251d5..22eca69 100644
+--- a/tests/x509/test_x509.py
++++ b/tests/x509/test_x509.py
+@@ -6046,10 +6046,11 @@ class TestObjectIdentifier:
+         x509.ObjectIdentifier("1.39.999")
+         x509.ObjectIdentifier("2.5.29.3")
+         x509.ObjectIdentifier("2.999.37.5.22.8")
++        x509.ObjectIdentifier(f"2.25.{2**128 - 1}")
+ 
+     def test_oid_arc_too_large(self):
+         with pytest.raises(ValueError):
+-            x509.ObjectIdentifier(f"2.25.{2**128 - 1}")
++            x509.ObjectIdentifier(f"2.25.{2**128}")
+ 
+ 
+ class TestName:

@@ -4,6 +4,7 @@
 
 
 import binascii
+import copy
 import os
 
 import pytest
@@ -15,6 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import (
     X448PublicKey,
 )
 
+from ...doubles import DummyKeySerializationEncryption
 from ...utils import (
     load_nist_vectors,
     load_vectors_from_file,
@@ -116,12 +118,14 @@ class TestX448Exchange:
             )
             == private_bytes
         )
+        assert private_key.private_bytes_raw() == private_bytes
         assert (
             private_key.public_key().public_bytes(
                 serialization.Encoding.Raw, serialization.PublicFormat.Raw
             )
             == public_bytes
         )
+        assert private_key.public_key().public_bytes_raw() == public_bytes
         public_key = X448PublicKey.from_public_bytes(public_bytes)
         assert (
             public_key.public_bytes(
@@ -129,6 +133,7 @@ class TestX448Exchange:
             )
             == public_bytes
         )
+        assert public_key.public_bytes_raw() == public_bytes
 
     @pytest.mark.parametrize(
         ("encoding", "fmt", "encryption", "passwd", "load_func"),
@@ -197,18 +202,24 @@ class TestX448Exchange:
 
     def test_invalid_private_bytes(self, backend):
         key = X448PrivateKey.generate()
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.Raw,
                 None,  # type: ignore[arg-type]
+            )
+        with pytest.raises(ValueError):
+            key.private_bytes(
+                serialization.Encoding.Raw,
+                serialization.PrivateFormat.Raw,
+                DummyKeySerializationEncryption(),
             )
 
         with pytest.raises(ValueError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.PKCS8,
-                None,  # type: ignore[arg-type]
+                DummyKeySerializationEncryption(),
             )
 
         with pytest.raises(ValueError):
@@ -250,3 +261,39 @@ class TestX448Exchange:
             )
             == private_bytes
         )
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.x448_supported(),
+    skip_message="Requires OpenSSL with X448 support",
+)
+def test_public_key_equality(backend):
+    key_bytes = load_vectors_from_file(
+        os.path.join("asymmetric", "X448", "x448-pkcs8.der"),
+        lambda derfile: derfile.read(),
+        mode="rb",
+    )
+    key1 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key2 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key3 = X448PrivateKey.generate().public_key()
+    assert key1 == key2
+    assert key1 != key3
+    assert key1 != object()
+    with pytest.raises(TypeError):
+        key1 < key2  # type: ignore[operator]
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.x448_supported(),
+    skip_message="Requires OpenSSL with X448 support",
+)
+def test_public_key_copy(backend):
+    key_bytes = load_vectors_from_file(
+        os.path.join("asymmetric", "X448", "x448-pkcs8.der"),
+        lambda derfile: derfile.read(),
+        mode="rb",
+    )
+    key1 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key2 = copy.copy(key1)
+
+    assert key1 == key2

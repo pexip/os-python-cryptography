@@ -47,6 +47,19 @@ Elliptic Curve Signature Algorithms
     :param algorithm: An instance of
         :class:`~cryptography.hazmat.primitives.hashes.HashAlgorithm`.
 
+    :param bool deterministic_signing: A boolean flag defaulting to ``False``
+        that specifies whether the signing procedure should be deterministic
+        or not, as defined in :rfc:`6979`. This only impacts the signing
+        process, verification is not affected (the verification process
+        is the same for both deterministic and non-deterministic signed
+        messages).
+
+        .. versionadded:: 43.0.0
+
+    :raises cryptography.exceptions.UnsupportedAlgorithm: If
+        ``deterministic_signing`` is set to ``True`` and the version of
+        OpenSSL does not support ECDSA with deterministic signing.
+
     .. doctest::
 
         >>> from cryptography.hazmat.primitives import hashes
@@ -187,47 +200,6 @@ Elliptic Curve Signature Algorithms
         :raises ValueError: Raised if the point is invalid for the curve.
         :returns: A new instance of :class:`EllipticCurvePublicKey`.
 
-    .. method:: encode_point()
-
-        .. warning::
-
-            This method is deprecated as of version 2.5. Callers should migrate
-            to using
-            :meth:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey.public_bytes`.
-
-        .. versionadded:: 1.1
-
-        Encodes an elliptic curve point to a byte string as described in
-        `SEC 1 v2.0`_ section 2.3.3. This method only supports uncompressed
-        points.
-
-        :return bytes: The encoded point.
-
-    .. classmethod:: from_encoded_point(curve, data)
-
-        .. versionadded:: 1.1
-
-        .. note::
-
-            This has been deprecated in favor of
-            :meth:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey.from_encoded_point`
-
-        Decodes a byte string as described in `SEC 1 v2.0`_ section 2.3.3 and
-        returns an :class:`EllipticCurvePublicNumbers`. This method only
-        supports uncompressed points.
-
-        :param curve: An
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurve`
-            instance.
-
-        :param bytes data: The serialized point byte string.
-
-        :returns: An :class:`EllipticCurvePublicNumbers` instance.
-
-        :raises ValueError: Raised on invalid point type or data length.
-
-        :raises TypeError: Raised when curve is not an
-            :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurve`.
 
 Elliptic Curve Key Exchange algorithm
 -------------------------------------
@@ -236,8 +208,8 @@ Elliptic Curve Key Exchange algorithm
 
     .. versionadded:: 1.1
 
-    The Elliptic Curve Diffie-Hellman Key Exchange algorithm first standardized
-    in NIST publication `800-56A`_, and later in `800-56Ar2`_.
+    The Elliptic Curve Diffie-Hellman Key Exchange algorithm standardized
+    in NIST publication `800-56A`_.
 
     For most applications the ``shared_key`` should be passed to a key
     derivation function. This allows mixing of additional information into the
@@ -550,11 +522,7 @@ Key Interfaces
 
     .. versionadded:: 0.5
 
-    An elliptic curve private key for use with an algorithm such as `ECDSA`_ or
-    `EdDSA`_. An elliptic curve private key that is not an
-    :term:`opaque key` also implements
-    :class:`EllipticCurvePrivateKeyWithSerialization` to provide serialization
-    methods.
+    An elliptic curve private key for use with an algorithm such as `ECDSA`_.
 
     .. method:: exchange(algorithm, peer_public_key)
 
@@ -589,7 +557,8 @@ Key Interfaces
         Sign one block of data which can be verified later by others using the
         public key.
 
-        :param bytes data: The message string to sign.
+        :param data: The message string to sign.
+        :type data: :term:`bytes-like`
 
         :param signature_algorithm: An instance of
             :class:`EllipticCurveSignatureAlgorithm`, such as :class:`ECDSA`.
@@ -648,13 +617,6 @@ Key Interfaces
         :return bytes: Serialized key.
 
 
-.. class:: EllipticCurvePrivateKeyWithSerialization
-
-    .. versionadded:: 0.8
-
-    Alias for :class:`EllipticCurvePrivateKey`.
-
-
 .. class:: EllipticCurvePublicKey
 
     .. versionadded:: 0.5
@@ -705,16 +667,19 @@ Key Interfaces
         Verify one block of data was signed by the private key associated
         with this public key.
 
-        :param bytes signature: The DER-encoded signature to verify.
+        :param signature: The DER-encoded signature to verify.
             A raw signature may be DER-encoded by splitting it into the ``r``
             and ``s`` components and passing them into
             :func:`~cryptography.hazmat.primitives.asymmetric.utils.encode_dss_signature`.
+        :type signature: :term:`bytes-like`
 
-        :param bytes data: The message string that was signed.
+        :param data: The message string that was signed.
+        :type data: :term:`bytes-like`
 
         :param signature_algorithm: An instance of
             :class:`EllipticCurveSignatureAlgorithm`.
 
+        :returns: None
         :raises cryptography.exceptions.InvalidSignature: If the signature does
             not validate.
 
@@ -747,13 +712,6 @@ Key Interfaces
 
         :raises TypeError: Raised when curve is not an
             :class:`~cryptography.hazmat.primitives.asymmetric.ec.EllipticCurve`.
-
-
-.. class:: EllipticCurvePublicKeyWithSerialization
-
-    .. versionadded:: 0.6
-
-    Alias for :class:`EllipticCurvePublicKey`.
 
 
 
@@ -942,17 +900,15 @@ Elliptic Curve Object Identifiers
     :raises LookupError: Raised if no elliptic curve is found that matches
         the provided object identifier.
 
-.. _`FIPS 186-3`: https://csrc.nist.gov/csrc/media/publications/fips/186/3/archive/2009-06-25/documents/fips_186-3.pdf
-.. _`FIPS 186-4`: https://csrc.nist.gov/publications/detail/fips/186/4/final
-.. _`800-56A`: https://csrc.nist.gov/publications/detail/sp/800-56a/revised/archive/2007-03-14
-.. _`800-56Ar2`: https://csrc.nist.gov/publications/detail/sp/800-56a/rev-2/final
+.. _`FIPS 186-3`: https://csrc.nist.gov/files/pubs/fips/186-3/final/docs/fips_186-3.pdf
+.. _`FIPS 186-4`: https://csrc.nist.gov/pubs/fips/186-4/final
+.. _`800-56A`: https://csrc.nist.gov/pubs/sp/800/56/a/r3/final
 .. _`some concern`: https://crypto.stackexchange.com/questions/10263/should-we-trust-the-nist-recommended-ecc-parameters
 .. _`less than 224 bits`: https://www.cosic.esat.kuleuven.be/ecrypt/ecrypt2/documents/D.SPA.20.pdf
 .. _`elliptic curve diffie-hellman is faster than diffie-hellman`: https://digitalcommons.unl.edu/cgi/viewcontent.cgi?article=1100&context=cseconfwork
 .. _`minimize the number of security concerns for elliptic-curve cryptography`: https://cr.yp.to/ecdh/curve25519-20060209.pdf
 .. _`SafeCurves`: https://safecurves.cr.yp.to/
 .. _`ECDSA`: https://en.wikipedia.org/wiki/ECDSA
-.. _`EdDSA`: https://en.wikipedia.org/wiki/EdDSA
 .. _`forward secrecy`: https://en.wikipedia.org/wiki/Forward_secrecy
 .. _`SEC 1 v2.0`: https://www.secg.org/sec1-v2.pdf
 .. _`bad cryptographic practice`: https://crypto.stackexchange.com/a/3313

@@ -2,6 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+from __future__ import annotations
 
 import typing
 
@@ -16,8 +17,8 @@ class HKDF(KeyDerivationFunction):
         self,
         algorithm: hashes.HashAlgorithm,
         length: int,
-        salt: typing.Optional[bytes],
-        info: typing.Optional[bytes],
+        salt: bytes | None,
+        info: bytes | None,
         backend: typing.Any = None,
     ):
         self._algorithm = algorithm
@@ -50,7 +51,7 @@ class HKDFExpand(KeyDerivationFunction):
         self,
         algorithm: hashes.HashAlgorithm,
         length: int,
-        info: typing.Optional[bytes],
+        info: bytes | None,
         backend: typing.Any = None,
     ):
         self._algorithm = algorithm
@@ -59,7 +60,7 @@ class HKDFExpand(KeyDerivationFunction):
 
         if length > max_length:
             raise ValueError(
-                "Cannot derive keys larger than {} octets.".format(max_length)
+                f"Cannot derive keys larger than {max_length} octets."
             )
 
         self._length = length

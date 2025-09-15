@@ -4,6 +4,7 @@
 
 
 import binascii
+import copy
 import os
 
 import pytest
@@ -15,6 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PublicKey,
 )
 
+from ...doubles import DummyKeySerializationEncryption
 from ...utils import (
     load_nist_vectors,
     load_vectors_from_file,
@@ -96,9 +98,24 @@ class TestX25519Exchange:
 
     def test_public_bytes_bad_args(self, backend):
         key = X25519PrivateKey.generate().public_key()
+        with pytest.raises(TypeError):
+            key.public_bytes(
+                None,  # type: ignore[arg-type]
+                serialization.PublicFormat.Raw,
+            )
         with pytest.raises(ValueError):
             key.public_bytes(
-                None, serialization.PublicFormat.Raw  # type: ignore[arg-type]
+                serialization.Encoding.DER, serialization.PublicFormat.Raw
+            )
+        with pytest.raises(TypeError):
+            key.public_bytes(
+                serialization.Encoding.DER,
+                None,  # type: ignore[arg-type]
+            )
+        with pytest.raises(ValueError):
+            key.public_bytes(
+                serialization.Encoding.SMIME,
+                serialization.PublicFormat.SubjectPublicKeyInfo,
             )
 
     # These vectors are also from RFC 7748
@@ -138,12 +155,14 @@ class TestX25519Exchange:
             )
             == private_bytes
         )
+        assert private_key.private_bytes_raw() == private_bytes
         assert (
             private_key.public_key().public_bytes(
                 serialization.Encoding.Raw, serialization.PublicFormat.Raw
             )
             == public_bytes
         )
+        assert private_key.public_key().public_bytes_raw() == public_bytes
         public_key = X25519PublicKey.from_public_bytes(public_bytes)
         assert (
             public_key.public_bytes(
@@ -151,6 +170,7 @@ class TestX25519Exchange:
             )
             == public_bytes
         )
+        assert public_key.public_bytes_raw() == public_bytes
 
     def test_generate(self, backend):
         key = X25519PrivateKey.generate()
@@ -178,24 +198,68 @@ class TestX25519Exchange:
 
     def test_invalid_private_bytes(self, backend):
         key = X25519PrivateKey.generate()
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.Raw,
                 None,  # type: ignore[arg-type]
+            )
+        with pytest.raises(ValueError):
+            key.private_bytes(
+                serialization.Encoding.Raw,
+                serialization.PrivateFormat.Raw,
+                DummyKeySerializationEncryption(),
             )
 
         with pytest.raises(ValueError):
             key.private_bytes(
                 serialization.Encoding.Raw,
                 serialization.PrivateFormat.PKCS8,
-                None,  # type: ignore[arg-type]
+                DummyKeySerializationEncryption(),
             )
 
         with pytest.raises(ValueError):
             key.private_bytes(
                 serialization.Encoding.PEM,
                 serialization.PrivateFormat.Raw,
+                serialization.NoEncryption(),
+            )
+
+        with pytest.raises(TypeError):
+            key.private_bytes(None, None, None)  # type: ignore[arg-type]
+
+        with pytest.raises(TypeError):
+            key.private_bytes(
+                serialization.Encoding.Raw,
+                None,  # type: ignore[arg-type]
+                None,  # type: ignore[arg-type]
+            )
+
+        with pytest.raises(TypeError):
+            key.private_bytes(
+                serialization.Encoding.PEM,
+                serialization.PrivateFormat.PKCS8,
+                object(),  # type: ignore[arg-type]
+            )
+
+        with pytest.raises(ValueError):
+            key.private_bytes(
+                serialization.Encoding.PEM,
+                serialization.PrivateFormat.PKCS8,
+                serialization.BestAvailableEncryption(b"a" * 1024),
+            )
+
+        with pytest.raises(ValueError):
+            key.private_bytes(
+                serialization.Encoding.SMIME,
+                serialization.PrivateFormat.PKCS8,
+                serialization.NoEncryption(),
+            )
+
+        with pytest.raises(ValueError):
+            key.private_bytes(
+                serialization.Encoding.PEM,
+                serialization.PrivateFormat.TraditionalOpenSSL,
                 serialization.NoEncryption(),
             )
 
@@ -269,3 +333,39 @@ class TestX25519Exchange:
             )
             == private_bytes
         )
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.x25519_supported(),
+    skip_message="Requires OpenSSL with X25519 support",
+)
+def test_public_key_equality(backend):
+    key_bytes = load_vectors_from_file(
+        os.path.join("asymmetric", "X25519", "x25519-pkcs8.der"),
+        lambda derfile: derfile.read(),
+        mode="rb",
+    )
+    key1 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key2 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key3 = X25519PrivateKey.generate().public_key()
+    assert key1 == key2
+    assert key1 != key3
+    assert key1 != object()
+    with pytest.raises(TypeError):
+        key1 < key2  # type: ignore[operator]
+
+
+@pytest.mark.supported(
+    only_if=lambda backend: backend.x25519_supported(),
+    skip_message="Requires OpenSSL with X25519 support",
+)
+def test_public_key_copy(backend):
+    key_bytes = load_vectors_from_file(
+        os.path.join("asymmetric", "X25519", "x25519-pkcs8.der"),
+        lambda derfile: derfile.read(),
+        mode="rb",
+    )
+    key1 = serialization.load_der_private_key(key_bytes, None).public_key()
+    key2 = copy.copy(key1)
+
+    assert key1 == key2

@@ -47,9 +47,9 @@ class TestPKCS7:
 
         str(mybytes())
         padder = padding.PKCS7(128).padder()
-        padder.update(mybytes(b"abc"))
+        data = padder.update(mybytes(b"abc")) + padder.finalize()
         unpadder = padding.PKCS7(128).unpadder()
-        unpadder.update(mybytes(padder.finalize()))
+        unpadder.update(mybytes(data))
         assert unpadder.finalize() == b"abc"
 
     @pytest.mark.parametrize(
@@ -62,7 +62,7 @@ class TestPKCS7:
                 b"111111111111111122222222222222\x02\x02",
             ),
             (128, b"1" * 16, b"1" * 16 + b"\x10" * 16),
-            (128, b"1" * 17, b"1" * 17 + b"\x0F" * 15),
+            (128, b"1" * 17, b"1" * 17 + b"\x0f" * 15),
         ],
     )
     def test_pad(self, size, unpadded, padded):
@@ -185,7 +185,7 @@ class TestANSIX923:
                 b"111111111111111122222222222222\x00\x02",
             ),
             (128, b"1" * 16, b"1" * 16 + b"\x00" * 15 + b"\x10"),
-            (128, b"1" * 17, b"1" * 17 + b"\x00" * 14 + b"\x0F"),
+            (128, b"1" * 17, b"1" * 17 + b"\x00" * 14 + b"\x0f"),
         ],
     )
     def test_pad(self, size, unpadded, padded):

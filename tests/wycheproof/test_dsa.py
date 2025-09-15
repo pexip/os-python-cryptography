@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-
 import binascii
 
 import pytest
@@ -20,6 +19,10 @@ _DIGESTS = {
 }
 
 
+@pytest.mark.supported(
+    only_if=lambda backend: backend.dsa_supported(),
+    skip_message="Requires OpenSSL with DSA support",
+)
 @wycheproof_tests(
     "dsa_test.json",
     "dsa_2048_224_sha224_test.json",

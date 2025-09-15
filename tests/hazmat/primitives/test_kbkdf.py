@@ -159,6 +159,21 @@ class TestKBKDFHMAC:
                 backend=backend,
             )
 
+    def test_zero_llen(self, backend):
+        with pytest.raises(ValueError):
+            KBKDFHMAC(
+                hashes.SHA256(),
+                Mode.CounterMode,
+                32,
+                4,
+                0,
+                CounterLocation.BeforeFixed,
+                b"label",
+                b"context",
+                None,
+                backend=backend,
+            )
+
     def test_l_type(self, backend):
         with pytest.raises(TypeError):
             KBKDFHMAC(
@@ -615,6 +630,21 @@ class TestKBKDFCMAC:
                 backend=backend,
             )
 
+    def test_zero_llen(self, backend):
+        with pytest.raises(ValueError):
+            KBKDFCMAC(
+                algorithms.AES,
+                Mode.CounterMode,
+                32,
+                4,
+                0,
+                CounterLocation.BeforeFixed,
+                b"label",
+                b"context",
+                None,
+                backend=backend,
+            )
+
     def test_l_type(self, backend):
         with pytest.raises(TypeError):
             KBKDFCMAC(
@@ -871,7 +901,7 @@ class TestKBKDFCMAC:
 
         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_CIPHER):
             KBKDFCMAC(
-                algorithms.ARC4,
+                algorithms.ChaCha20,
                 Mode.CounterMode,
                 32,
                 4,
