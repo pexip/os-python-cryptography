@@ -207,7 +207,7 @@ impl<'a> asn1::Asn1Writable for RawTlv<'a> {
 #[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone)]
 pub enum Time {
     UtcTime(asn1::UtcTime),
-    GeneralizedTime(asn1::X509GeneralizedTime),
+    GeneralizedTime(asn1::GeneralizedTime),
 }
 
 impl Time {

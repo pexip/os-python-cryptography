@@ -1,0 +1,6 @@
+Use-local-python3-doc-inventory.patch
+drop-cffi-dep.patch
+api_compat_300.patch
+downgrade-deps.patch
+0004-update-to-asn1-0.19-and-use-X509GeneralizedTime.patch
+0005-Support-128-bit-OID-arcs-11820.patch

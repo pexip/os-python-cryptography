@@ -769,7 +769,7 @@ mod tests {
             let generalized_dt = utc_dt.clone();
             let utc_validity = Time::UtcTime(asn1::UtcTime::new(utc_dt).unwrap());
             let generalized_validity =
-                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
             assert!(permits_validity_date(&utc_validity).is_ok());
             assert!(permits_validity_date(&generalized_validity).is_err());
         }
@@ -779,7 +779,7 @@ mod tests {
             let generalized_dt = utc_dt.clone();
             let utc_validity = Time::UtcTime(asn1::UtcTime::new(utc_dt).unwrap());
             let generalized_validity =
-                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
             assert!(permits_validity_date(&utc_validity).is_ok());
             assert!(permits_validity_date(&generalized_validity).is_err());
         }
@@ -789,7 +789,7 @@ mod tests {
             let generalized_dt = utc_dt.clone();
             assert!(asn1::UtcTime::new(utc_dt).is_err());
             let generalized_validity =
-                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
             assert!(permits_validity_date(&generalized_validity).is_ok());
         }
         {
@@ -799,7 +799,7 @@ mod tests {
             // The `asn1::UtcTime` constructor prevents this.
             assert!(asn1::UtcTime::new(utc_dt).is_err());
             let generalized_validity =
-                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
             assert!(permits_validity_date(&generalized_validity).is_ok());
         }
         {
@@ -809,7 +809,7 @@ mod tests {
             // The `asn1::UtcTime` constructor prevents this.
             assert!(asn1::UtcTime::new(utc_dt).is_err());
             let generalized_validity =
-                Time::GeneralizedTime(asn1::X509GeneralizedTime::new(generalized_dt).unwrap());
+                Time::GeneralizedTime(asn1::GeneralizedTime::new(generalized_dt).unwrap());
             assert!(permits_validity_date(&generalized_validity).is_ok());
         }
     }

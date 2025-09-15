@@ -182,11 +182,7 @@ texinfo_documents = [
     ),
 ]
 
-intersphinx_mapping = {
-    'py': ('https://docs.python.org/3/',
-           ('/usr/share/doc/python3-doc/html/objects.inv', None)),
-}
-
+intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
 epub_theme = "epub"
 
