@@ -1,5 +1,3 @@
-v39.0.0-openssl3.patch
-
 Use-local-python3-doc-inventory.patch
 drop-cffi-dep.patch
 
