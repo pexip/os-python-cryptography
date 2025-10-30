@@ -41,9 +41,9 @@ override_dh_auto_configure:
 	$(CARGO) prepare-debian debian/cargo_registry --link-from-system
 	mkdir -p src/rust/target/release
 	ln -sf ../$(DEB_HOST_RUST_TYPE)/release/libcryptography_rust.so src/rust/target/release/libcryptography_rust.so
-	mv src/rust/Cargo.lock src/rust/Cargo.lock.orig
+	mv Cargo.lock Cargo.lock.orig
 	# needed because we patch Cargo.toml
-	cargo generate-lockfile --manifest-path src/rust/Cargo.toml --offline
+	cargo generate-lockfile --manifest-path Cargo.toml --offline
 	dh_auto_configure
 
 

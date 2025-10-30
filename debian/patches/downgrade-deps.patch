@@ -14,12 +14,11 @@ Subject: Update some requirement versions to sid ones.
  [workspace.dependencies]
 -asn1 = { version = "0.22.0", default-features = false }
 -pyo3 = { version = "0.26", features = ["abi3"] }
--pyo3-build-config = { version = "0.26" }
++asn1 = { version = "0.23.0", default-features = false }
++pyo3 = { version = "0.26", features = ["abi3-py313"] }
+ pyo3-build-config = { version = "0.26" }
 -openssl = "0.10.74"
 -openssl-sys = "0.9.110"
-+asn1 = { version = "0.20.0", default-features = false }
-+pyo3 = { version = "0.22.6", features = ["abi3-py313"] }
-+pyo3-build-config = { version = "0.22.6" }
 +openssl = "0.10.65"
 +openssl-sys = "0.9.103"
  
