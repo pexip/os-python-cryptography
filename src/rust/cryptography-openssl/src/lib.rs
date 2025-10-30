@@ -7,7 +7,6 @@
 #[cfg(CRYPTOGRAPHY_IS_BORINGSSL)]
 pub mod aead;
 pub mod fips;
-pub mod hmac;
 #[cfg(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_LIBRESSL))]
 pub mod poly1305;
 
@@ -23,6 +22,10 @@ fn cvt(r: std::os::raw::c_int) -> Result<std::os::raw::c_int, openssl::error::Er
 }
 
 #[inline]
+#[cfg_attr(
+    not(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_AWSLC)),
+    allow(dead_code)
+)]
 fn cvt_p<T>(r: *mut T) -> Result<*mut T, openssl::error::ErrorStack> {
     if r.is_null() {
         Err(openssl::error::ErrorStack::get())

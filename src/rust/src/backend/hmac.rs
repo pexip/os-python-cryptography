@@ -2,6 +2,7 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
+use openssl::mac as ossl_mac;
 use crate::backend::hashes::{already_finalized_error, message_digest_from_algorithm};
 use crate::buf::CffiBuf;
 use crate::error::{CryptographyError, CryptographyResult};
@@ -15,7 +16,7 @@ use pyo3::types::PyBytesMethods;
 pub(crate) struct Hmac {
     #[pyo3(get)]
     algorithm: pyo3::Py<pyo3::PyAny>,
-    ctx: Option<cryptography_openssl::hmac::Hmac>,
+    ctx: Option<ossl_mac::MacCtx>,
 }
 
 impl Hmac {
@@ -25,7 +26,8 @@ impl Hmac {
         algorithm: &pyo3::Bound<'_, pyo3::PyAny>,
     ) -> CryptographyResult<Hmac> {
         let md = message_digest_from_algorithm(py, algorithm)?;
-        let ctx = cryptography_openssl::hmac::Hmac::new(key, md).map_err(|_| {
+        let mut ctx = ossl_mac::MacCtx::new(&ossl_mac::Mac::hmac())?;
+        ctx.init_digest(key, &md).map_err(|_| {
             exceptions::UnsupportedAlgorithm::new_err((
                 "Digest is not supported for HMAC",
                 exceptions::Reasons::UNSUPPORTED_HASH,
@@ -43,14 +45,14 @@ impl Hmac {
         Ok(())
     }
 
-    fn get_ctx(&self) -> CryptographyResult<&cryptography_openssl::hmac::Hmac> {
+    fn get_ctx(&self) -> CryptographyResult<&ossl_mac::MacCtxRef> {
         if let Some(ctx) = self.ctx.as_ref() {
             return Ok(ctx);
         };
         Err(already_finalized_error())
     }
 
-    fn get_mut_ctx(&mut self) -> CryptographyResult<&mut cryptography_openssl::hmac::Hmac> {
+    fn get_mut_ctx(&mut self) -> CryptographyResult<&mut ossl_mac::MacCtxRef> {
         if let Some(ctx) = self.ctx.as_mut() {
             return Ok(ctx);
         }
@@ -81,7 +83,7 @@ impl Hmac {
         &mut self,
         py: pyo3::Python<'p>,
     ) -> CryptographyResult<pyo3::Bound<'p, pyo3::types::PyBytes>> {
-        let data = self.get_mut_ctx()?.finish()?;
+        let data = self.get_mut_ctx()?.finalize_to_vec()?;
         self.ctx = None;
         Ok(pyo3::types::PyBytes::new_bound(py, &data))
     }
@@ -100,7 +102,7 @@ impl Hmac {
 
     fn copy(&self, py: pyo3::Python<'_>) -> CryptographyResult<Hmac> {
         Ok(Hmac {
-            ctx: Some(self.get_ctx()?.copy()?),
+            ctx: Some(self.get_ctx()?.to_owned()),
             algorithm: self.algorithm.clone_ref(py),
         })
     }
