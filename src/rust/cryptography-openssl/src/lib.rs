@@ -6,7 +6,6 @@
 
 #[cfg(CRYPTOGRAPHY_IS_BORINGSSL)]
 pub mod aead;
-pub mod cmac;
 pub mod fips;
 pub mod hmac;
 #[cfg(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_LIBRESSL))]
