@@ -6,5 +6,5 @@ drop-cffi-dep.patch
 #pexip-dodgy-int.patch
 
 downgrade-deps.patch
-0004-update-to-asn1-0.19-and-use-X509GeneralizedTime.patch
-0005-Support-128-bit-OID-arcs-11820.patch
+#0004-update-to-asn1-0.19-and-use-X509GeneralizedTime.patch
+#0005-Support-128-bit-OID-arcs-11820.patch

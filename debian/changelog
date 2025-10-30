@@ -1,8 +1,9 @@
-python-cryptography (43.0.0-3+pexip25u1) pexip-trixie; urgency=medium
+python-cryptography (46.0.3-0+pexip25u1) pexip-trixie; urgency=medium
 
-  * Refresh patches
+  * Import upstream 46.0.3
+    * Refresh patches
 
- -- Huw Jones <huw@pexip.com>  Mon, 15 Sep 2025 16:05:21 +0100
+ -- Huw Jones <huw@pexip.com>  Thu, 30 Oct 2025 17:23:21 +0000
 
 python-cryptography (43.0.0-3) unstable; urgency=medium
 
