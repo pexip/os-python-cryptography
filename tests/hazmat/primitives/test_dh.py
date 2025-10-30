@@ -11,7 +11,6 @@ import typing
 
 import pytest
 
-from cryptography.hazmat.bindings._rust import openssl as rust_openssl
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import dh
 
@@ -70,6 +69,14 @@ def test_dh_parameternumbers():
 
     with pytest.raises(TypeError):
         dh.DHParameterNumbers(P_1536, 2, "hello")  # type: ignore[arg-type]
+
+
+@pytest.mark.skip_fips(reason="RHEL8 FIPS doesn't like this")
+def test_dh_invalid_parameter_numbers():
+    # invalid q
+    params = dh.DHParameterNumbers(P_1536, 2, 12345)
+    with pytest.raises(ValueError):
+        params.parameters()
 
 
 def test_dh_numbers():
@@ -377,22 +384,14 @@ class TestDH:
         with pytest.raises(ValueError):
             key2.exchange(pub_key1)
 
-    @pytest.mark.skip_fips(reason="key_size too small for FIPS")
-    @pytest.mark.supported(
-        only_if=lambda backend: (
-            not rust_openssl.CRYPTOGRAPHY_OPENSSL_300_OR_GREATER
-        ),
-        skip_message="256-bit DH keys are not supported in OpenSSL 3.0.0+",
-    )
     def test_load_256bit_key_from_pkcs8(self, backend):
         data = load_vectors_from_file(
             os.path.join("asymmetric", "DH", "dh_key_256.pem"),
             lambda pemfile: pemfile.read(),
             mode="rb",
         )
-        key = serialization.load_pem_private_key(data, None, backend)
-        assert isinstance(key, dh.DHPrivateKey)
-        assert key.key_size == 256
+        with pytest.raises(ValueError):
+            serialization.load_pem_private_key(data, None, backend)
 
     @pytest.mark.parametrize(
         "vector",
@@ -479,6 +478,18 @@ class TestDH:
             mode="rb",
         )
         key1 = serialization.load_pem_public_key(key_bytes)
+        key2 = copy.copy(key1)
+
+        assert key1 == key2
+
+    @pytest.mark.skip_fips(reason="non-FIPS parameters")
+    def test_private_key_copy(self, backend):
+        key_bytes = load_vectors_from_file(
+            os.path.join("asymmetric", "DH", "dhkey.pem"),
+            lambda pemfile: pemfile.read(),
+            mode="rb",
+        )
+        key1 = serialization.load_pem_private_key(key_bytes, None, backend)
         key2 = copy.copy(key1)
 
         assert key1 == key2

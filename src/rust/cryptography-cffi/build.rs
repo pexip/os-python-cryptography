@@ -7,8 +7,6 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() {
-    println!("cargo:rustc-check-cfg=cfg(python_implementation, values(\"CPython\", \"PyPy\"))");
-
     let target = env::var("TARGET").unwrap();
     let openssl_static = env::var("OPENSSL_STATIC")
         .map(|x| x == "1")
@@ -59,14 +57,12 @@ fn main() {
          print(os.pathsep.join(b.include_dirs), end='')",
     )
     .unwrap();
-    let openssl_include =
-        std::env::var_os("DEP_OPENSSL_INCLUDE").expect("unable to find openssl include path");
     let openssl_c = Path::new(&out_dir).join("_openssl.c");
 
     let mut build = cc::Build::new();
     build
         .file(openssl_c)
-        .include(openssl_include)
+        .includes(std::env::var_os("DEP_OPENSSL_INCLUDE"))
         .flag_if_supported("-Wconversion")
         .flag_if_supported("-Wno-error=sign-conversion")
         .flag_if_supported("-Wno-unused-parameter");
@@ -75,17 +71,24 @@ fn main() {
     // This is because we don't want a potentially random build path to end up in the binary because
     // CFFI generated code uses the __FILE__ macro in its debug messages.
     if let Some(out_dir_str) = Path::new(&out_dir).to_str() {
-        build.flag_if_supported(format!("-fmacro-prefix-map={}=.", out_dir_str).as_str());
+        build.flag_if_supported(format!("-fmacro-prefix-map={out_dir_str}=.").as_str());
     }
 
     for python_include in env::split_paths(&python_includes) {
         build.include(python_include);
     }
 
-    // Enable abi3 mode if we're not using PyPy.
-    if python_impl != "PyPy" {
-        // cp37 (Python 3.7 to help our grep when we some day drop 3.7 support)
-        build.define("Py_LIMITED_API", "0x030700f0");
+    let is_free_threaded = run_python_script(
+        &python,
+        "import sysconfig; print(bool(sysconfig.get_config_var('Py_GIL_DISABLED')), end='')",
+    )
+    .unwrap()
+        == "True";
+
+    // Enable abi3 mode if we're not using PyPy or the free-threaded build
+    if !(python_impl == "PyPy" || is_free_threaded) {
+        // cp38 (Python 3.8 to help our grep when we some day drop 3.8 support)
+        build.define("Py_LIMITED_API", "0x030800f0");
     }
 
     if cfg!(windows) {

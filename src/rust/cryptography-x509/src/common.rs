@@ -2,7 +2,7 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
-use asn1::Asn1DefinedByWritable;
+use asn1::{Asn1DefinedByWritable, SimpleAsn1Writable};
 
 use crate::oid;
 
@@ -39,6 +39,14 @@ pub enum AlgorithmParameters<'a> {
     Sha3_384(Option<asn1::Null>),
     #[defined_by(oid::SHA3_512_OID)]
     Sha3_512(Option<asn1::Null>),
+    #[defined_by(oid::SHA3_224_NIST_OID)]
+    Sha3_224Nist(Option<asn1::Null>),
+    #[defined_by(oid::SHA3_256_NIST_OID)]
+    Sha3_256Nist(Option<asn1::Null>),
+    #[defined_by(oid::SHA3_384_NIST_OID)]
+    Sha3_384Nist(Option<asn1::Null>),
+    #[defined_by(oid::SHA3_512_NIST_OID)]
+    Sha3_512Nist(Option<asn1::Null>),
 
     #[defined_by(oid::ED25519_OID)]
     Ed25519,
@@ -130,11 +138,19 @@ pub enum AlgorithmParameters<'a> {
 
     #[defined_by(oid::PBKDF2_OID)]
     Pbkdf2(PBKDF2Params<'a>),
+    #[defined_by(oid::SCRYPT_OID)]
+    Scrypt(ScryptParams<'a>),
 
     #[defined_by(oid::HMAC_WITH_SHA1_OID)]
-    HmacWithSha1(asn1::Null),
+    HmacWithSha1(Option<asn1::Null>),
+    #[defined_by(oid::HMAC_WITH_SHA224_OID)]
+    HmacWithSha224(Option<asn1::Null>),
     #[defined_by(oid::HMAC_WITH_SHA256_OID)]
-    HmacWithSha256(asn1::Null),
+    HmacWithSha256(Option<asn1::Null>),
+    #[defined_by(oid::HMAC_WITH_SHA384_OID)]
+    HmacWithSha384(Option<asn1::Null>),
+    #[defined_by(oid::HMAC_WITH_SHA512_OID)]
+    HmacWithSha512(Option<asn1::Null>),
 
     // Used only in PKCS#7 AlgorithmIdentifiers
     // https://datatracker.ietf.org/doc/html/rfc3565#section-4.1
@@ -146,11 +162,25 @@ pub enum AlgorithmParameters<'a> {
     // AES-IV ::= OCTET STRING (SIZE(16))
     #[defined_by(oid::AES_128_CBC_OID)]
     Aes128Cbc([u8; 16]),
+    #[defined_by(oid::AES_192_CBC_OID)]
+    Aes192Cbc([u8; 16]),
     #[defined_by(oid::AES_256_CBC_OID)]
     Aes256Cbc([u8; 16]),
 
-    #[defined_by(oid::PBES1_WITH_SHA_AND_3KEY_TRIPLEDES_CBC)]
-    Pbes1WithShaAnd3KeyTripleDesCbc(PBES1Params),
+    #[defined_by(oid::DES_EDE3_CBC_OID)]
+    DesEde3Cbc([u8; 8]),
+
+    #[defined_by(oid::RC2_CBC)]
+    Rc2Cbc(Rc2CbcParams),
+
+    #[defined_by(oid::PBE_WITH_MD5_AND_DES_CBC)]
+    PbeWithMd5AndDesCbc(PbeParams),
+    #[defined_by(oid::PBE_WITH_SHA_AND_128_BIT_RC4)]
+    PbeWithShaAnd128BitRc4(Pkcs12PbeParams<'a>),
+    #[defined_by(oid::PBE_WITH_SHA_AND_3KEY_TRIPLEDES_CBC)]
+    PbeWithShaAnd3KeyTripleDesCbc(Pkcs12PbeParams<'a>),
+    #[defined_by(oid::PBE_WITH_SHA_AND_40_BIT_RC2_CBC)]
+    PbeWithShaAnd40BitRc2Cbc(Pkcs12PbeParams<'a>),
 
     #[default]
     Other(asn1::ObjectIdentifier, Option<asn1::Tlv<'a>>),
@@ -165,7 +195,28 @@ pub struct SubjectPublicKeyInfo<'a> {
 #[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone)]
 pub struct AttributeTypeValue<'a> {
     pub type_id: asn1::ObjectIdentifier,
-    pub value: RawTlv<'a>,
+    pub value: AttributeValue<'a>,
+}
+
+#[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone)]
+pub enum AttributeValue<'a> {
+    UniversalString(asn1::UniversalString<'a>),
+    BmpString(asn1::BMPString<'a>),
+    PrintableString(asn1::PrintableString<'a>),
+
+    // Must be last, because enums parse things in order.
+    AnyString(RawTlv<'a>),
+}
+
+impl AttributeValue<'_> {
+    pub fn tag(&self) -> asn1::Tag {
+        match self {
+            AttributeValue::AnyString(tlv) => tlv.tag(),
+            AttributeValue::PrintableString(_) => asn1::PrintableString::TAG,
+            AttributeValue::UniversalString(_) => asn1::UniversalString::TAG,
+            AttributeValue::BmpString(_) => asn1::BMPString::TAG,
+        }
+    }
 }
 
 // Like `asn1::Tlv` but doesn't store `full_data` so it can be constructed from
@@ -198,16 +249,23 @@ impl<'a> asn1::Asn1Readable<'a> for RawTlv<'a> {
         true
     }
 }
-impl<'a> asn1::Asn1Writable for RawTlv<'a> {
+impl asn1::Asn1Writable for RawTlv<'_> {
     fn write(&self, w: &mut asn1::Writer<'_>) -> asn1::WriteResult {
-        w.write_tlv(self.tag, move |dest| dest.push_slice(self.value))
+        w.write_tlv(self.tag, Some(self.value.len()), move |dest| {
+            dest.push_slice(self.value)
+        })
+    }
+
+    fn encoded_length(&self) -> Option<usize> {
+        // TODO: we're missing an API to make this easy.
+        None
     }
 }
 
 #[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone)]
 pub enum Time {
     UtcTime(asn1::UtcTime),
-    GeneralizedTime(asn1::GeneralizedTime),
+    GeneralizedTime(asn1::X509GeneralizedTime),
 }
 
 impl Time {
@@ -261,6 +319,49 @@ impl<T: asn1::SimpleAsn1Writable, U: asn1::SimpleAsn1Writable> asn1::SimpleAsn1W
             Asn1ReadableOrWritable::Write(v) => U::write_data(v, w),
         }
     }
+
+    fn data_length(&self) -> Option<usize> {
+        match self {
+            Asn1ReadableOrWritable::Read(v) => T::data_length(v),
+            Asn1ReadableOrWritable::Write(v) => U::data_length(v),
+        }
+    }
+}
+
+pub trait Asn1Operation {
+    type SequenceOfVec<'a, T>
+    where
+        T: 'a;
+    type SetOfVec<'a, T>
+    where
+        T: 'a;
+    type OwnedBitString<'a>;
+}
+
+pub struct Asn1Read;
+pub struct Asn1Write;
+
+impl Asn1Operation for Asn1Read {
+    type SequenceOfVec<'a, T>
+        = asn1::SequenceOf<'a, T>
+    where
+        T: 'a;
+    type SetOfVec<'a, T>
+        = asn1::SetOf<'a, T>
+    where
+        T: 'a;
+    type OwnedBitString<'a> = asn1::BitString<'a>;
+}
+impl Asn1Operation for Asn1Write {
+    type SequenceOfVec<'a, T>
+        = asn1::SequenceOfWriter<'a, T, Vec<T>>
+    where
+        T: 'a;
+    type SetOfVec<'a, T>
+        = asn1::SetOfWriter<'a, T, Vec<T>>
+    where
+        T: 'a;
+    type OwnedBitString<'a> = asn1::OwnedBitString;
 }
 
 #[derive(asn1::Asn1Read, asn1::Asn1Write)]
@@ -430,7 +531,7 @@ pub struct PBES2Params<'a> {
 
 const HMAC_SHA1_ALG: AlgorithmIdentifier<'static> = AlgorithmIdentifier {
     oid: asn1::DefinedByMarker::marker(),
-    params: AlgorithmParameters::HmacWithSha1(()),
+    params: AlgorithmParameters::HmacWithSha1(Some(())),
 };
 
 #[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone, Debug)]
@@ -444,10 +545,34 @@ pub struct PBKDF2Params<'a> {
     pub prf: Box<AlgorithmIdentifier<'a>>,
 }
 
+// RFC 7914 Section 7
 #[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone, Debug)]
-pub struct PBES1Params {
+pub struct ScryptParams<'a> {
+    pub salt: &'a [u8],
+    pub cost_parameter: u64,
+    pub block_size: u64,
+    pub parallelization_parameter: u64,
+    pub key_length: Option<u32>,
+}
+
+// RFC 8018 Appendix A.3
+#[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone, Debug)]
+pub struct PbeParams {
     pub salt: [u8; 8],
     pub iterations: u64,
+}
+
+// From RFC 7202 Appendix C
+#[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone, Debug)]
+pub struct Pkcs12PbeParams<'a> {
+    pub salt: &'a [u8],
+    pub iterations: u64,
+}
+
+#[derive(asn1::Asn1Read, asn1::Asn1Write, PartialEq, Eq, Hash, Clone, Debug)]
+pub struct Rc2CbcParams {
+    pub version: Option<u32>,
+    pub iv: [u8; 8],
 }
 
 /// A VisibleString ASN.1 element whose contents is not validated as meeting the
@@ -462,7 +587,7 @@ impl<'a> UnvalidatedVisibleString<'a> {
 }
 
 impl<'a> asn1::SimpleAsn1Readable<'a> for UnvalidatedVisibleString<'a> {
-    const TAG: asn1::Tag = asn1::VisibleString::TAG;
+    const TAG: asn1::Tag = <asn1::VisibleString<'_> as asn1::SimpleAsn1Readable>::TAG;
     fn parse_data(data: &'a [u8]) -> asn1::ParseResult<Self> {
         Ok(UnvalidatedVisibleString(
             std::str::from_utf8(data)
@@ -471,10 +596,14 @@ impl<'a> asn1::SimpleAsn1Readable<'a> for UnvalidatedVisibleString<'a> {
     }
 }
 
-impl<'a> asn1::SimpleAsn1Writable for UnvalidatedVisibleString<'a> {
+impl asn1::SimpleAsn1Writable for UnvalidatedVisibleString<'_> {
     const TAG: asn1::Tag = asn1::VisibleString::TAG;
     fn write_data(&self, _: &mut asn1::WriteBuf) -> asn1::WriteResult {
         unimplemented!();
+    }
+
+    fn data_length(&self) -> Option<usize> {
+        None
     }
 }
 
@@ -487,13 +616,17 @@ impl<'a> Utf8StoredBMPString<'a> {
     }
 }
 
-impl<'a> asn1::SimpleAsn1Writable for Utf8StoredBMPString<'a> {
+impl asn1::SimpleAsn1Writable for Utf8StoredBMPString<'_> {
     const TAG: asn1::Tag = asn1::BMPString::TAG;
     fn write_data(&self, writer: &mut asn1::WriteBuf) -> asn1::WriteResult {
         for ch in self.0.encode_utf16() {
             writer.push_slice(&ch.to_be_bytes())?;
         }
         Ok(())
+    }
+
+    fn data_length(&self) -> Option<usize> {
+        Some(self.0.encode_utf16().count() * 2)
     }
 }
 
@@ -531,9 +664,13 @@ impl<'a, T: asn1::Asn1Readable<'a>> asn1::Asn1Readable<'a> for WithTlv<'a, T> {
     }
 }
 
-impl<'a, T: asn1::Asn1Writable> asn1::Asn1Writable for WithTlv<'a, T> {
+impl<T: asn1::Asn1Writable> asn1::Asn1Writable for WithTlv<'_, T> {
     fn write(&self, w: &mut asn1::Writer<'_>) -> asn1::WriteResult<()> {
         self.value.write(w)
+    }
+
+    fn encoded_length(&self) -> Option<usize> {
+        self.value.encoded_length()
     }
 }
 

@@ -20,18 +20,16 @@ from .utils import wycheproof_tests
 )
 @wycheproof_tests("x448_test.json")
 def test_x448(backend, wycheproof):
-    assert set(wycheproof.testgroup.items()) == {
-        ("curve", "curve448"),
-        ("type", "XdhComp"),
-    }
+    assert wycheproof.testgroup["curve"] == "curve448"
+    assert wycheproof.testgroup["type"] == "XdhComp"
 
     private_key = X448PrivateKey.from_private_bytes(
         binascii.unhexlify(wycheproof.testcase["private"])
     )
     public_key_bytes = binascii.unhexlify(wycheproof.testcase["public"])
     if len(public_key_bytes) == 57:
-        assert wycheproof.acceptable
-        assert wycheproof.has_flag("NonCanonicalPublic")
+        assert wycheproof.invalid
+        assert wycheproof.has_flag("PublicKeyTooLong")
         with pytest.raises(ValueError):
             X448PublicKey.from_public_bytes(public_key_bytes)
         return

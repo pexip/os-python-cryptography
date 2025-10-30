@@ -7,6 +7,7 @@ from __future__ import annotations
 import glob
 import itertools
 import json
+import os
 import pathlib
 import re
 import sys
@@ -14,12 +15,13 @@ import uuid
 
 import nox
 
-try:
+if sys.version_info >= (3, 11):
     import tomllib
-except ImportError:
-    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
+else:
+    import tomli as tomllib
 
 nox.options.reuse_existing_virtualenvs = True
+nox.options.default_venv_backend = "uv"
 
 
 def install(
@@ -46,6 +48,7 @@ def load_pyproject_toml() -> dict:
 @nox.session(name="tests-ssh")
 @nox.session(name="tests-randomorder")
 @nox.session(name="tests-nocoverage")
+@nox.session(name="tests-rust-debug")
 def tests(session: nox.Session) -> None:
     extras = "test"
     if session.name == "tests-ssh":
@@ -57,18 +60,26 @@ def tests(session: nox.Session) -> None:
         pathlib.Path(".") / ".rust-cov" / str(uuid.uuid4())
     ).absolute()
     if session.name != "tests-nocoverage":
+        rustflags = os.environ.get("RUSTFLAGS", "")
+        assert rustflags is not None
         session.env.update(
             {
-                "RUSTFLAGS": "-Cinstrument-coverage "
-                + session.env.get("RUSTFLAGS", ""),
+                "RUSTFLAGS": f"-Cinstrument-coverage {rustflags}",
                 "LLVM_PROFILE_FILE": str(prof_location / "cov-%p.profraw"),
             }
         )
 
     install(session, "-e", "./vectors")
-    install(session, f".[{extras}]")
+    if session.name == "tests-rust-debug":
+        install(
+            session,
+            "--config-settings-package=cryptography:build-args=--profile=dev",
+            f".[{extras}]",
+        )
+    else:
+        install(session, f".[{extras}]")
 
-    session.run("pip", "list")
+    session.run("uv", "pip", "list")
 
     if session.name != "tests-nocoverage":
         cov_args = [
@@ -95,7 +106,7 @@ def tests(session: nox.Session) -> None:
 
     if session.name != "tests-nocoverage":
         [rust_so] = glob.glob(
-            f"{session.virtualenv.location}/**/cryptography/hazmat/bindings/_rust.*",
+            f"{session.virtualenv.location}/lib/**/cryptography/hazmat/bindings/_rust.*",
             recursive=True,
         )
         process_rust_coverage(session, [rust_so], prof_location)
@@ -153,6 +164,14 @@ def docs(session: nox.Session) -> None:
     session.run(
         "python3", "-m", "readme_renderer", "README.rst", "-o", "/dev/null"
     )
+    session.run(
+        "python3",
+        "-m",
+        "readme_renderer",
+        "vectors/README.rst",
+        "-o",
+        "/dev/null",
+    )
 
 
 @nox.session(name="docs-linkcheck")
@@ -179,8 +198,8 @@ def flake(session: nox.Session) -> None:
         *pyproject_data["project"]["optional-dependencies"]["nox"],
     )
 
-    session.run("ruff", "check", ".")
-    session.run("ruff", "format", "--check", ".")
+    session.run("ruff", "check")
+    session.run("ruff", "format", "--check")
     session.run(
         "mypy",
         "src/cryptography/",
@@ -193,15 +212,15 @@ def flake(session: nox.Session) -> None:
 
 
 @nox.session
-@nox.session(name="rust-noclippy")
 def rust(session: nox.Session) -> None:
     prof_location = (
         pathlib.Path(".") / ".rust-cov" / str(uuid.uuid4())
     ).absolute()
+    rustflags = os.environ.get("RUSTFLAGS", "")
+    assert rustflags is not None
     session.env.update(
         {
-            "RUSTFLAGS": "-Cinstrument-coverage  "
-            + session.env.get("RUSTFLAGS", ""),
+            "RUSTFLAGS": f"-Cinstrument-coverage  {rustflags}",
             "LLVM_PROFILE_FILE": str(prof_location / "cov-%p.profraw"),
         }
     )
@@ -211,33 +230,28 @@ def rust(session: nox.Session) -> None:
     pyproject_data = load_pyproject_toml()
     install(session, *pyproject_data["build-system"]["requires"])
 
-    with session.chdir("src/rust/"):
-        session.run("cargo", "fmt", "--all", "--", "--check", external=True)
-        if session.name != "rust-noclippy":
-            session.run(
-                "cargo",
-                "clippy",
-                "--all",
-                "--",
-                "-D",
-                "warnings",
-                external=True,
-            )
+    session.run("cargo", "fmt", "--all", "--", "--check", external=True)
+    session.run(
+        "cargo",
+        "clippy",
+        "--all",
+        "--",
+        "-D",
+        "warnings",
+        external=True,
+    )
 
-        build_output = session.run(
-            "cargo",
-            "test",
-            "--no-default-features",
-            "--all",
-            "--no-run",
-            "-q",
-            "--message-format=json",
-            external=True,
-            silent=True,
-        )
-        session.run(
-            "cargo", "test", "--no-default-features", "--all", external=True
-        )
+    build_output = session.run(
+        "cargo",
+        "test",
+        "--all",
+        "--no-run",
+        "-q",
+        "--message-format=json",
+        external=True,
+        silent=True,
+    )
+    session.run("cargo", "test", "--all", external=True)
 
     # It's None on install-only invocations
     if build_output is not None:
@@ -251,10 +265,10 @@ def rust(session: nox.Session) -> None:
         process_rust_coverage(session, rust_tests, prof_location)
 
 
-@nox.session(venv_backend="uv")
-def local(session):
+@nox.session
+def local(session: nox.Session):
     pyproject_data = load_pyproject_toml()
-    install(session, "-e", "./vectors")
+    install(session, "-e", "./vectors", verbose=False)
     install(
         session,
         *pyproject_data["build-system"]["requires"],
@@ -265,21 +279,20 @@ def local(session):
         verbose=False,
     )
 
-    session.run("ruff", "format", ".")
-    session.run("ruff", "check", ".")
+    session.run("ruff", "format")
+    session.run("ruff", "check")
 
-    with session.chdir("src/rust/"):
-        session.run("cargo", "fmt", "--all", external=True)
-        session.run("cargo", "check", "--all", "--tests", external=True)
-        session.run(
-            "cargo",
-            "clippy",
-            "--all",
-            "--",
-            "-D",
-            "warnings",
-            external=True,
-        )
+    session.run("cargo", "fmt", "--all", external=True)
+    session.run("cargo", "check", "--all", "--tests", external=True)
+    session.run(
+        "cargo",
+        "clippy",
+        "--all",
+        "--",
+        "-D",
+        "warnings",
+        external=True,
+    )
 
     session.run(
         "mypy",
@@ -311,10 +324,7 @@ def local(session):
         *tests,
     )
 
-    with session.chdir("src/rust/"):
-        session.run(
-            "cargo", "test", "--no-default-features", "--all", external=True
-        )
+    session.run("cargo", "test", "--all", external=True)
 
 
 LCOV_SOURCEFILE_RE = re.compile(
@@ -328,11 +338,6 @@ def process_rust_coverage(
     rust_binaries: list[str],
     prof_raw_location: pathlib.Path,
 ) -> None:
-    # Hitting weird issues merging Windows and Linux Rust coverage, so just
-    # say the hell with it.
-    if sys.platform == "win32":
-        return
-
     target_libdir = session.run(
         "rustc", "--print", "target-libdir", external=True, silent=True
     )
