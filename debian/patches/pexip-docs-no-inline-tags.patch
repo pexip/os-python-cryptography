@@ -1,0 +1,22 @@
+--- a/docs/conf.py
++++ b/docs/conf.py
+@@ -47,7 +47,7 @@
+     "sphinx.ext.linkcode",
+     "cryptography-docs",
+     "sphinx_rtd_theme",
+-    "sphinx_inline_tabs",
++#    "sphinx_inline_tabs",
+ ]
+ 
+ if spelling is not None:
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -71,7 +71,7 @@
+ docs = [
+     "sphinx >=5.3.0",
+     "sphinx-rtd-theme >=3.0.0",
+-    "sphinx-inline-tabs",
++#    "sphinx-inline-tabs",
+ ]
+ docstest = [
+     "pyenchant >=3",

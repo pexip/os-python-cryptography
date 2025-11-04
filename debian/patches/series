@@ -10,3 +10,4 @@ downgrade-deps.patch
 #0005-Support-128-bit-OID-arcs-11820.patch
 
 pexip-ossl300-non-deprecated.patch
+pexip-docs-no-inline-tags.patch
