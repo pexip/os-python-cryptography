@@ -2,11 +2,13 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
-use crate::error::CryptographyResult;
-use crate::types;
-use pyo3::types::PyAnyMethods;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+
+use pyo3::types::PyAnyMethods;
+
+use crate::error::CryptographyResult;
+use crate::types;
 
 #[pyo3::pyclass(frozen, module = "cryptography.hazmat.bindings._rust")]
 pub(crate) struct ObjectIdentifier {
@@ -29,7 +31,7 @@ impl ObjectIdentifier {
 
     #[getter]
     fn _name<'p>(
-        slf: pyo3::PyRef<'_, Self>,
+        slf: pyo3::PyRef<'p, Self>,
         py: pyo3::Python<'p>,
     ) -> pyo3::PyResult<pyo3::Bound<'p, pyo3::PyAny>> {
         types::OID_NAMES
@@ -37,7 +39,10 @@ impl ObjectIdentifier {
             .call_method1(pyo3::intern!(py, "get"), (slf, "Unknown OID"))
     }
 
-    fn __deepcopy__(slf: pyo3::PyRef<'_, Self>, _memo: pyo3::PyObject) -> pyo3::PyRef<'_, Self> {
+    fn __deepcopy__(
+        slf: pyo3::PyRef<'_, Self>,
+        _memo: pyo3::Py<pyo3::PyAny>,
+    ) -> pyo3::PyRef<'_, Self> {
         slf
     }
 

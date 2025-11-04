@@ -2,7 +2,7 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
-use crate::common;
+use crate::common::{self, Asn1Operation};
 
 pub type NameReadable<'a> = asn1::SequenceOf<'a, asn1::SetOf<'a, common::AttributeTypeValue<'a>>>;
 
@@ -35,10 +35,13 @@ impl<'a> asn1::SimpleAsn1Readable<'a> for UnvalidatedIA5String<'a> {
     }
 }
 
-impl<'a> asn1::SimpleAsn1Writable for UnvalidatedIA5String<'a> {
+impl asn1::SimpleAsn1Writable for UnvalidatedIA5String<'_> {
     const TAG: asn1::Tag = asn1::IA5String::TAG;
     fn write_data(&self, dest: &mut asn1::WriteBuf) -> asn1::WriteResult {
         dest.push_slice(self.0.as_bytes())
+    }
+    fn data_length(&self) -> Option<usize> {
+        Some(self.0.len())
     }
 }
 
@@ -82,7 +85,5 @@ pub enum GeneralName<'a> {
     RegisteredID(asn1::ObjectIdentifier),
 }
 
-pub(crate) type SequenceOfGeneralName<'a> = common::Asn1ReadableOrWritable<
-    asn1::SequenceOf<'a, GeneralName<'a>>,
-    asn1::SequenceOfWriter<'a, GeneralName<'a>, Vec<GeneralName<'a>>>,
->;
+pub(crate) type SequenceOfGeneralName<'a, Op> =
+    <Op as Asn1Operation>::SequenceOfVec<'a, GeneralName<'a>>;

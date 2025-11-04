@@ -26,6 +26,10 @@ static HASH_OIDS_TO_HASH: Lazy<HashMap<&asn1::ObjectIdentifier, &str>> = Lazy::n
     h.insert(&oid::SHA3_256_OID, "SHA3_256");
     h.insert(&oid::SHA3_384_OID, "SHA3_384");
     h.insert(&oid::SHA3_512_OID, "SHA3_512");
+    h.insert(&oid::SHA3_224_NIST_OID, "SHA3_224");
+    h.insert(&oid::SHA3_256_NIST_OID, "SHA3_256");
+    h.insert(&oid::SHA3_384_NIST_OID, "SHA3_384");
+    h.insert(&oid::SHA3_512_NIST_OID, "SHA3_512");
     h
 });
 
@@ -119,7 +123,7 @@ fn compute_pss_salt_length<'p>(
         hash_algorithm
             .getattr(pyo3::intern!(py, "digest_size"))?
             .extract::<u16>()
-    } else if py_saltlen.is_instance_of::<pyo3::types::PyLong>() {
+    } else if py_saltlen.is_instance_of::<pyo3::types::PyInt>() {
         py_saltlen.extract::<u16>()
     } else {
         Err(pyo3::exceptions::PyTypeError::new_err(
@@ -285,6 +289,7 @@ pub(crate) fn sign_data<'p>(
     private_key: pyo3::Bound<'p, pyo3::PyAny>,
     hash_algorithm: pyo3::Bound<'p, pyo3::PyAny>,
     rsa_padding: pyo3::Bound<'p, pyo3::PyAny>,
+    ecdsa_deterministic: Option<bool>,
     data: &[u8],
 ) -> pyo3::PyResult<PyBackedBytes> {
     let key_type = identify_key_type(py, private_key.clone())?;
@@ -294,7 +299,9 @@ pub(crate) fn sign_data<'p>(
             private_key.call_method1(pyo3::intern!(py, "sign"), (data,))?
         }
         KeyType::Ec => {
-            let ecdsa = types::ECDSA.get(py)?.call1((hash_algorithm,))?;
+            let ecdsa = types::ECDSA
+                .get(py)?
+                .call1((hash_algorithm, ecdsa_deterministic.unwrap_or(false)))?;
             private_key.call_method1(pyo3::intern!(py, "sign"), (data, ecdsa))?
         }
         KeyType::Rsa => {
@@ -417,10 +424,10 @@ fn identify_alg_params_for_hash_type(
         HashType::Sha256 => Ok(common::AlgorithmParameters::Sha256(Some(()))),
         HashType::Sha384 => Ok(common::AlgorithmParameters::Sha384(Some(()))),
         HashType::Sha512 => Ok(common::AlgorithmParameters::Sha512(Some(()))),
-        HashType::Sha3_224 => Ok(common::AlgorithmParameters::Sha3_224(Some(()))),
-        HashType::Sha3_256 => Ok(common::AlgorithmParameters::Sha3_256(Some(()))),
-        HashType::Sha3_384 => Ok(common::AlgorithmParameters::Sha3_384(Some(()))),
-        HashType::Sha3_512 => Ok(common::AlgorithmParameters::Sha3_512(Some(()))),
+        HashType::Sha3_224 => Ok(common::AlgorithmParameters::Sha3_224Nist(Some(()))),
+        HashType::Sha3_256 => Ok(common::AlgorithmParameters::Sha3_256Nist(Some(()))),
+        HashType::Sha3_384 => Ok(common::AlgorithmParameters::Sha3_384Nist(Some(()))),
+        HashType::Sha3_512 => Ok(common::AlgorithmParameters::Sha3_512Nist(Some(()))),
         HashType::None => Err(pyo3::exceptions::PyTypeError::new_err(
             "Algorithm must be a registered hash algorithm, not None.",
         )),
@@ -639,19 +646,19 @@ mod tests {
             ),
             (
                 HashType::Sha3_224,
-                common::AlgorithmParameters::Sha3_224(Some(())),
+                common::AlgorithmParameters::Sha3_224Nist(Some(())),
             ),
             (
                 HashType::Sha3_256,
-                common::AlgorithmParameters::Sha3_256(Some(())),
+                common::AlgorithmParameters::Sha3_256Nist(Some(())),
             ),
             (
                 HashType::Sha3_384,
-                common::AlgorithmParameters::Sha3_384(Some(())),
+                common::AlgorithmParameters::Sha3_384Nist(Some(())),
             ),
             (
                 HashType::Sha3_512,
-                common::AlgorithmParameters::Sha3_512(Some(())),
+                common::AlgorithmParameters::Sha3_512Nist(Some(())),
             ),
         ] {
             assert_eq!(identify_alg_params_for_hash_type(hash).unwrap(), params);

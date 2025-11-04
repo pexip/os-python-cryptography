@@ -2,8 +2,9 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
+use std::fmt;
+
 use pyo3::types::PyListMethods;
-use pyo3::ToPyObject;
 
 use crate::exceptions;
 
@@ -77,15 +78,30 @@ impl From<cryptography_key_parsing::KeyParsingError> for CryptographyError {
                     exceptions::Reasons::UNSUPPORTED_ELLIPTIC_CURVE,
                 )))
             }
+            cryptography_key_parsing::KeyParsingError::UnsupportedEncryptionAlgorithm(oid) => {
+                CryptographyError::Py(pyo3::exceptions::PyValueError::new_err(format!(
+                    "Unknown key encryption algorithm: {oid}"
+                )))
+            }
+            cryptography_key_parsing::KeyParsingError::EncryptedKeyWithoutPassword => {
+                CryptographyError::Py(pyo3::exceptions::PyTypeError::new_err(
+                    "Password was not given but private key is encrypted",
+                ))
+            }
+            cryptography_key_parsing::KeyParsingError::IncorrectPassword => {
+                CryptographyError::Py(pyo3::exceptions::PyValueError::new_err(
+                    "Incorrect password, could not decrypt key",
+                ))
+            }
         }
     }
 }
 
-pub(crate) fn list_from_openssl_error(
-    py: pyo3::Python<'_>,
-    error_stack: openssl::error::ErrorStack,
-) -> pyo3::Bound<'_, pyo3::types::PyList> {
-    let errors = pyo3::types::PyList::empty_bound(py);
+pub(crate) fn list_from_openssl_error<'p>(
+    py: pyo3::Python<'p>,
+    error_stack: &openssl::error::ErrorStack,
+) -> pyo3::Bound<'p, pyo3::types::PyList> {
+    let errors = pyo3::types::PyList::empty(py);
     for e in error_stack.errors() {
         errors
             .append(
@@ -97,35 +113,54 @@ pub(crate) fn list_from_openssl_error(
     errors
 }
 
+impl fmt::Display for CryptographyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CryptographyError::Asn1Parse(asn1_error) => {
+                write!(f, "error parsing asn1 value: {asn1_error:?}")
+            }
+            CryptographyError::Asn1Write(asn1::WriteError::AllocationError) => {
+                write!(
+                    f,
+                    "failed to allocate memory while performing ASN.1 serialization"
+                )
+            }
+            CryptographyError::KeyParsing(asn1_error) => {
+                write!(
+                    f,
+                    "Could not deserialize key data. The data may be in an incorrect format, it may be encrypted with an unsupported algorithm, or it may be an unsupported key type (e.g. EC curves with explicit parameters). Details: {asn1_error}",
+                )
+            }
+            CryptographyError::Py(py_error) => write!(f, "{py_error}"),
+            CryptographyError::OpenSSL(error_stack) => {
+                write!(
+                    f,
+                    "Unknown OpenSSL error. This error is commonly encountered
+                    when another library is not cleaning up the OpenSSL error
+                    stack. If you are using cryptography with another library
+                    that uses OpenSSL try disabling it before reporting a bug.
+                    Otherwise please file an issue at
+                    https://github.com/pyca/cryptography/issues with
+                    information on how to reproduce this. ({error_stack})"
+                )
+            }
+        }
+    }
+}
+
 impl From<CryptographyError> for pyo3::PyErr {
     fn from(e: CryptographyError) -> pyo3::PyErr {
         match e {
-            CryptographyError::Asn1Parse(asn1_error) => pyo3::exceptions::PyValueError::new_err(
-                format!("error parsing asn1 value: {asn1_error:?}"),
-            ),
-            CryptographyError::Asn1Write(asn1::WriteError::AllocationError) => {
-                pyo3::exceptions::PyMemoryError::new_err(
-                    "failed to allocate memory while performing ASN.1 serialization",
-                )
+            CryptographyError::Asn1Parse(_) | CryptographyError::KeyParsing(_) => {
+                pyo3::exceptions::PyValueError::new_err(e.to_string())
             }
-            CryptographyError::KeyParsing(asn1_error) => pyo3::exceptions::PyValueError::new_err(
-                format!("Could not deserialize key data. The data may be in an incorrect format, it may be encrypted with an unsupported algorithm, or it may be an unsupported key type (e.g. EC curves with explicit parameters). Details: {asn1_error}"),
-            ),
+            CryptographyError::Asn1Write(asn1::WriteError::AllocationError) => {
+                pyo3::exceptions::PyMemoryError::new_err(e.to_string())
+            }
             CryptographyError::Py(py_error) => py_error,
-            CryptographyError::OpenSSL(error_stack) => pyo3::Python::with_gil(|py| {
+            CryptographyError::OpenSSL(ref error_stack) => pyo3::Python::attach(|py| {
                 let errors = list_from_openssl_error(py, error_stack);
-                exceptions::InternalError::new_err((
-                    format!(
-                        "Unknown OpenSSL error. This error is commonly encountered
-                        when another library is not cleaning up the OpenSSL error
-                        stack. If you are using cryptography with another library
-                        that uses OpenSSL try disabling it before reporting a bug.
-                        Otherwise please file an issue at
-                        https://github.com/pyca/cryptography/issues with
-                        information on how to reproduce this. ({errors:?})"
-                    ),
-                    errors.to_object(py),
-                ))
+                exceptions::InternalError::new_err((e.to_string(), errors.unbind()))
             }),
         }
     }
@@ -146,7 +181,7 @@ impl CryptographyError {
 // The primary purpose of this alias is for brevity to keep function signatures
 // to a single-line as a work around for coverage issues. See
 // https://github.com/pyca/cryptography/pull/6173
-pub(crate) type CryptographyResult<T = pyo3::PyObject> = Result<T, CryptographyError>;
+pub(crate) type CryptographyResult<T> = Result<T, CryptographyError>;
 
 #[pyo3::pyfunction]
 pub(crate) fn raise_openssl_error() -> crate::error::CryptographyResult<()> {
@@ -190,7 +225,7 @@ impl OpenSSLError {
 pub(crate) fn capture_error_stack(
     py: pyo3::Python<'_>,
 ) -> pyo3::PyResult<pyo3::Bound<'_, pyo3::types::PyList>> {
-    let errs = pyo3::types::PyList::empty_bound(py);
+    let errs = pyo3::types::PyList::empty(py);
     for e in openssl::error::ErrorStack::get().errors() {
         errs.append(pyo3::Bound::new(py, OpenSSLError { e: e.clone() })?)?;
     }
@@ -202,9 +237,19 @@ mod tests {
     use super::CryptographyError;
 
     #[test]
+    fn test_cryptographyerror_display() {
+        pyo3::Python::initialize();
+        pyo3::Python::attach(|py| {
+            let py_error = pyo3::exceptions::PyRuntimeError::new_err("abc");
+            let e: CryptographyError = py_error.clone_ref(py).into();
+            assert!(e.to_string() == py_error.to_string());
+        })
+    }
+
+    #[test]
     fn test_cryptographyerror_from() {
-        pyo3::prepare_freethreaded_python();
-        pyo3::Python::with_gil(|py| {
+        pyo3::Python::initialize();
+        pyo3::Python::attach(|py| {
             let e: CryptographyError = asn1::WriteError::AllocationError.into();
             assert!(matches!(
                 e,

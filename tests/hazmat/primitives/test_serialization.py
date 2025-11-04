@@ -10,6 +10,8 @@ import textwrap
 
 import pytest
 
+from cryptography.hazmat.bindings._rust import openssl as rust_openssl
+from cryptography.hazmat.decrepit.ciphers.algorithms import _DES, ARC4, RC2
 from cryptography.hazmat.primitives.asymmetric import (
     dsa,
     ec,
@@ -19,7 +21,8 @@ from cryptography.hazmat.primitives.asymmetric import (
     x448,
     x25519,
 )
-from cryptography.hazmat.primitives.hashes import SHA1
+from cryptography.hazmat.primitives.ciphers import modes
+from cryptography.hazmat.primitives.hashes import MD5, SHA1
 from cryptography.hazmat.primitives.serialization import (
     BestAvailableEncryption,
     Encoding,
@@ -405,6 +408,200 @@ class TestDERSerialization:
         with pytest.raises(ValueError):
             load_der_parameters(param_data, backend)
 
+    def test_load_pkcs8_private_key_invalid_version(self):
+        data = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "invalid-version.der"),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_der_private_key(data, password=None)
+
+    def test_load_pkcs8_private_key_unknown_oid(self):
+        data = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "unknown-oid.der"),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_der_private_key(data, password=None)
+
+    @pytest.mark.skip_fips(reason="3DES is not FIPS")
+    def test_load_pkcs8_private_key_3des_encryption(self):
+        key = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "enc-rsa-3des.pem"),
+            lambda f: load_pem_private_key(f.read(), password=b"password"),
+            mode="rb",
+        )
+        assert isinstance(key, rsa.RSAPrivateKey)
+        assert key.key_size == 2048
+
+    def test_load_pkcs8_private_key_unknown_encryption_algorithm(self):
+        data = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "enc-unknown-algorithm.pem"),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=b"password")
+
+    def test_load_pkcs8_private_key_unknown_pbkdf2_prf(self):
+        data = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "enc-unknown-pbkdf2-prf.pem"),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=b"password")
+
+    def test_load_pkcs8_private_key_unknown_kdf(self):
+        data = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "enc-unknown-kdf.pem"),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=b"password")
+
+    @pytest.mark.skip_fips(reason="3DES unsupported in FIPS")
+    def test_load_pkcs8_pbes_long_salt(self):
+        data = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "rsa-pbe-3des-long-salt.pem"),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        key = load_pem_private_key(
+            data, password=b"password", unsafe_skip_rsa_key_validation=True
+        )
+        assert isinstance(key, rsa.RSAPrivateKey)
+        assert key.key_size == 4096
+        assert key.private_numbers().public_numbers.e == 65537
+
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            "rsa_pkcs8_pbes2_pbkdf2_2048_3des_sha224.pem",
+            "rsa_pkcs8_pbes2_pbkdf2_2048_3des_sha384.pem",
+            "rsa_pkcs8_pbes2_pbkdf2_2048_3des_sha512.pem",
+        ],
+    )
+    @pytest.mark.skip_fips(reason="3DES unsupported in FIPS")
+    def test_load_pkscs8_pbkdf_prf(self, filename: str):
+        key = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", filename),
+            lambda f: load_pem_private_key(f.read(), password=b"PolarSSLTest"),
+            mode="rb",
+        )
+        assert isinstance(key, rsa.RSAPrivateKey)
+        assert key.key_size == 2048
+
+    @pytest.mark.supported(
+        only_if=lambda backend: backend.cipher_supported(
+            RC2(b"\x00" * 16), modes.CBC(b"\x00" * 8)
+        )
+        and not (
+            rust_openssl.CRYPTOGRAPHY_IS_BORINGSSL
+            or rust_openssl.CRYPTOGRAPHY_IS_AWSLC
+        ),
+        skip_message="Does not support RC2 CBC",
+    )
+    def test_load_pkcs8_40_bit_rc2(self):
+        key = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "rsa-40bitrc2.pem"),
+            lambda f: load_pem_private_key(f.read(), password=b"baz"),
+            mode="rb",
+        )
+        assert isinstance(key, rsa.RSAPrivateKey)
+        assert key.key_size == 1024
+
+    @pytest.mark.supported(
+        only_if=lambda backend: backend.cipher_supported(
+            RC2(b"\x00" * 16), modes.CBC(b"\x00" * 8)
+        )
+        and not (
+            rust_openssl.CRYPTOGRAPHY_IS_BORINGSSL
+            or rust_openssl.CRYPTOGRAPHY_IS_AWSLC
+        ),
+        skip_message="Does not support RC2 CBC",
+    )
+    def test_load_pkcs8_rc2_cbc(self):
+        key = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "rsa-rc2-cbc.pem"),
+            lambda f: load_pem_private_key(
+                f.read(), password=b"Red Hat Enterprise Linux 7.4"
+            ),
+            mode="rb",
+        )
+        assert isinstance(key, rsa.RSAPrivateKey)
+        assert key.key_size == 2048
+
+    @pytest.mark.supported(
+        only_if=lambda backend: backend.cipher_supported(
+            RC2(b"\x00" * 16), modes.CBC(b"\x00" * 8)
+        ),
+        skip_message="Does not support RC2 CBC",
+    )
+    def test_load_pkcs8_rc2_cbc_effective_key_length(self):
+        data = load_vectors_from_file(
+            os.path.join(
+                "asymmetric", "PKCS8", "rsa-rc2-cbc-effective-key-length.pem"
+            ),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=b"password")
+
+    @pytest.mark.supported(
+        only_if=lambda backend: backend.cipher_supported(
+            ARC4(b"\x00" * 16), None
+        ),
+        skip_message="Does not support RC4",
+    )
+    def test_load_pkcs8_rc4_sha1_128bit(self):
+        key = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "enc-ec-sha1-128-rc4.pem"),
+            lambda f: load_pem_private_key(f.read(), password=b"password"),
+            mode="rb",
+        )
+        assert isinstance(key, ec.EllipticCurvePrivateKey)
+        assert isinstance(key.curve, ec.SECP256R1)
+
+    def test_load_pkcs8_aes_192_cbc(self):
+        key = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "rsa-aes-192-cbc.pem"),
+            lambda f: load_pem_private_key(f.read(), password=b"PolarSSLTest"),
+            mode="rb",
+        )
+        assert isinstance(key, rsa.RSAPrivateKey)
+        assert key.key_size == 2048
+
+    @pytest.mark.supported(
+        only_if=lambda backend: backend.scrypt_supported(),
+        skip_message="Scrypt required",
+    )
+    def test_load_pkcs8_scrypt(self):
+        key = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "ed25519-scrypt.pem"),
+            lambda f: load_pem_private_key(f.read(), password=b"hunter42"),
+            mode="rb",
+        )
+        assert isinstance(key, ed25519.Ed25519PrivateKey)
+
+    @pytest.mark.supported(
+        only_if=lambda backend: backend.hash_supported(MD5())
+        and backend.cipher_supported(_DES(), modes.CBC(b"\x00" * 8)),
+        skip_message="Does not support DES MD5",
+    )
+    def test_load_pkcs8_pbe_with_md5_and_des_cbc(self):
+        key = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "rsa-pbewithmd5anddescbc.pem"),
+            lambda f: load_pem_private_key(f.read(), password=b"hunter2"),
+            mode="rb",
+        )
+        assert isinstance(key, rsa.RSAPrivateKey)
+        assert key.key_size == 2048
+
 
 class TestPEMSerialization:
     @pytest.mark.parametrize(
@@ -608,34 +805,61 @@ class TestPEMSerialization:
 
         numbers = pkey.private_numbers()
         assert numbers.p == int(
-            "fb7d316fc51531b36d93adaefaf52db6ad5beb793d37c4cf9dfc1ddd17cfbafb",
+            "f8337fbcd4b54e14d4226889725d9dc713e40c87e62ce1886a517c729b3d133d"
+            "c519bfb026081788509d2b503bc0966bdc67c45771e41f9844cee1be968b3263"
+            "735d6c47d981dacfde1fe2110c4acbfe656599890b8f131c20d246891959f45d"
+            "06d4fadf205f94f9ea050c661efdc760d7471a1963bf16333837ef6dc4f8dbaf",
             16,
         )
         assert numbers.q == int(
-            "df98264e646de9a0fbeab094e31caad5bc7adceaaae3c800ca0275dd4bb307f5",
+            "bf8c2ad54acf67f8b687849f91ece4761901e8abc8b0bc8604f55e64ad413a62"
+            "02dbb28eac0463f87811c1ca826b0eeafb53d115b50de5a775f74c5e9cf8161b"
+            "fc030f5e402664388ea1ef7d0ade85559e4e68cef519cb4f582ec41f994249d8"
+            "b860a7433f0612322827a87b3cc0d785075811b76bccbc90ff153a11592fa307",
             16,
         )
         assert numbers.d == int(
-            "db4848c36f478dd5d38f35ae519643b6b810d404bcb76c00e44015e56ca1cab0"
-            "7bb7ae91f6b4b43fcfc82a47d7ed55b8c575152116994c2ce5325ec24313b911",
+            "09a768d21f58866d690aeb78f0d92732aa03fa843f960b0799dfc31e7d73f1e6"
+            "503953c582becd4de92d293b3a86a42b2837531fdfc54db75e0d30701801a85c"
+            "120e997bce2b19290234710e2fd4cbe750d3fdaab65893c539057a21b8a2201b"
+            "4e418b6dff47423905a8e0b17fdd14bd3b0834ccb0a7c203d8e62e6ab4c6552d"
+            "9b777847c874e743ac15942a21816bb177919215ee235064fb0a7b3baaafac14"
+            "92e29b2fc80dc16b633525d83eed73fa47a55a9894148a50358eb94c62b19e84"
+            "f3d7daf866cd6a606920d54ba41d7aa648e777d5269fe00b12a8cf5ccf823f62"
+            "c1e8dc442ec3a7e3356913f444919baa4a5c7299345817543b4add5f9c1a477f",
             16,
         )
         assert numbers.dmp1 == int(
-            "ce997f967192c2bcc3853186f1559fd355c190c58ddc15cbf5de9b6df954c727",
+            "e0cdcc51dd1b0648c9470d0608e710040359179c73778d2300a123a5ae43a84c"
+            "d75c1609d6b8978fe8ec2211febcd5c186151a79d57738c2b2f7eaf1b3eb09cd"
+            "97ed3328f4b1afdd7ca3c61f88d1aa6895b06b5afc742f6bd7b27d1eaa2e96ad"
+            "3785ea5ff4337e7cc9609f3553b6aa42655a4a225afcf57f98d8d8ecc46e5e93",
             16,
         )
         assert numbers.dmq1 == int(
-            "b018a57ab20ffaa3862435445d863369b852cf70a67c55058213e3fe10e3848d",
+            "904aeda559429e870c315025c88e9497a644fada154795ecbb657f6305e4c22f"
+            "3d09f51b66d7b3db63cfb49571e3660c7ba16b3b17f5cd0f765d0189b0636e7c"
+            "4c3e9de0192112944c560e8bba996005dc4822c9ec772ee1a9832938c881d811"
+            "4aeb7c74bad03efacba6fc5341b3df6695deb111e44209b68c819809a38eb017",
             16,
         )
         assert numbers.iqmp == int(
-            "6a8d830616924f5cf2d1bc1973f97fde6b63e052222ac7be06aa2532d10bac76",
+            "378a3ae1978c381dce3b486b038601cf06dfa77687fdcd2d56732380bff4f32e"
+            "ec20027034bcd53be80162e4054ab7fefdbc3e5fe923aa8130d2c9ab01d6a70f"
+            "da3615f066886ea610e06c29cf5c2e0649a40ca936f290b779cd9e2bc3b87095"
+            "26667f75a1016e268ae3b9501ae4696ec8c1af09dc567804151fdeb1486ee512",
             16,
         )
         assert numbers.public_numbers.e == 65537
         assert numbers.public_numbers.n == int(
-            "dba786074f2f0350ce1d99f5aed5b520cfe0deb5429ec8f2a88563763f566e77"
-            "9814b7c310e5326edae31198eed439b845dd2db99eaa60f5c16a43f4be6bcf37",
+            "b9b651fefc4dd4c9b1c0312ee69f0803990d5a539785dd14f1f6880d9198ee1f"
+            "71b3babb1ebe977786b30bea170f24b7a0e7b116f2c6908cf374923984924187"
+            "86de9d4e0f5f3e56d7be9eb971d3f8a4f812057cf9f9053b829d1c54d1a340fe"
+            "5c90a6e228a5871da900770141b4c6e6f298409718cb16467a4f5ff63882b204"
+            "255028f49745dedc7ca4b5cba6d78acf32b650f06bf81862eda0856a14e8767e"
+            "d4086342284a6f9752e96435f7119a05cc3220a954774a931dbebe1f1ab0df9d"
+            "aeaedb132741c3b5c48e1a1426ccd954fb9b5140c14daec9a79be9c7c8e50610"
+            "dfb489c7539999cfc14ac75765bab4ae8a8df5d96c3de34c12435b1a02cf6ec9",
             16,
         )
 
@@ -1043,6 +1267,93 @@ class TestPEMSerialization:
                     pemfile.read().encode(), password, backend
                 ),
             )
+
+    def test_encrypted_pkcs8_non_utf_password(self):
+        data = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "enc-rsa-pkcs8.pem"),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=b"\xff")
+
+    def test_rsa_private_key_invalid_version(self):
+        data = load_vectors_from_file(
+            os.path.join(
+                "asymmetric",
+                "Traditional_OpenSSL_Serialization",
+                "rsa-wrong-version.pem",
+            ),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=None)
+
+    def test_dsa_private_key_invalid_version(self):
+        data = load_vectors_from_file(
+            os.path.join(
+                "asymmetric",
+                "Traditional_OpenSSL_Serialization",
+                "dsa-wrong-version.pem",
+            ),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=None)
+
+    def test_pem_encryption_missing_dek_info(self):
+        data = load_vectors_from_file(
+            os.path.join(
+                "asymmetric",
+                "Traditional_OpenSSL_Serialization",
+                "key1-no-dek-info.pem",
+            ),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=b"password")
+
+    def test_pem_encryption_malformed_dek_info(self):
+        data = load_vectors_from_file(
+            os.path.join(
+                "asymmetric",
+                "Traditional_OpenSSL_Serialization",
+                "key1-malformed-dek-info.pem",
+            ),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=b"password")
+
+    def test_pem_encryption_malformed_iv(self):
+        data = load_vectors_from_file(
+            os.path.join(
+                "asymmetric",
+                "Traditional_OpenSSL_Serialization",
+                "key1-malformed-iv.pem",
+            ),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=b"password")
+
+    def test_pem_encryption_short_iv(self):
+        data = load_vectors_from_file(
+            os.path.join(
+                "asymmetric",
+                "Traditional_OpenSSL_Serialization",
+                "key1-short-iv.pem",
+            ),
+            lambda f: f.read(),
+            mode="rb",
+        )
+        with pytest.raises(ValueError):
+            load_pem_private_key(data, password=b"password")
 
 
 class TestKeySerializationEncryptionTypes:

@@ -4,7 +4,6 @@
 
 
 import binascii
-import mmap
 import os
 import sys
 
@@ -20,25 +19,10 @@ from cryptography.hazmat.primitives.ciphers.algorithms import (
 )
 
 from ...utils import load_nist_vectors, load_vectors_from_file
+from .test_aead import large_mmap
 
 
 def test_deprecated_ciphers_import_with_warning():
-    with pytest.warns(utils.CryptographyDeprecationWarning):
-        from cryptography.hazmat.primitives.ciphers.algorithms import (
-            Blowfish,  # noqa: F401
-        )
-    with pytest.warns(utils.CryptographyDeprecationWarning):
-        from cryptography.hazmat.primitives.ciphers.algorithms import (
-            CAST5,  # noqa: F401
-        )
-    with pytest.warns(utils.CryptographyDeprecationWarning):
-        from cryptography.hazmat.primitives.ciphers.algorithms import (
-            IDEA,  # noqa: F401
-        )
-    with pytest.warns(utils.CryptographyDeprecationWarning):
-        from cryptography.hazmat.primitives.ciphers.algorithms import (
-            SEED,  # noqa: F401
-        )
     with pytest.warns(utils.CryptographyDeprecationWarning):
         from cryptography.hazmat.primitives.ciphers.algorithms import (
             ARC4,  # noqa: F401
@@ -250,12 +234,21 @@ class TestCipherUpdateInto:
         with pytest.raises(ValueError):
             encryptor.update_into(b"testing", buf)
 
+    def test_update_with_invalid_type(self, backend):
+        key = b"\x00" * 16
+        c = ciphers.Cipher(AES(key), modes.GCM(b"\x00" * 12), backend)
+        encryptor = c.encryptor()
+        with pytest.raises(TypeError, match=r"bytestring instead\?"):
+            encryptor.update("hello")  # type: ignore[arg-type]
+        with pytest.raises(TypeError, match="instance to a buffer"):
+            encryptor.update(object)  # type: ignore[arg-type]
+
 
 @pytest.mark.skipif(
     sys.platform not in {"linux", "darwin"}, reason="mmap required"
 )
 def test_update_auto_chunking():
-    large_data = mmap.mmap(-1, 2**29 + 2**20, prot=mmap.PROT_READ)
+    large_data = large_mmap(length=2**29 + 2**20)
 
     key = b"\x00" * 16
     c = ciphers.Cipher(AES(key), modes.ECB())

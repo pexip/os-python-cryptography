@@ -47,6 +47,7 @@ extensions = [
     "sphinx.ext.linkcode",
     "cryptography-docs",
     "sphinx_rtd_theme",
+    "sphinx_inline_tabs",
 ]
 
 if spelling is not None:
@@ -71,7 +72,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Cryptography"
-copyright = "2013-2024, Individual Contributors"
+copyright = "2013-2025, Individual Contributors"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -199,11 +200,13 @@ linkcheck_ignore = [
     r"https://speakerdeck.com",
     r"https://\w+.stackexchange.com",
     r"https://stackoverflow.com",
-    # GitHub changed how they do page renders so anchor detection
-    # no longer works in source view
-    r"https://github.com/.*/blob/.*#L\d+",
+    r"https://webstore.ansi.org",
     # Kuleuven struggles with the endless forward march of time
     r"https://www.cosic.esat.kuleuven.be",
+    # CMU doesn't know how to send intermediates
+    r"https://wiki.sei.cmu.edu",
+    # GitHub has started heavily rate-limiting causing job failures
+    r"https://github.com",
 ]
 
 autosectionlabel_prefix_document = True
