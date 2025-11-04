@@ -16,7 +16,7 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow
 export PYBUILD_NAME=cryptography
 export PYBUILD_TEST_PYTEST=1
 # needs newer librust-openssl-dev (#1081226)
-export PYBUILD_TEST_ARGS={dir}/tests/ -k 'not (TestDHPublicKeySerialization and test_public_bytes_match)'
+export PYBUILD_TEST_ARGS={dir}/tests/
 
 %:
 	dh $@ --buildsystem=pybuild
