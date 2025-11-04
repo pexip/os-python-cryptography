@@ -1,0 +1,479 @@
+diff --git a/src/_cffi_src/openssl/bignum.py b/src/_cffi_src/openssl/bignum.py
+index f14c96c0c..c19b57995 100644
+--- a/src/_cffi_src/openssl/bignum.py
++++ b/src/_cffi_src/openssl/bignum.py
+@@ -30,7 +30,6 @@ int BN_hex2bn(BIGNUM **, const char *);
+ /* The following 3 prime methods are exposed for Tribler. */
+ int BN_generate_prime_ex(BIGNUM *, int, int, const BIGNUM *,
+                          const BIGNUM *, BN_GENCB *);
+-int BN_is_prime_ex(const BIGNUM *, int, BN_CTX *, BN_GENCB *);
+ const int BN_prime_checks_for_size(int);
+ """
+ 
+diff --git a/src/_cffi_src/openssl/dh.py b/src/_cffi_src/openssl/dh.py
+index a3bf23335..e7a138f24 100644
+--- a/src/_cffi_src/openssl/dh.py
++++ b/src/_cffi_src/openssl/dh.py
+@@ -13,7 +13,6 @@ typedef ... DH;
+ """
+ 
+ FUNCTIONS = """
+-void DH_free(DH *);
+ """
+ 
+ CUSTOMIZATIONS = """
+diff --git a/src/_cffi_src/openssl/dsa.py b/src/_cffi_src/openssl/dsa.py
+index 218893994..2f8179cf2 100644
+--- a/src/_cffi_src/openssl/dsa.py
++++ b/src/_cffi_src/openssl/dsa.py
+@@ -13,12 +13,6 @@ typedef ... DSA;
+ """
+ 
+ FUNCTIONS = """
+-int DSA_generate_key(DSA *);
+-DSA *DSA_new(void);
+-void DSA_free(DSA *);
+-
+-int DSA_generate_parameters_ex(DSA *, int, unsigned char *, int,
+-                               int *, unsigned long *, BN_GENCB *);
+ """
+ 
+ CUSTOMIZATIONS = """
+diff --git a/src/_cffi_src/openssl/ec.py b/src/_cffi_src/openssl/ec.py
+index 9450b1262..fb17eb264 100644
+--- a/src/_cffi_src/openssl/ec.py
++++ b/src/_cffi_src/openssl/ec.py
+@@ -19,10 +19,6 @@ typedef struct {
+ 
+ FUNCTIONS = """
+ size_t EC_get_builtin_curves(EC_builtin_curve *, size_t);
+-
+-void EC_KEY_free(EC_KEY *);
+-
+-EC_KEY *EC_KEY_new_by_curve_name(int);
+ """
+ 
+ CUSTOMIZATIONS = """
+diff --git a/src/_cffi_src/openssl/err.py b/src/_cffi_src/openssl/err.py
+index d61a69b6b..a40c3f14b 100644
+--- a/src/_cffi_src/openssl/err.py
++++ b/src/_cffi_src/openssl/err.py
+@@ -25,7 +25,6 @@ static const int Cryptography_HAS_UNEXPECTED_EOF_WHILE_READING;
+ 
+ FUNCTIONS = """
+ const char *ERR_lib_error_string(unsigned long);
+-const char *ERR_func_error_string(unsigned long);
+ const char *ERR_reason_error_string(unsigned long);
+ unsigned long ERR_get_error(void);
+ unsigned long ERR_peek_error(void);
+diff --git a/src/_cffi_src/openssl/evp.py b/src/_cffi_src/openssl/evp.py
+index 2d66aaf7d..c1f6bc1a9 100644
+--- a/src/_cffi_src/openssl/evp.py
++++ b/src/_cffi_src/openssl/evp.py
+@@ -30,15 +30,10 @@ const EVP_MD *EVP_get_digestbyname(const char *);
+ EVP_PKEY *EVP_PKEY_new(void);
+ void EVP_PKEY_free(EVP_PKEY *);
+ int EVP_PKEY_type(int);
+-RSA *EVP_PKEY_get1_RSA(EVP_PKEY *);
+-
+-int EVP_PKEY_set1_DSA(EVP_PKEY *, DSA *);
+ 
+ int EVP_PKEY_id(const EVP_PKEY *);
+ 
+ int EVP_PKEY_bits(const EVP_PKEY *);
+-
+-int EVP_PKEY_assign_RSA(EVP_PKEY *, RSA *);
+ """
+ 
+ CUSTOMIZATIONS = """
+diff --git a/src/_cffi_src/openssl/pem.py b/src/_cffi_src/openssl/pem.py
+index eac5fd83c..f59328d84 100644
+--- a/src/_cffi_src/openssl/pem.py
++++ b/src/_cffi_src/openssl/pem.py
+@@ -26,8 +26,6 @@ int PEM_write_bio_X509_REQ(BIO *, X509_REQ *);
+ 
+ X509_REQ *PEM_read_bio_X509_REQ(BIO *, X509_REQ **, pem_password_cb *, void *);
+ 
+-DH *PEM_read_bio_DHparams(BIO *, DH **, pem_password_cb *, void *);
+-
+ EVP_PKEY *PEM_read_bio_PUBKEY(BIO *, EVP_PKEY **, pem_password_cb *, void *);
+ int PEM_write_bio_PUBKEY(BIO *, EVP_PKEY *);
+ """
+diff --git a/src/_cffi_src/openssl/rsa.py b/src/_cffi_src/openssl/rsa.py
+index 89e46470d..4dc0d212e 100644
+--- a/src/_cffi_src/openssl/rsa.py
++++ b/src/_cffi_src/openssl/rsa.py
+@@ -17,11 +17,6 @@ static const int Cryptography_HAS_IMPLICIT_RSA_REJECTION;
+ """
+ 
+ FUNCTIONS = """
+-RSA *RSA_new(void);
+-void RSA_free(RSA *);
+-int RSA_generate_key_ex(RSA *, int, BIGNUM *, BN_GENCB *);
+-int RSA_check_key(const RSA *);
+-int RSA_print(BIO *, const RSA *, int);
+ """
+ 
+ CUSTOMIZATIONS = """
+diff --git a/src/rust/cryptography-openssl/src/cmac.rs b/src/rust/cryptography-openssl/src/cmac.rs
+deleted file mode 100644
+index e93790d87..000000000
+--- a/src/rust/cryptography-openssl/src/cmac.rs
++++ /dev/null
+@@ -1,74 +0,0 @@
+-// This file is dual licensed under the terms of the Apache License, Version
+-// 2.0, and the BSD License. See the LICENSE file in the root of this repository
+-// for complete details.
+-
+-use std::ptr;
+-
+-use foreign_types_shared::{ForeignType, ForeignTypeRef};
+-use openssl_sys as ffi;
+-
+-use crate::hmac::DigestBytes;
+-use crate::{cvt, cvt_p, OpenSSLResult};
+-
+-foreign_types::foreign_type! {
+-    type CType = ffi::CMAC_CTX;
+-    fn drop = ffi::CMAC_CTX_free;
+-
+-    pub struct Cmac;
+-    pub struct CmacRef;
+-}
+-
+-// SAFETY: It's safe to have `&` references from multiple threads.
+-unsafe impl Sync for Cmac {}
+-// SAFETY: It's safe to move the `Cmac` from one thread to another.
+-unsafe impl Send for Cmac {}
+-
+-impl Cmac {
+-    pub fn new(key: &[u8], cipher: &openssl::cipher::CipherRef) -> OpenSSLResult<Cmac> {
+-        // SAFETY: All FFI conditions are handled.
+-        unsafe {
+-            let ctx = Cmac::from_ptr(cvt_p(ffi::CMAC_CTX_new())?);
+-            cvt(ffi::CMAC_Init(
+-                ctx.as_ptr(),
+-                key.as_ptr().cast(),
+-                key.len(),
+-                cipher.as_ptr(),
+-                ptr::null_mut(),
+-            ))?;
+-            Ok(ctx)
+-        }
+-    }
+-}
+-
+-impl CmacRef {
+-    pub fn update(&mut self, data: &[u8]) -> OpenSSLResult<()> {
+-        // SAFETY: All FFI conditions are handled.
+-        unsafe {
+-            cvt(ffi::CMAC_Update(
+-                self.as_ptr(),
+-                data.as_ptr().cast(),
+-                data.len(),
+-            ))?;
+-        }
+-        Ok(())
+-    }
+-
+-    pub fn finish(&mut self) -> OpenSSLResult<DigestBytes> {
+-        let mut buf = [0; ffi::EVP_MAX_MD_SIZE as usize];
+-        let mut len = ffi::EVP_MAX_MD_SIZE as usize;
+-        // SAFETY: All FFI conditions are handled.
+-        unsafe {
+-            cvt(ffi::CMAC_Final(self.as_ptr(), buf.as_mut_ptr(), &mut len))?;
+-        }
+-        Ok(DigestBytes { buf, len })
+-    }
+-
+-    pub fn copy(&self) -> OpenSSLResult<Cmac> {
+-        // SAFETY: All FFI conditions are handled.
+-        unsafe {
+-            let h = Cmac::from_ptr(cvt_p(ffi::CMAC_CTX_new())?);
+-            cvt(ffi::CMAC_CTX_copy(h.as_ptr(), self.as_ptr()))?;
+-            Ok(h)
+-        }
+-    }
+-}
+diff --git a/src/rust/cryptography-openssl/src/hmac.rs b/src/rust/cryptography-openssl/src/hmac.rs
+deleted file mode 100644
+index 312435624..000000000
+--- a/src/rust/cryptography-openssl/src/hmac.rs
++++ /dev/null
+@@ -1,110 +0,0 @@
+-// This file is dual licensed under the terms of the Apache License, Version
+-// 2.0, and the BSD License. See the LICENSE file in the root of this repository
+-// for complete details.
+-
+-use std::ptr;
+-
+-use foreign_types_shared::{ForeignType, ForeignTypeRef};
+-use openssl_sys as ffi;
+-
+-use crate::{cvt, cvt_p, OpenSSLResult};
+-
+-foreign_types::foreign_type! {
+-    type CType = ffi::HMAC_CTX;
+-    fn drop = ffi::HMAC_CTX_free;
+-
+-    pub struct Hmac;
+-    pub struct HmacRef;
+-}
+-
+-// SAFETY: It's safe to have `&` references from multiple threads.
+-unsafe impl Sync for Hmac {}
+-// SAFETY: It's safe to move the `Hmac` from one thread to another.
+-unsafe impl Send for Hmac {}
+-
+-impl Hmac {
+-    // On BoringSSL and AWS-LC, the length is a size_t, so the length conversion is a
+-    // no-op.
+-    #[cfg_attr(
+-        any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_AWSLC),
+-        allow(clippy::useless_conversion)
+-    )]
+-    pub fn new(key: &[u8], md: openssl::hash::MessageDigest) -> OpenSSLResult<Hmac> {
+-        // SAFETY: All FFI conditions are handled.
+-        unsafe {
+-            let h = Hmac::from_ptr(cvt_p(ffi::HMAC_CTX_new())?);
+-            cvt(ffi::HMAC_Init_ex(
+-                h.as_ptr(),
+-                key.as_ptr().cast(),
+-                key.len()
+-                    .try_into()
+-                    .expect("Key too long for OpenSSL's length type"),
+-                md.as_ptr(),
+-                ptr::null_mut(),
+-            ))?;
+-            Ok(h)
+-        }
+-    }
+-}
+-
+-impl HmacRef {
+-    pub fn update(&mut self, data: &[u8]) -> OpenSSLResult<()> {
+-        // SAFETY: All FFI conditions are handled.
+-        unsafe {
+-            cvt(ffi::HMAC_Update(self.as_ptr(), data.as_ptr(), data.len()))?;
+-        }
+-        Ok(())
+-    }
+-
+-    pub fn finish(&mut self) -> OpenSSLResult<DigestBytes> {
+-        let mut buf = [0; ffi::EVP_MAX_MD_SIZE as usize];
+-        let mut len = ffi::EVP_MAX_MD_SIZE as std::os::raw::c_uint;
+-        // SAFETY: All FFI conditions are handled.
+-        unsafe {
+-            cvt(ffi::HMAC_Final(self.as_ptr(), buf.as_mut_ptr(), &mut len))?;
+-        }
+-        Ok(DigestBytes {
+-            buf,
+-            len: len.try_into().unwrap(),
+-        })
+-    }
+-
+-    pub fn copy(&self) -> OpenSSLResult<Hmac> {
+-        // SAFETY: All FFI conditions are handled.
+-        unsafe {
+-            let h = Hmac::from_ptr(cvt_p(ffi::HMAC_CTX_new())?);
+-            cvt(ffi::HMAC_CTX_copy(h.as_ptr(), self.as_ptr()))?;
+-            Ok(h)
+-        }
+-    }
+-}
+-
+-pub struct DigestBytes {
+-    pub(crate) buf: [u8; ffi::EVP_MAX_MD_SIZE as usize],
+-    pub(crate) len: usize,
+-}
+-
+-impl std::ops::Deref for DigestBytes {
+-    type Target = [u8];
+-
+-    #[inline]
+-    fn deref(&self) -> &[u8] {
+-        &self.buf[..self.len]
+-    }
+-}
+-
+-#[cfg(test)]
+-mod tests {
+-    use openssl_sys as ffi;
+-
+-    use super::DigestBytes;
+-
+-    #[test]
+-    fn test_digest_bytes() {
+-        let d = DigestBytes {
+-            buf: [19; ffi::EVP_MAX_MD_SIZE as usize],
+-            len: 12,
+-        };
+-        assert_eq!(&*d, b"\x13\x13\x13\x13\x13\x13\x13\x13\x13\x13\x13\x13");
+-    }
+-}
+diff --git a/src/rust/cryptography-openssl/src/lib.rs b/src/rust/cryptography-openssl/src/lib.rs
+index 2cf0238e4..ca5c1cee5 100644
+--- a/src/rust/cryptography-openssl/src/lib.rs
++++ b/src/rust/cryptography-openssl/src/lib.rs
+@@ -6,9 +6,7 @@
+ 
+ #[cfg(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_AWSLC))]
+ pub mod aead;
+-pub mod cmac;
+ pub mod fips;
+-pub mod hmac;
+ #[cfg(any(
+     CRYPTOGRAPHY_IS_BORINGSSL,
+     CRYPTOGRAPHY_IS_LIBRESSL,
+@@ -28,6 +26,10 @@ fn cvt(r: std::os::raw::c_int) -> Result<std::os::raw::c_int, openssl::error::Er
+ }
+ 
+ #[inline]
++#[cfg_attr(
++    not(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_AWSLC)),
++    allow(dead_code)
++)]
+ fn cvt_p<T>(r: *mut T) -> Result<*mut T, openssl::error::ErrorStack> {
+     if r.is_null() {
+         Err(openssl::error::ErrorStack::get())
+diff --git a/src/rust/src/backend/cmac.rs b/src/rust/src/backend/cmac.rs
+index 11f71c84a..0fa02c249 100644
+--- a/src/rust/src/backend/cmac.rs
++++ b/src/rust/src/backend/cmac.rs
+@@ -3,6 +3,7 @@
+ // for complete details.
+ 
+ use cryptography_crypto::constant_time;
++use openssl::mac as ossl_mac;
+ use pyo3::types::{PyAnyMethods, PyBytesMethods};
+ 
+ use crate::backend::cipher_registry;
+@@ -15,18 +16,18 @@ use crate::{exceptions, types};
+     name = "CMAC"
+ )]
+ struct Cmac {
+-    ctx: Option<cryptography_openssl::cmac::Cmac>,
++    ctx: Option<ossl_mac::MacCtx>,
+ }
+ 
+ impl Cmac {
+-    fn get_ctx(&self) -> CryptographyResult<&cryptography_openssl::cmac::Cmac> {
++    fn get_ctx(&self) -> CryptographyResult<&ossl_mac::MacCtx> {
+         if let Some(ctx) = self.ctx.as_ref() {
+             return Ok(ctx);
+         };
+         Err(exceptions::already_finalized_error())
+     }
+ 
+-    fn get_mut_ctx(&mut self) -> CryptographyResult<&mut cryptography_openssl::cmac::Cmac> {
++    fn get_mut_ctx(&mut self) -> CryptographyResult<&mut ossl_mac::MacCtx> {
+         if let Some(ctx) = self.ctx.as_mut() {
+             return Ok(ctx);
+         }
+@@ -64,7 +65,8 @@ impl Cmac {
+         let key = algorithm
+             .getattr(pyo3::intern!(py, "key"))?
+             .extract::<CffiBuf<'_>>()?;
+-        let ctx = cryptography_openssl::cmac::Cmac::new(key.as_bytes(), cipher)?;
++        let mut ctx = ossl_mac::MacCtx::new(&ossl_mac::Mac::cmac())?;
++        ctx.init_cipher(key.as_bytes(), cipher)?;
+         Ok(Cmac { ctx: Some(ctx) })
+     }
+ 
+@@ -77,7 +79,7 @@ impl Cmac {
+         &mut self,
+         py: pyo3::Python<'p>,
+     ) -> CryptographyResult<pyo3::Bound<'p, pyo3::types::PyBytes>> {
+-        let data = self.get_mut_ctx()?.finish()?;
++        let data = self.get_mut_ctx()?.finalize_to_vec()?;
+         self.ctx = None;
+         Ok(pyo3::types::PyBytes::new(py, &data))
+     }
+@@ -96,7 +98,7 @@ impl Cmac {
+ 
+     fn copy(&self) -> CryptographyResult<Cmac> {
+         Ok(Cmac {
+-            ctx: Some(self.get_ctx()?.copy()?),
++            ctx: Some(self.get_ctx()?.clone()),
+         })
+     }
+ }
+diff --git a/src/rust/src/backend/ec.rs b/src/rust/src/backend/ec.rs
+index 75e6acf2d..aa7d3956e 100644
+--- a/src/rust/src/backend/ec.rs
++++ b/src/rust/src/backend/ec.rs
+@@ -489,7 +489,7 @@ fn public_key_from_numbers(
+     let mut point = openssl::ec::EcPoint::new(curve)?;
+     let mut bn_ctx = openssl::bn::BigNumContext::new()?;
+     point
+-        .set_affine_coordinates_gfp(curve, &x, &y, &mut bn_ctx)
++        .set_affine_coordinates(curve, &x, &y, &mut bn_ctx)
+         .map_err(|_| {
+             pyo3::exceptions::PyValueError::new_err(
+                 "Invalid EC key. Point is not on the curve specified.",
+diff --git a/src/rust/src/backend/hmac.rs b/src/rust/src/backend/hmac.rs
+index 28bf75949..a006b7ed1 100644
+--- a/src/rust/src/backend/hmac.rs
++++ b/src/rust/src/backend/hmac.rs
+@@ -4,6 +4,7 @@
+ 
+ use cryptography_crypto::constant_time;
+ use pyo3::types::PyBytesMethods;
++use openssl::mac as ossl_mac;
+ 
+ use crate::backend::hashes::message_digest_from_algorithm;
+ use crate::buf::CffiBuf;
+@@ -17,7 +18,7 @@ use crate::exceptions;
+ pub(crate) struct Hmac {
+     #[pyo3(get)]
+     algorithm: pyo3::Py<pyo3::PyAny>,
+-    ctx: Option<cryptography_openssl::hmac::Hmac>,
++    ctx: Option<ossl_mac::MacCtx>,
+ }
+ 
+ impl Hmac {
+@@ -27,7 +28,8 @@ impl Hmac {
+         algorithm: &pyo3::Bound<'_, pyo3::PyAny>,
+     ) -> CryptographyResult<Hmac> {
+         let md = message_digest_from_algorithm(py, algorithm)?;
+-        let ctx = cryptography_openssl::hmac::Hmac::new(key, md).map_err(|_| {
++        let mut ctx = ossl_mac::MacCtx::new(&ossl_mac::Mac::hmac())?;
++        ctx.init_digest(key, &md).map_err(|_| {
+             exceptions::UnsupportedAlgorithm::new_err((
+                 "Digest is not supported for HMAC",
+                 exceptions::Reasons::UNSUPPORTED_HASH,
+@@ -45,14 +47,14 @@ impl Hmac {
+         Ok(())
+     }
+ 
+-    fn get_ctx(&self) -> CryptographyResult<&cryptography_openssl::hmac::Hmac> {
++    fn get_ctx(&self) -> CryptographyResult<&ossl_mac::MacCtxRef> {
+         if let Some(ctx) = self.ctx.as_ref() {
+             return Ok(ctx);
+         };
+         Err(exceptions::already_finalized_error())
+     }
+ 
+-    fn get_mut_ctx(&mut self) -> CryptographyResult<&mut cryptography_openssl::hmac::Hmac> {
++    fn get_mut_ctx(&mut self) -> CryptographyResult<&mut ossl_mac::MacCtxRef> {
+         if let Some(ctx) = self.ctx.as_mut() {
+             return Ok(ctx);
+         }
+@@ -83,7 +85,7 @@ impl Hmac {
+         &mut self,
+         py: pyo3::Python<'p>,
+     ) -> CryptographyResult<pyo3::Bound<'p, pyo3::types::PyBytes>> {
+-        let data = self.get_mut_ctx()?.finish()?;
++        let data = self.get_mut_ctx()?.finalize_to_vec()?;
+         self.ctx = None;
+         Ok(pyo3::types::PyBytes::new(py, &data))
+     }
+@@ -102,7 +104,7 @@ impl Hmac {
+ 
+     pub(crate) fn copy(&self, py: pyo3::Python<'_>) -> CryptographyResult<Hmac> {
+         Ok(Hmac {
+-            ctx: Some(self.get_ctx()?.copy()?),
++            ctx: Some(self.get_ctx()?.to_owned()),
+             algorithm: self.algorithm.clone_ref(py),
+         })
+     }

@@ -3,6 +3,7 @@ python-cryptography (46.0.3-0+pexip25u1) pexip-trixie; urgency=medium
   * Import upstream 46.0.3
     * Refresh patches
     * Upgrade deps
+  * d/p: remove/fix usage of deprecated OpenSSL 3.0 APIs
 
  -- Huw Jones <huw@pexip.com>  Thu, 30 Oct 2025 17:23:21 +0000
 
