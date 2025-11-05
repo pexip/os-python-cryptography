@@ -1,0 +1,56 @@
+--- a/src/_cffi_src/openssl/evp.py
++++ b/src/_cffi_src/openssl/evp.py
+@@ -13,6 +13,7 @@
+ typedef ... EVP_MD;
+ 
+ typedef ... EVP_PKEY;
++typedef ... EVP_PKEY_CTX;
+ static const int EVP_PKEY_RSA;
+ static const int EVP_PKEY_DSA;
+ static const int EVP_PKEY_DH;
+@@ -34,6 +35,14 @@
+ int EVP_PKEY_id(const EVP_PKEY *);
+ 
+ int EVP_PKEY_bits(const EVP_PKEY *);
++
++EVP_PKEY_CTX *EVP_PKEY_CTX_new(EVP_PKEY *, ENGINE *);
++void EVP_PKEY_CTX_free(EVP_PKEY_CTX *);
++int EVP_PKEY_check(EVP_PKEY_CTX *);
++
++int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey, int indent, ASN1_PCTX *pctx);
++int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey, int indent, ASN1_PCTX *pctx);
++int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey, int indent, ASN1_PCTX *pctx);
+ """
+ 
+ CUSTOMIZATIONS = """
+--- a/src/_cffi_src/openssl/pem.py
++++ b/src/_cffi_src/openssl/pem.py
+@@ -26,6 +26,7 @@
+ 
+ X509_REQ *PEM_read_bio_X509_REQ(BIO *, X509_REQ **, pem_password_cb *, void *);
+ 
++EVP_PKEY *PEM_read_bio_Parameters(BIO *bp, EVP_PKEY **x);
+ EVP_PKEY *PEM_read_bio_PUBKEY(BIO *, EVP_PKEY **, pem_password_cb *, void *);
+ int PEM_write_bio_PUBKEY(BIO *, EVP_PKEY *);
+ """
+--- a/src/_cffi_src/openssl/ssl.py
++++ b/src/_cffi_src/openssl/ssl.py
+@@ -317,6 +317,8 @@
+ 
+ long SSL_CTX_set_tmp_ecdh(SSL_CTX *, EC_KEY *);
+ long SSL_CTX_set_tmp_dh(SSL_CTX *, DH *);
++int SSL_CTX_set0_tmp_dh_pkey(SSL_CTX *ctx, EVP_PKEY *dhpkey);
++int SSL_CTX_set1_curves(SSL_CTX *ctx, int *clist, int clistlen);
+ long SSL_CTX_set_session_cache_mode(SSL_CTX *, long);
+ long SSL_CTX_get_session_cache_mode(SSL_CTX *);
+ long SSL_CTX_add_extra_chain_cert(SSL_CTX *, X509 *);
+--- a/src/_cffi_src/openssl/asn1.py
++++ b/src/_cffi_src/openssl/asn1.py
+@@ -12,6 +12,7 @@
+ typedef int... time_t;
+ 
+ typedef ... ASN1_INTEGER;
++typedef ... ASN1_PCTX;
+ 
+ struct asn1_string_st {
+     int length;
