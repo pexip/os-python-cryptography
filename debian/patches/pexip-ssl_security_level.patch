@@ -1,0 +1,13 @@
+--- a/src/_cffi_src/openssl/ssl.py
++++ b/src/_cffi_src/openssl/ssl.py
+@@ -322,6 +322,10 @@
+ long SSL_CTX_set_session_cache_mode(SSL_CTX *, long);
+ long SSL_CTX_get_session_cache_mode(SSL_CTX *);
+ long SSL_CTX_add_extra_chain_cert(SSL_CTX *, X509 *);
++int SSL_CTX_get_security_level(const SSL_CTX *);
++void SSL_CTX_set_security_level(SSL_CTX *, int);
++int SSL_get_security_level(const SSL *);
++void SSL_set_security_level(SSL *, int);
+ 
+ uint64_t SSL_CTX_set_options(SSL_CTX *, uint64_t);
+ uint64_t SSL_CTX_get_options(SSL_CTX *);
