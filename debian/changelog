@@ -1,3 +1,9 @@
+python-cryptography (46.0.3-0+pexip25u5) pexip-trixie; urgency=medium
+
+  * Pull in fix for CVE-2026-26007
+
+ -- Huw Jones <huw@pexip.com>  Wed, 11 Feb 2026 10:16:54 +0000
+
 python-cryptography (46.0.3-0+pexip25u4) pexip-trixie; urgency=medium
 
   * Restore SSL(_CTX)_(get|set)_security_level

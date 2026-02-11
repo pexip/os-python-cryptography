@@ -13,3 +13,5 @@ pexip-ossl300-non-deprecated.patch
 pexip-docs-no-inline-tags.patch
 pexip-pyopenssl-bindings.patch
 pexip-ssl_security_level.patch
+
+CVE-2026-26007.patch
