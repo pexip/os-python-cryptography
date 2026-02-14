@@ -5,7 +5,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use pyo3::types::{PyAnyMethods, PyDictMethods};
+use pyo3::types::PyAnyMethods;
 
 use crate::backend::utils;
 use crate::buf::CffiBuf;
@@ -29,22 +29,16 @@ pub(crate) struct ECPublicKey {
 fn curve_from_py_curve(
     py: pyo3::Python<'_>,
     py_curve: pyo3::Bound<'_, pyo3::PyAny>,
-    allow_curve_class: bool,
 ) -> CryptographyResult<openssl::ec::EcGroup> {
     if !py_curve.is_instance(&types::ELLIPTIC_CURVE.get(py)?)? {
-        if allow_curve_class {
-            let warning_cls = types::DEPRECATED_IN_42.get(py)?;
-            let warning_msg = "Curve argument must be an instance of an EllipticCurve class. Did you pass a class by mistake? This will be an exception in a future version of cryptography.";
-            pyo3::PyErr::warn_bound(py, &warning_cls, warning_msg, 1)?;
-        } else {
-            return Err(CryptographyError::from(
-                pyo3::exceptions::PyTypeError::new_err("curve must be an EllipticCurve instance"),
-            ));
-        }
+        return Err(CryptographyError::from(
+            pyo3::exceptions::PyTypeError::new_err("curve must be an EllipticCurve instance"),
+        ));
     }
 
     let py_curve_name = py_curve.getattr(pyo3::intern!(py, "name"))?;
-    let nid = match &*py_curve_name.extract::<pyo3::pybacked::PyBackedStr>()? {
+    let curve_name = &*py_curve_name.extract::<pyo3::pybacked::PyBackedStr>()?;
+    let nid = match curve_name {
         "secp192r1" => openssl::nid::Nid::X9_62_PRIME192V1,
         "secp224r1" => openssl::nid::Nid::SECP224R1,
         "secp256r1" => openssl::nid::Nid::X9_62_PRIME256V1,
@@ -66,11 +60,11 @@ fn curve_from_py_curve(
         "sect409k1" => openssl::nid::Nid::SECT409K1,
         "sect571k1" => openssl::nid::Nid::SECT571K1,
 
-        #[cfg(not(CRYPTOGRAPHY_IS_BORINGSSL))]
+        #[cfg(not(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_AWSLC)))]
         "brainpoolP256r1" => openssl::nid::Nid::BRAINPOOL_P256R1,
-        #[cfg(not(CRYPTOGRAPHY_IS_BORINGSSL))]
+        #[cfg(not(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_AWSLC)))]
         "brainpoolP384r1" => openssl::nid::Nid::BRAINPOOL_P384R1,
-        #[cfg(not(CRYPTOGRAPHY_IS_BORINGSSL))]
+        #[cfg(not(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_AWSLC)))]
         "brainpoolP512r1" => openssl::nid::Nid::BRAINPOOL_P512R1,
 
         curve_name => {
@@ -83,33 +77,23 @@ fn curve_from_py_curve(
         }
     };
 
-    Ok(openssl::ec::EcGroup::from_curve_name(nid)?)
+    Ok(openssl::ec::EcGroup::from_curve_name(nid).map_err(|_| {
+        exceptions::UnsupportedAlgorithm::new_err((
+            format!("Curve {curve_name} is not supported"),
+            exceptions::Reasons::UNSUPPORTED_ELLIPTIC_CURVE,
+        ))
+    })?)
 }
 
 fn py_curve_from_curve<'p>(
     py: pyo3::Python<'p>,
     curve: &openssl::ec::EcGroupRef,
 ) -> CryptographyResult<pyo3::Bound<'p, pyo3::PyAny>> {
-    if curve.asn1_flag() == openssl::ec::Asn1Flag::EXPLICIT_CURVE {
-        return Err(CryptographyError::from(
-            pyo3::exceptions::PyValueError::new_err(
-                "ECDSA keys with explicit parameters are unsupported at this time",
-            ),
-        ));
-    }
+    assert!(curve.asn1_flag() != openssl::ec::Asn1Flag::EXPLICIT_CURVE);
 
     let name = curve.curve_name().unwrap().short_name()?;
 
-    types::CURVE_TYPES
-        .get(py)?
-        .extract::<pyo3::Bound<'_, pyo3::types::PyDict>>()?
-        .get_item(name)?
-        .ok_or_else(|| {
-            CryptographyError::from(exceptions::UnsupportedAlgorithm::new_err((
-                format!("{name} is not a supported elliptic curve"),
-                exceptions::Reasons::UNSUPPORTED_ELLIPTIC_CURVE,
-            )))
-        })
+    Ok(types::CURVE_TYPES.get(py)?.get_item(name)?)
 }
 
 fn check_key_infinity(
@@ -127,15 +111,18 @@ fn check_key_infinity(
 
 #[pyo3::pyfunction]
 fn curve_supported(py: pyo3::Python<'_>, py_curve: pyo3::Bound<'_, pyo3::PyAny>) -> bool {
-    curve_from_py_curve(py, py_curve, false).is_ok()
+    curve_from_py_curve(py, py_curve).is_ok()
 }
 
 pub(crate) fn private_key_from_pkey(
     py: pyo3::Python<'_>,
     pkey: &openssl::pkey::PKeyRef<openssl::pkey::Private>,
 ) -> CryptographyResult<ECPrivateKey> {
-    let curve = py_curve_from_curve(py, pkey.ec_key().unwrap().group())?;
-    check_key_infinity(&pkey.ec_key().unwrap())?;
+    let ec_key = pkey
+        .ec_key()
+        .map_err(|_| pyo3::exceptions::PyValueError::new_err("Invalid EC key"))?;
+    let curve = py_curve_from_curve(py, ec_key.group())?;
+    check_key_infinity(&ec_key)?;
     Ok(ECPrivateKey {
         pkey: pkey.to_owned(),
         curve: curve.into(),
@@ -148,12 +135,10 @@ pub(crate) fn public_key_from_pkey(
 ) -> CryptographyResult<ECPublicKey> {
     let ec = pkey.ec_key()?;
     let curve = py_curve_from_curve(py, ec.group())?;
-    check_key_infinity(&ec)?;
-    Ok(ECPublicKey {
-        pkey: pkey.to_owned(),
-        curve: curve.into(),
-    })
+
+    ECPublicKey::new(pkey.to_owned(), curve.into())
 }
+
 #[pyo3::pyfunction]
 #[pyo3(signature = (curve, backend=None))]
 fn generate_private_key(
@@ -163,7 +148,7 @@ fn generate_private_key(
 ) -> CryptographyResult<ECPrivateKey> {
     let _ = backend;
 
-    let ossl_curve = curve_from_py_curve(py, curve, true)?;
+    let ossl_curve = curve_from_py_curve(py, curve)?;
     let key = openssl::ec::EcKey::generate(&ossl_curve)?;
 
     Ok(ECPrivateKey {
@@ -175,10 +160,10 @@ fn generate_private_key(
 #[pyo3::pyfunction]
 fn derive_private_key(
     py: pyo3::Python<'_>,
-    py_private_value: &pyo3::Bound<'_, pyo3::types::PyLong>,
+    py_private_value: &pyo3::Bound<'_, pyo3::types::PyInt>,
     py_curve: pyo3::Bound<'_, pyo3::PyAny>,
 ) -> CryptographyResult<ECPrivateKey> {
-    let curve = curve_from_py_curve(py, py_curve.clone(), false)?;
+    let curve = curve_from_py_curve(py, py_curve.clone())?;
     let private_value = utils::py_int_to_bn(py, py_private_value)?;
 
     let mut point = openssl::ec::EcPoint::new(&curve)?;
@@ -186,7 +171,9 @@ fn derive_private_key(
     point.mul_generator(&curve, &private_value, &bn_ctx)?;
     let ec = openssl::ec::EcKey::from_private_components(&curve, &private_value, &point)
         .map_err(|_| pyo3::exceptions::PyValueError::new_err("Invalid EC key"))?;
-    check_key_infinity(&ec)?;
+    ec.check_key().map_err(|_| {
+        pyo3::exceptions::PyValueError::new_err("Invalid EC key (key out of range, infinity, etc.)")
+    })?;
     let pkey = openssl::pkey::PKey::from_ec_key(ec)?;
 
     Ok(ECPrivateKey {
@@ -201,7 +188,7 @@ fn from_public_bytes(
     py_curve: pyo3::Bound<'_, pyo3::PyAny>,
     data: &[u8],
 ) -> CryptographyResult<ECPublicKey> {
-    let curve = curve_from_py_curve(py, py_curve.clone(), false)?;
+    let curve = curve_from_py_curve(py, py_curve.clone())?;
 
     let mut bn_ctx = openssl::bn::BigNumContext::new()?;
     let point = openssl::ec::EcPoint::from_bytes(&curve, data, &mut bn_ctx)
@@ -209,10 +196,7 @@ fn from_public_bytes(
     let ec = openssl::ec::EcKey::from_public_key(&curve, &point)?;
     let pkey = openssl::pkey::PKey::from_ec_key(ec)?;
 
-    Ok(ECPublicKey {
-        pkey,
-        curve: py_curve.into(),
-    })
+    ECPublicKey::new(pkey, py_curve.into())
 }
 
 #[pyo3::pymethods]
@@ -241,7 +225,7 @@ impl ECPrivateKey {
         }
 
         let mut deriver = openssl::derive::Deriver::new(&self.pkey)?;
-        // If `set_peer_ex` is available, we don't valid the key. This is
+        // If `set_peer_ex` is available, we don't validate the key. This is
         // because we already validated it sufficiently when we created the
         // ECPublicKey object.
         #[cfg(CRYPTOGRAPHY_OPENSSL_300_OR_GREATER)]
@@ -255,7 +239,7 @@ impl ECPrivateKey {
             .map_err(|_| pyo3::exceptions::PyValueError::new_err("Error computing shared key."))?;
 
         let len = deriver.len()?;
-        Ok(pyo3::types::PyBytes::new_bound_with(py, len, |b| {
+        Ok(pyo3::types::PyBytes::new_with(py, len, |b| {
             let n = deriver.derive(b).map_err(|_| {
                 pyo3::exceptions::PyValueError::new_err("Error computing shared key.")
             })?;
@@ -312,7 +296,7 @@ impl ECPrivateKey {
         // will be a byte or two shorter than the maximum possible length).
         let mut sig = vec![];
         signer.sign_to_vec(data.as_bytes(), &mut sig)?;
-        Ok(pyo3::types::PyBytes::new_bound(py, &sig))
+        Ok(pyo3::types::PyBytes::new(py, &sig))
     }
 
     fn public_key(&self, py: pyo3::Python<'_>) -> CryptographyResult<ECPublicKey> {
@@ -371,6 +355,33 @@ impl ECPrivateKey {
             true,
             false,
         )
+    }
+
+    fn __copy__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
+        slf
+    }
+}
+
+impl ECPublicKey {
+    fn new(
+        pkey: openssl::pkey::PKey<openssl::pkey::Public>,
+        curve: pyo3::Py<pyo3::PyAny>,
+    ) -> CryptographyResult<ECPublicKey> {
+        let ec = pkey.ec_key()?;
+        check_key_infinity(&ec)?;
+        let mut bn_ctx = openssl::bn::BigNumContext::new()?;
+        let mut cofactor = openssl::bn::BigNum::new()?;
+        ec.group().cofactor(&mut cofactor, &mut bn_ctx)?;
+        let one = openssl::bn::BigNum::from_u32(1)?;
+        if cofactor != one {
+            ec.check_key().map_err(|_| {
+                pyo3::exceptions::PyValueError::new_err(
+                    "Invalid EC key (key out of range, infinity, etc.)",
+                )
+            })?;
+        }
+
+        Ok(ECPublicKey { pkey, curve })
     }
 }
 
@@ -462,7 +473,7 @@ impl ECPublicKey {
 #[pyo3::pyclass(frozen, module = "cryptography.hazmat.primitives.asymmetric.ec")]
 struct EllipticCurvePrivateNumbers {
     #[pyo3(get)]
-    private_value: pyo3::Py<pyo3::types::PyLong>,
+    private_value: pyo3::Py<pyo3::types::PyInt>,
     #[pyo3(get)]
     public_numbers: pyo3::Py<EllipticCurvePublicNumbers>,
 }
@@ -470,9 +481,9 @@ struct EllipticCurvePrivateNumbers {
 #[pyo3::pyclass(frozen, module = "cryptography.hazmat.primitives.asymmetric.ec")]
 struct EllipticCurvePublicNumbers {
     #[pyo3(get)]
-    x: pyo3::Py<pyo3::types::PyLong>,
+    x: pyo3::Py<pyo3::types::PyInt>,
     #[pyo3(get)]
-    y: pyo3::Py<pyo3::types::PyLong>,
+    y: pyo3::Py<pyo3::types::PyInt>,
     #[pyo3(get)]
     curve: pyo3::Py<pyo3::PyAny>,
 }
@@ -510,7 +521,7 @@ fn public_key_from_numbers(
 impl EllipticCurvePrivateNumbers {
     #[new]
     fn new(
-        private_value: pyo3::Py<pyo3::types::PyLong>,
+        private_value: pyo3::Py<pyo3::types::PyInt>,
         public_numbers: pyo3::Py<EllipticCurvePublicNumbers>,
     ) -> EllipticCurvePrivateNumbers {
         EllipticCurvePrivateNumbers {
@@ -527,8 +538,7 @@ impl EllipticCurvePrivateNumbers {
     ) -> CryptographyResult<ECPrivateKey> {
         let _ = backend;
 
-        let curve =
-            curve_from_py_curve(py, self.public_numbers.get().curve.bind(py).clone(), false)?;
+        let curve = curve_from_py_curve(py, self.public_numbers.get().curve.bind(py).clone())?;
         let public_key = public_key_from_numbers(py, self.public_numbers.get(), &curve)?;
         let private_value = utils::py_int_to_bn(py, self.private_value.bind(py))?;
 
@@ -561,14 +571,13 @@ impl EllipticCurvePrivateNumbers {
         py: pyo3::Python<'_>,
         other: pyo3::PyRef<'_, Self>,
     ) -> CryptographyResult<bool> {
-        Ok(self
-            .private_value
-            .bind(py)
-            .eq(other.private_value.bind(py))?
-            && self
-                .public_numbers
-                .bind(py)
-                .eq(other.public_numbers.bind(py))?)
+        Ok(
+            (**self.private_value.bind(py)).eq(other.private_value.bind(py))?
+                && self
+                    .public_numbers
+                    .bind(py)
+                    .eq(other.public_numbers.bind(py))?,
+        )
     }
 
     fn __hash__(&self, py: pyo3::Python<'_>) -> CryptographyResult<u64> {
@@ -584,8 +593,8 @@ impl EllipticCurvePublicNumbers {
     #[new]
     fn new(
         py: pyo3::Python<'_>,
-        x: pyo3::Py<pyo3::types::PyLong>,
-        y: pyo3::Py<pyo3::types::PyLong>,
+        x: pyo3::Py<pyo3::types::PyInt>,
+        y: pyo3::Py<pyo3::types::PyInt>,
         curve: pyo3::Py<pyo3::PyAny>,
     ) -> CryptographyResult<EllipticCurvePublicNumbers> {
         if !curve
@@ -610,15 +619,12 @@ impl EllipticCurvePublicNumbers {
     ) -> CryptographyResult<ECPublicKey> {
         let _ = backend;
 
-        let curve = curve_from_py_curve(py, self.curve.bind(py).clone(), false)?;
+        let curve = curve_from_py_curve(py, self.curve.bind(py).clone())?;
         let public_key = public_key_from_numbers(py, self, &curve)?;
 
         let pkey = openssl::pkey::PKey::from_ec_key(public_key)?;
 
-        Ok(ECPublicKey {
-            pkey,
-            curve: self.curve.clone_ref(py),
-        })
+        ECPublicKey::new(pkey, self.curve.clone_ref(py))
     }
 
     fn __eq__(
@@ -626,8 +632,8 @@ impl EllipticCurvePublicNumbers {
         py: pyo3::Python<'_>,
         other: pyo3::PyRef<'_, Self>,
     ) -> CryptographyResult<bool> {
-        Ok(self.x.bind(py).eq(other.x.bind(py))?
-            && self.y.bind(py).eq(other.y.bind(py))?
+        Ok((**self.x.bind(py)).eq(other.x.bind(py))?
+            && (**self.y.bind(py)).eq(other.y.bind(py))?
             && self
                 .curve
                 .bind(py)
@@ -670,7 +676,7 @@ impl EllipticCurvePublicNumbers {
     }
 }
 
-#[pyo3::pymodule]
+#[pyo3::pymodule(gil_used = false)]
 pub(crate) mod ec {
     #[pymodule_export]
     use super::{

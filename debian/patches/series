@@ -1,5 +1,4 @@
 Use-local-python3-doc-inventory.patch
 drop-cffi-dep.patch
 downgrade-deps.patch
-0004-update-to-asn1-0.19-and-use-X509GeneralizedTime.patch
-0005-Support-128-bit-OID-arcs-11820.patch
+0004-Adapt-the-upstream-changes-for-pyo3-0.27-PR-13708.patch

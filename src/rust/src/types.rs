@@ -7,7 +7,7 @@ use pyo3::types::PyAnyMethods;
 pub struct LazyPyImport {
     module: &'static str,
     names: &'static [&'static str],
-    value: pyo3::sync::GILOnceCell<pyo3::PyObject>,
+    value: pyo3::sync::PyOnceLock<pyo3::Py<pyo3::PyAny>>,
 }
 
 impl LazyPyImport {
@@ -15,13 +15,13 @@ impl LazyPyImport {
         LazyPyImport {
             module,
             names,
-            value: pyo3::sync::GILOnceCell::new(),
+            value: pyo3::sync::PyOnceLock::new(),
         }
     }
 
     pub fn get<'p>(&'p self, py: pyo3::Python<'p>) -> pyo3::PyResult<pyo3::Bound<'p, pyo3::PyAny>> {
         let p = self.value.get_or_try_init(py, || {
-            let mut obj = py.import_bound(self.module)?.into_any();
+            let mut obj = py.import(self.module)?.into_any();
             for name in self.names {
                 obj = obj.getattr(*name)?;
             }
@@ -37,7 +37,6 @@ pub static DATETIME_TIMEZONE_UTC: LazyPyImport =
     LazyPyImport::new("datetime", &["timezone", "utc"]);
 pub static IPADDRESS_IPADDRESS: LazyPyImport = LazyPyImport::new("ipaddress", &["ip_address"]);
 pub static IPADDRESS_IPNETWORK: LazyPyImport = LazyPyImport::new("ipaddress", &["ip_network"]);
-pub static OS_URANDOM: LazyPyImport = LazyPyImport::new("os", &["urandom"]);
 
 pub static DEPRECATED_IN_36: LazyPyImport =
     LazyPyImport::new("cryptography.utils", &["DeprecatedIn36"]);
@@ -179,6 +178,9 @@ pub static REASON_FLAGS: LazyPyImport = LazyPyImport::new("cryptography.x509", &
 pub static ATTRIBUTE: LazyPyImport = LazyPyImport::new("cryptography.x509", &["Attribute"]);
 pub static ATTRIBUTES: LazyPyImport = LazyPyImport::new("cryptography.x509", &["Attributes"]);
 
+pub static EXTENSION_TYPE: LazyPyImport =
+    LazyPyImport::new("cryptography.x509", &["ExtensionType"]);
+
 pub static CRL_NUMBER: LazyPyImport = LazyPyImport::new("cryptography.x509", &["CRLNumber"]);
 pub static DELTA_CRL_INDICATOR: LazyPyImport =
     LazyPyImport::new("cryptography.x509", &["DeltaCRLIndicator"]);
@@ -245,6 +247,8 @@ pub static SUBJECT_KEY_IDENTIFIER: LazyPyImport =
 pub static TLS_FEATURE: LazyPyImport = LazyPyImport::new("cryptography.x509", &["TLSFeature"]);
 pub static SUBJECT_ALTERNATIVE_NAME: LazyPyImport =
     LazyPyImport::new("cryptography.x509", &["SubjectAlternativeName"]);
+pub static PRIVATE_KEY_USAGE_PERIOD: LazyPyImport =
+    LazyPyImport::new("cryptography.x509", &["PrivateKeyUsagePeriod"]);
 pub static POLICY_INFORMATION: LazyPyImport =
     LazyPyImport::new("cryptography.x509", &["PolicyInformation"]);
 pub static USER_NOTICE: LazyPyImport = LazyPyImport::new("cryptography.x509", &["UserNotice"]);
@@ -263,6 +267,12 @@ pub static CERTIFICATE_VERSION_V1: LazyPyImport =
     LazyPyImport::new("cryptography.x509", &["Version", "v1"]);
 pub static CERTIFICATE_VERSION_V3: LazyPyImport =
     LazyPyImport::new("cryptography.x509", &["Version", "v3"]);
+pub static ADMISSION: LazyPyImport = LazyPyImport::new("cryptography.x509", &["Admission"]);
+pub static NAMING_AUTHORITY: LazyPyImport =
+    LazyPyImport::new("cryptography.x509", &["NamingAuthority"]);
+pub static PROFESSION_INFO: LazyPyImport =
+    LazyPyImport::new("cryptography.x509", &["ProfessionInfo"]);
+pub static ADMISSIONS: LazyPyImport = LazyPyImport::new("cryptography.x509", &["Admissions"]);
 
 pub static CRL_REASON_FLAGS: LazyPyImport =
     LazyPyImport::new("cryptography.x509.extensions", &["_CRLREASONFLAGS"]);
@@ -314,6 +324,11 @@ pub static ASN1_TYPE_BMP_STRING: LazyPyImport =
 pub static ASN1_TYPE_UNIVERSAL_STRING: LazyPyImport =
     LazyPyImport::new("cryptography.x509.name", &["_ASN1Type", "UniversalString"]);
 
+pub static PKCS7_OPTIONS: LazyPyImport = LazyPyImport::new(
+    "cryptography.hazmat.primitives.serialization.pkcs7",
+    &["PKCS7Options"],
+);
+
 pub static PKCS7_BINARY: LazyPyImport = LazyPyImport::new(
     "cryptography.hazmat.primitives.serialization.pkcs7",
     &["PKCS7Options", "Binary"],
@@ -342,6 +357,16 @@ pub static PKCS7_DETACHED_SIGNATURE: LazyPyImport = LazyPyImport::new(
 pub static SMIME_ENVELOPED_ENCODE: LazyPyImport = LazyPyImport::new(
     "cryptography.hazmat.primitives.serialization.pkcs7",
     &["_smime_enveloped_encode"],
+);
+
+pub static SMIME_ENVELOPED_DECODE: LazyPyImport = LazyPyImport::new(
+    "cryptography.hazmat.primitives.serialization.pkcs7",
+    &["_smime_enveloped_decode"],
+);
+
+pub static SMIME_REMOVE_TEXT_HEADERS: LazyPyImport = LazyPyImport::new(
+    "cryptography.hazmat.primitives.serialization.pkcs7",
+    &["_smime_remove_text_headers"],
 );
 
 pub static SMIME_SIGNED_ENCODE: LazyPyImport = LazyPyImport::new(
@@ -466,11 +491,13 @@ pub static DSA_PUBLIC_KEY: LazyPyImport = LazyPyImport::new(
     &["DSAPublicKey"],
 );
 
+#[cfg(not(Py_3_11))]
 pub static FFI_FROM_BUFFER: LazyPyImport = LazyPyImport::new(
     "cryptography.hazmat.bindings._rust",
     &["_openssl", "ffi", "from_buffer"],
 );
 
+#[cfg(not(Py_3_11))]
 pub static FFI_CAST: LazyPyImport = LazyPyImport::new(
     "cryptography.hazmat.bindings._rust",
     &["_openssl", "ffi", "cast"],
@@ -485,6 +512,8 @@ pub static TRIPLE_DES: LazyPyImport = LazyPyImport::new(
     "cryptography.hazmat.decrepit.ciphers.algorithms",
     &["TripleDES"],
 );
+pub static DES: LazyPyImport =
+    LazyPyImport::new("cryptography.hazmat.decrepit.ciphers.algorithms", &["_DES"]);
 pub static AES: LazyPyImport = LazyPyImport::new(
     "cryptography.hazmat.primitives.ciphers.algorithms",
     &["AES"],
@@ -527,6 +556,7 @@ pub static CAST5: LazyPyImport = LazyPyImport::new(
 #[cfg(not(CRYPTOGRAPHY_OSSLCONF = "OPENSSL_NO_IDEA"))]
 pub static IDEA: LazyPyImport =
     LazyPyImport::new("cryptography.hazmat.decrepit.ciphers.algorithms", &["IDEA"]);
+#[cfg(not(CRYPTOGRAPHY_OSSLCONF = "OPENSSL_NO_RC4"))]
 pub static ARC4: LazyPyImport =
     LazyPyImport::new("cryptography.hazmat.decrepit.ciphers.algorithms", &["ARC4"]);
 pub static RC2: LazyPyImport =
@@ -578,10 +608,10 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        pyo3::prepare_freethreaded_python();
+        pyo3::Python::initialize();
 
         let v = LazyPyImport::new("foo", &["bar"]);
-        pyo3::Python::with_gil(|py| {
+        pyo3::Python::attach(|py| {
             assert!(v.get(py).is_err());
         });
     }

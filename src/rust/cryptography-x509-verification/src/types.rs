@@ -8,8 +8,10 @@ use std::str::FromStr;
 use asn1::IA5String;
 
 // RFC 2822 3.2.4
-static ATEXT_CHARS: &str = "!#$%&'*+-/=?^_`{|}~";
+const ATEXT_CHARS: &str = "!#$%&'*+-/=?^_`{|}~";
 
+/// Represents a DNS name can be used in X.509 name matching.
+///
 /// A `DNSName` is an `asn1::IA5String` with additional invariant preservations
 /// per [RFC 5280 4.2.1.6], which in turn uses the preferred name syntax defined
 /// in [RFC 1034 3.5] and amended in [RFC 1123 2.1].
@@ -100,6 +102,9 @@ impl PartialEq for DNSName<'_> {
     }
 }
 
+/// Represents either a DNS name or a DNS wildcard for use in X.509 name
+/// matching.
+///
 /// A `DNSPattern` represents a subset of the domain name wildcard matching
 /// behavior defined in [RFC 6125 6.4.3]. In particular, all DNS patterns
 /// must either be exact matches (post-normalization) *or* a single wildcard
@@ -131,6 +136,19 @@ impl<'a> DNSPattern<'a> {
                 // No parent means we have a single label; wildcards cannot match single labels.
                 None => false,
             },
+        }
+    }
+
+    /// Returns the inner `DNSName` within this `DNSPattern`, e.g.
+    /// `foo.com` for `*.foo.com` or `example.com` for `example.com`.
+    ///
+    /// This API must not be used to bypass pattern matching; it exists
+    /// solely to enable checks that only require the inner name, such
+    /// as Name Constraint checks.
+    pub fn inner_name(&self) -> &DNSName<'a> {
+        match self {
+            DNSPattern::Exact(dnsname) => dnsname,
+            DNSPattern::Wildcard(dnsname) => dnsname,
         }
     }
 }
@@ -395,9 +413,8 @@ impl<'a> RFC822Constraint<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{DNSConstraint, DNSName, DNSPattern, IPAddress, IPConstraint, RFC822Name};
-
     use super::RFC822Constraint;
+    use crate::types::{DNSConstraint, DNSName, DNSPattern, IPAddress, IPConstraint, RFC822Name};
 
     #[test]
     fn test_dnsname_debug_trait() {

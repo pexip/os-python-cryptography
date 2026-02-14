@@ -1,5 +1,5 @@
-From: Stefano Rivera <stefanor@debian.org>
-Date: Sun, 8 Jan 2023 15:57:57 -0400
+From: Andrey Rakhmatullin <wrar@debian.org>
+Date: Sat, 30 Aug 2025 18:42:28 +0500
 Subject: Remove run-time dependency on cffi
 
 On Debian we ship a separate cffi-backend package (without the cffi
@@ -12,31 +12,35 @@ the dependency.
 
 Bug-Debian: https://bugs.debian.org/1026537
 ---
- setup.cfg | 1 -
- 1 file changed, 1 deletion(-)
+ pyproject.toml | 11 -----------
+ 1 file changed, 11 deletions(-)
 
-Index: python-cryptography/pyproject.toml
-===================================================================
---- python-cryptography.orig/pyproject.toml
-+++ python-cryptography/pyproject.toml
-@@ -3,12 +3,6 @@
- # ./github/requirements/build-requirements.{in,txt}
+diff --git a/pyproject.toml b/pyproject.toml
+index 95ced11..8efb381 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -3,14 +3,6 @@
+ # ./.github/requirements/build-requirements.{in,txt}
  requires = [
-     "maturin>=1,<2",
+     "maturin>=1.9.4,<2",
 -
 -    # Must be kept in sync with `project.dependencies`
--    "cffi>=1.12; platform_python_implementation != 'PyPy'",
--    # Needed because cffi imports distutils, and in Python 3.12, distutils has
--    # been removed from the stdlib, but installing setuptools puts it back.
--    "setuptools",
+-    "cffi>=1.14; platform_python_implementation != 'PyPy' and python_version == '3.8'",
+-    "cffi>=2.0.0; platform_python_implementation != 'PyPy' and python_version >= '3.9'",
+-    # Used by cffi (which import distutils, and in Python 3.12, distutils has
+-    # been removed from the stdlib, but installing setuptools puts it back) as
+-    # well as our build.rs for the rust/cffi bridge.
+-    "setuptools!=74.0.0,!=74.1.0,!=74.1.1,!=74.1.2",
  ]
  build-backend = "maturin"
  
-@@ -48,7 +42,6 @@ classifiers = [
- requires-python = ">=3.7"
- dependencies = [
-     # Must be kept in sync with `build-system.requires`
--    "cffi>=1.12; platform_python_implementation != 'PyPy'",
+@@ -50,9 +42,6 @@ classifiers = [
  ]
- 
- [project.urls]
+ requires-python = ">=3.8,!=3.9.0,!=3.9.1"
+ dependencies = [
+-    # Must be kept in sync with `build-system.requires`
+-    "cffi>=1.14; platform_python_implementation != 'PyPy' and python_version == '3.8'",
+-    "cffi>=2.0.0; platform_python_implementation != 'PyPy' and python_version >= '3.9'",
+     # Must be kept in sync with ./.github/requirements/build-requirements.{in,txt}
+     "typing-extensions>=4.13.2; python_version < '3.11'",
+ ]

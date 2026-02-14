@@ -1,0 +1,405 @@
+From: Andrey Rakhmatullin <wrar@debian.org>
+Date: Fri, 21 Nov 2025 18:07:12 +0500
+Subject: Adapt the upstream changes for pyo3 0.27 (PR #13708).
+
+---
+ src/rust/src/asn1.rs                    |  6 +++---
+ src/rust/src/backend/ciphers.rs         |  8 ++++----
+ src/rust/src/backend/dh.rs              | 12 +++++++++---
+ src/rust/src/buf.rs                     | 28 +++++++++++++++++-----------
+ src/rust/src/declarative_asn1/encode.rs |  4 ++--
+ src/rust/src/error.rs                   | 12 +++++++++---
+ src/rust/src/exceptions.rs              | 24 ++++++++++++------------
+ src/rust/src/x509/crl.rs                |  2 +-
+ src/rust/src/x509/extensions.rs         |  8 ++++----
+ src/rust/src/x509/sign.rs               |  2 +-
+ src/rust/src/x509/verify/mod.rs         |  2 +-
+ tests/hazmat/primitives/test_pkcs12.py  | 16 +++++++++-------
+ 12 files changed, 72 insertions(+), 52 deletions(-)
+
+diff --git a/src/rust/src/asn1.rs b/src/rust/src/asn1.rs
+index ab5499b..01fe8a2 100644
+--- a/src/rust/src/asn1.rs
++++ b/src/rust/src/asn1.rs
+@@ -14,7 +14,7 @@ pub(crate) fn py_oid_to_oid(
+     py_oid: pyo3::Bound<'_, pyo3::PyAny>,
+ ) -> pyo3::PyResult<asn1::ObjectIdentifier> {
+     Ok(py_oid
+-        .downcast::<crate::oid::ObjectIdentifier>()?
++        .cast::<crate::oid::ObjectIdentifier>()?
+         .get()
+         .oid
+         .clone())
+@@ -85,8 +85,8 @@ pub(crate) fn py_uint_to_big_endian_bytes<'p>(
+         .extract::<usize>()?
+         / 8
+         + 1;
+-    v.call_method1(pyo3::intern!(py, "to_bytes"), (n, "big"))?
+-        .extract()
++    Ok(v.call_method1(pyo3::intern!(py, "to_bytes"), (n, "big"))?
++        .extract()?)
+ }
+ 
+ pub(crate) fn encode_der_data<'p>(
+diff --git a/src/rust/src/backend/ciphers.rs b/src/rust/src/backend/ciphers.rs
+index 11ff21f..c22e12d 100644
+--- a/src/rust/src/backend/ciphers.rs
++++ b/src/rust/src/backend/ciphers.rs
+@@ -592,18 +592,18 @@ fn cipher_supported(
+ 
+ #[pyo3::pyfunction]
+ fn _advance(ctx: pyo3::Bound<'_, pyo3::PyAny>, n: u64) {
+-    if let Ok(c) = ctx.downcast::<PyAEADEncryptionContext>() {
++    if let Ok(c) = ctx.cast::<PyAEADEncryptionContext>() {
+         c.borrow_mut().bytes_remaining -= n;
+-    } else if let Ok(c) = ctx.downcast::<PyAEADDecryptionContext>() {
++    } else if let Ok(c) = ctx.cast::<PyAEADDecryptionContext>() {
+         c.borrow_mut().bytes_remaining -= n;
+     }
+ }
+ 
+ #[pyo3::pyfunction]
+ fn _advance_aad(ctx: pyo3::Bound<'_, pyo3::PyAny>, n: u64) {
+-    if let Ok(c) = ctx.downcast::<PyAEADEncryptionContext>() {
++    if let Ok(c) = ctx.cast::<PyAEADEncryptionContext>() {
+         c.borrow_mut().aad_bytes_remaining -= n;
+-    } else if let Ok(c) = ctx.downcast::<PyAEADDecryptionContext>() {
++    } else if let Ok(c) = ctx.cast::<PyAEADDecryptionContext>() {
+         c.borrow_mut().aad_bytes_remaining -= n;
+     }
+ }
+diff --git a/src/rust/src/backend/dh.rs b/src/rust/src/backend/dh.rs
+index e419485..15d6b51 100644
+--- a/src/rust/src/backend/dh.rs
++++ b/src/rust/src/backend/dh.rs
+@@ -184,7 +184,9 @@ impl DHPrivateKey {
+ 
+         let parameter_numbers = DHParameterNumbers {
+             p: py_p.extract()?,
+-            q: py_q.map(|q| q.extract()).transpose()?,
++            q: py_q
++                .map(|q| q.extract().map_err(CryptographyError::from))
++                .transpose()?,
+             g: py_g.extract()?,
+         };
+         let public_numbers = DHPublicNumbers {
+@@ -291,7 +293,9 @@ impl DHPublicKey {
+ 
+         let parameter_numbers = DHParameterNumbers {
+             p: py_p.extract()?,
+-            q: py_q.map(|q| q.extract()).transpose()?,
++            q: py_q
++                .map(|q| q.extract().map_err(CryptographyError::from))
++                .transpose()?,
+             g: py_g.extract()?,
+         };
+ 
+@@ -331,7 +335,9 @@ impl DHParameters {
+ 
+         Ok(DHParameterNumbers {
+             p: py_p.extract()?,
+-            q: py_q.map(|q| q.extract()).transpose()?,
++            q: py_q
++                .map(|q| q.extract().map_err(CryptographyError::from))
++                .transpose()?,
+             g: py_g.extract()?,
+         })
+     }
+diff --git a/src/rust/src/buf.rs b/src/rust/src/buf.rs
+index 3b66f76..e5dab35 100644
+--- a/src/rust/src/buf.rs
++++ b/src/rust/src/buf.rs
+@@ -10,7 +10,9 @@ use pyo3::types::PyAnyMethods;
+ use crate::types;
+ 
+ // Common error message generation
+-fn generate_non_convertible_buffer_error_msg(pyobj: &pyo3::Bound<'_, pyo3::PyAny>) -> String {
++fn generate_non_convertible_buffer_error_msg(
++    pyobj: &pyo3::Borrowed<'_, '_, pyo3::PyAny>,
++) -> String {
+     if pyobj.is_instance_of::<pyo3::types::PyString>() {
+         format!(
+             "Cannot convert \"{}\" instance to a buffer.\nDid you mean to pass a bytestring instead?",
+@@ -26,7 +28,7 @@ fn generate_non_convertible_buffer_error_msg(pyobj: &pyo3::Bound<'_, pyo3::PyAny
+ 
+ #[cfg(Py_3_11)]
+ fn _extract_buffer_length(
+-    pyobj: &pyo3::Bound<'_, pyo3::PyAny>,
++    pyobj: &pyo3::Borrowed<'_, '_, pyo3::PyAny>,
+     mutable: bool,
+ ) -> pyo3::PyResult<(Option<pyo3::buffer::PyBuffer<u8>>, usize, usize)> {
+     let buf = pyo3::buffer::PyBuffer::<u8>::get(pyobj).map_err(|_| {
+@@ -45,7 +47,7 @@ fn _extract_buffer_length(
+ 
+ #[cfg(not(Py_3_11))]
+ fn _extract_buffer_length<'p>(
+-    pyobj: &pyo3::Bound<'p, pyo3::PyAny>,
++    pyobj: &pyo3::Borrowed<'_, 'p, pyo3::PyAny>,
+     mutable: bool,
+ ) -> pyo3::PyResult<(pyo3::Bound<'p, pyo3::PyAny>, usize, usize)> {
+     let py = pyobj.py();
+@@ -101,9 +103,11 @@ impl<'a> CffiBuf<'a> {
+     }
+ }
+ 
+-impl<'a> pyo3::conversion::FromPyObject<'a> for CffiBuf<'a> {
+-    fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+-        let (bufobj, ptrval, len) = _extract_buffer_length(pyobj, false)?;
++impl<'p> pyo3::conversion::FromPyObject<'_, 'p> for CffiBuf<'p> {
++    type Error = pyo3::PyErr;
++
++    fn extract(pyobj: pyo3::Borrowed<'_, 'p, pyo3::PyAny>) -> pyo3::PyResult<Self> {
++        let (bufobj, ptrval, len) = _extract_buffer_length(&pyobj, false)?;
+         let buf = if len == 0 {
+             &[]
+         } else {
+@@ -118,7 +122,7 @@ impl<'a> pyo3::conversion::FromPyObject<'a> for CffiBuf<'a> {
+             unsafe { slice::from_raw_parts(ptrval as *const u8, len) }
+         };
+         Ok(CffiBuf {
+-            pyobj: pyobj.clone(),
++            pyobj: pyobj.to_owned(),
+             _bufobj: bufobj,
+             buf,
+         })
+@@ -140,9 +144,11 @@ impl CffiMutBuf<'_> {
+     }
+ }
+ 
+-impl<'a> pyo3::conversion::FromPyObject<'a> for CffiMutBuf<'a> {
+-    fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+-        let (bufobj, ptrval, len) = _extract_buffer_length(pyobj, true)?;
++impl<'p> pyo3::conversion::FromPyObject<'_, 'p> for CffiMutBuf<'p> {
++    type Error = pyo3::PyErr;
++
++    fn extract(pyobj: pyo3::Borrowed<'_, 'p, pyo3::PyAny>) -> pyo3::PyResult<Self> {
++        let (bufobj, ptrval, len) = _extract_buffer_length(&pyobj, true)?;
+         let buf = if len == 0 {
+             &mut []
+         } else {
+@@ -157,7 +163,7 @@ impl<'a> pyo3::conversion::FromPyObject<'a> for CffiMutBuf<'a> {
+             unsafe { slice::from_raw_parts_mut(ptrval as *mut u8, len) }
+         };
+         Ok(CffiMutBuf {
+-            _pyobj: pyobj.clone(),
++            _pyobj: pyobj.to_owned(),
+             _bufobj: bufobj,
+             buf,
+         })
+diff --git a/src/rust/src/declarative_asn1/encode.rs b/src/rust/src/declarative_asn1/encode.rs
+index 6ba2b12..3af9caa 100644
+--- a/src/rust/src/declarative_asn1/encode.rs
++++ b/src/rust/src/declarative_asn1/encode.rs
+@@ -31,10 +31,10 @@ impl asn1::Asn1Writable for AnnotatedTypeObject<'_> {
+                 &asn1::SequenceWriter::new(&|w| {
+                     for (name, ann_type) in fields.bind(py).into_iter() {
+                         let name = name
+-                            .downcast::<pyo3::types::PyString>()
++                            .cast::<pyo3::types::PyString>()
+                             .map_err(|_| asn1::WriteError::AllocationError)?;
+                         let ann_type = ann_type
+-                            .downcast::<AnnotatedType>()
++                            .cast::<AnnotatedType>()
+                             .map_err(|_| asn1::WriteError::AllocationError)?;
+                         let object = AnnotatedTypeObject {
+                             annotated_type: ann_type.get(),
+diff --git a/src/rust/src/error.rs b/src/rust/src/error.rs
+index 0125a15..84c5a03 100644
+--- a/src/rust/src/error.rs
++++ b/src/rust/src/error.rs
+@@ -34,8 +34,8 @@ impl From<pyo3::PyErr> for CryptographyError {
+     }
+ }
+ 
+-impl From<pyo3::DowncastError<'_, '_>> for CryptographyError {
+-    fn from(e: pyo3::DowncastError<'_, '_>) -> CryptographyError {
++impl From<pyo3::CastError<'_, '_>> for CryptographyError {
++    fn from(e: pyo3::CastError<'_, '_>) -> CryptographyError {
+         CryptographyError::Py(e.into())
+     }
+ }
+@@ -234,6 +234,8 @@ pub(crate) fn capture_error_stack(
+ 
+ #[cfg(test)]
+ mod tests {
++    use pyo3::PyTypeInfo;
++
+     use super::CryptographyError;
+ 
+     #[test]
+@@ -258,7 +260,11 @@ mod tests {
+             let py_e: pyo3::PyErr = e.into();
+             assert!(py_e.is_instance_of::<pyo3::exceptions::PyMemoryError>(py));
+ 
+-            let e: CryptographyError = pyo3::DowncastError::new(py.None().bind(py), "abc").into();
++            let e: CryptographyError = pyo3::CastError::new(
++                py.None().bind(py).as_borrowed(),
++                pyo3::types::PyString::type_object(py).into_any(),
++            )
++            .into();
+             assert!(matches!(e, CryptographyError::Py(_)));
+ 
+             let e = cryptography_key_parsing::KeyParsingError::OpenSSL(
+diff --git a/src/rust/src/exceptions.rs b/src/rust/src/exceptions.rs
+index da7f33c..0abf470 100644
+--- a/src/rust/src/exceptions.rs
++++ b/src/rust/src/exceptions.rs
+@@ -27,18 +27,18 @@ pub(crate) enum Reasons {
+     UNSUPPORTED_MAC,
+ }
+ 
+-pyo3::import_exception_bound!(cryptography.exceptions, AlreadyUpdated);
+-pyo3::import_exception_bound!(cryptography.exceptions, AlreadyFinalized);
+-pyo3::import_exception_bound!(cryptography.exceptions, InternalError);
+-pyo3::import_exception_bound!(cryptography.exceptions, InvalidKey);
+-pyo3::import_exception_bound!(cryptography.exceptions, InvalidSignature);
+-pyo3::import_exception_bound!(cryptography.exceptions, InvalidTag);
+-pyo3::import_exception_bound!(cryptography.exceptions, NotYetFinalized);
+-pyo3::import_exception_bound!(cryptography.exceptions, UnsupportedAlgorithm);
+-pyo3::import_exception_bound!(cryptography.x509, AttributeNotFound);
+-pyo3::import_exception_bound!(cryptography.x509, DuplicateExtension);
+-pyo3::import_exception_bound!(cryptography.x509, UnsupportedGeneralNameType);
+-pyo3::import_exception_bound!(cryptography.x509, InvalidVersion);
++pyo3::import_exception!(cryptography.exceptions, AlreadyUpdated);
++pyo3::import_exception!(cryptography.exceptions, AlreadyFinalized);
++pyo3::import_exception!(cryptography.exceptions, InternalError);
++pyo3::import_exception!(cryptography.exceptions, InvalidKey);
++pyo3::import_exception!(cryptography.exceptions, InvalidSignature);
++pyo3::import_exception!(cryptography.exceptions, InvalidTag);
++pyo3::import_exception!(cryptography.exceptions, NotYetFinalized);
++pyo3::import_exception!(cryptography.exceptions, UnsupportedAlgorithm);
++pyo3::import_exception!(cryptography.x509, AttributeNotFound);
++pyo3::import_exception!(cryptography.x509, DuplicateExtension);
++pyo3::import_exception!(cryptography.x509, UnsupportedGeneralNameType);
++pyo3::import_exception!(cryptography.x509, InvalidVersion);
+ 
+ pub(crate) fn already_finalized_error() -> CryptographyError {
+     CryptographyError::from(AlreadyFinalized::new_err("Context was already finalized."))
+diff --git a/src/rust/src/x509/crl.rs b/src/rust/src/x509/crl.rs
+index c6a50e7..d9a83cd 100644
+--- a/src/rust/src/x509/crl.rs
++++ b/src/rust/src/x509/crl.rs
+@@ -153,7 +153,7 @@ impl CertificateRevocationList {
+ 
+         if idx.is_instance_of::<pyo3::types::PySlice>() {
+             let indices = idx
+-                .downcast::<pyo3::types::PySlice>()?
++                .cast::<pyo3::types::PySlice>()?
+                 .indices(self.len().try_into().unwrap())?;
+             let result = pyo3::types::PyList::empty(py);
+             for i in (indices.start..indices.stop).step_by(indices.step.try_into().unwrap()) {
+diff --git a/src/rust/src/x509/extensions.rs b/src/rust/src/x509/extensions.rs
+index 739455f..7a866b3 100644
+--- a/src/rust/src/x509/extensions.rs
++++ b/src/rust/src/x509/extensions.rs
+@@ -399,14 +399,14 @@ fn encode_tls_features(
+ fn encode_scts(ext: &pyo3::Bound<'_, pyo3::PyAny>) -> CryptographyResult<Vec<u8>> {
+     let mut length = 0;
+     for sct in ext.try_iter()? {
+-        let sct = sct?.downcast::<sct::Sct>()?.clone();
++        let sct = sct?.cast::<sct::Sct>()?.clone();
+         length += sct.get().sct_data.len() + 2;
+     }
+ 
+     let mut result = vec![];
+     result.extend_from_slice(&(length as u16).to_be_bytes());
+     for sct in ext.try_iter()? {
+-        let sct = sct?.downcast::<sct::Sct>()?.clone();
++        let sct = sct?.cast::<sct::Sct>()?.clone();
+         result.extend_from_slice(&(sct.get().sct_data.len() as u16).to_be_bytes());
+         result.extend_from_slice(&sct.get().sct_data);
+     }
+@@ -620,7 +620,7 @@ pub(crate) fn encode_extension(
+         &oid::INHIBIT_ANY_POLICY_OID => {
+             let intval = ext
+                 .getattr(pyo3::intern!(py, "skip_certs"))?
+-                .downcast::<pyo3::types::PyInt>()?
++                .cast::<pyo3::types::PyInt>()?
+                 .clone();
+             let bytes = py_uint_to_big_endian_bytes(ext.py(), intval)?;
+             Ok(Some(asn1::write_single(
+@@ -675,7 +675,7 @@ pub(crate) fn encode_extension(
+         &oid::CRL_NUMBER_OID | &oid::DELTA_CRL_INDICATOR_OID => {
+             let intval = ext
+                 .getattr(pyo3::intern!(py, "crl_number"))?
+-                .downcast::<pyo3::types::PyInt>()?
++                .cast::<pyo3::types::PyInt>()?
+                 .clone();
+             let bytes = py_uint_to_big_endian_bytes(ext.py(), intval)?;
+             Ok(Some(asn1::write_single(
+diff --git a/src/rust/src/x509/sign.rs b/src/rust/src/x509/sign.rs
+index a75a873..970e2e8 100644
+--- a/src/rust/src/x509/sign.rs
++++ b/src/rust/src/x509/sign.rs
+@@ -315,7 +315,7 @@ pub(crate) fn sign_data<'p>(
+             private_key.call_method1(pyo3::intern!(py, "sign"), (data, hash_algorithm))?
+         }
+     };
+-    signature.extract()
++    Ok(signature.extract()?)
+ }
+ 
+ pub(crate) fn verify_signature_with_signature_algorithm<'p>(
+diff --git a/src/rust/src/x509/verify/mod.rs b/src/rust/src/x509/verify/mod.rs
+index aabbc05..709be61 100644
+--- a/src/rust/src/x509/verify/mod.rs
++++ b/src/rust/src/x509/verify/mod.rs
+@@ -446,7 +446,7 @@ fn build_subject_owner(
+         let value = subject
+             .getattr(pyo3::intern!(py, "_packed"))?
+             .call0()?
+-            .downcast::<pyo3::types::PyBytes>()?
++            .cast::<pyo3::types::PyBytes>()?
+             .clone();
+         Ok(SubjectOwner::IPAddress(value.unbind()))
+     } else {
+diff --git a/tests/hazmat/primitives/test_pkcs12.py b/tests/hazmat/primitives/test_pkcs12.py
+index 96b4d59..3ed0e7d 100644
+--- a/tests/hazmat/primitives/test_pkcs12.py
++++ b/tests/hazmat/primitives/test_pkcs12.py
+@@ -478,7 +478,9 @@ class TestPKCS12Creation:
+         )
+         with pytest.raises(TypeError) as exc:
+             serialize_key_and_certificates(b"name", key, key, None, encryption)
+-        assert "object cannot be converted to 'Certificate'" in str(exc.value)
++        assert "object cannot be cast as" in str(
++            exc.value
++        ) and "Certificate" in str(exc.value)
+ 
+         with pytest.raises(TypeError) as exc:
+             serialize_key_and_certificates(b"name", key, cert, None, key)
+@@ -899,18 +901,18 @@ class TestPKCS12TrustStoreCreation:
+ 
+         with pytest.raises(TypeError) as exc:
+             serialize_java_truststore([cert], encryption)
+-        assert "object cannot be converted to 'PKCS12Certificate'" in str(
++        assert "object cannot be cast as" in str(
+             exc.value
+-        )
++        ) and "PKCS12Certificate" in str(exc.value)
+ 
+         with pytest.raises(TypeError) as exc:
+             serialize_java_truststore(
+                 [PKCS12Certificate(cert, None), key],
+                 encryption,
+             )
+-        assert "object cannot be converted to 'PKCS12Certificate'" in str(
++        assert "object cannot be cast as" in str(
+             exc.value
+-        )
++        ) and "PKCS12Certificate" in str(exc.value)
+ 
+         with pytest.raises(TypeError) as exc:
+             serialize_java_truststore([PKCS12Certificate(cert, None)], cert)
+@@ -920,9 +922,9 @@ class TestPKCS12TrustStoreCreation:
+         )
+         with pytest.raises(TypeError) as exc:
+             serialize_java_truststore([key], encryption)
+-        assert "object cannot be converted to 'PKCS12Certificate'" in str(
++        assert "object cannot be cast as" in str(
+             exc.value
+-        )
++        ) and "PKCS12Certificate" in str(exc.value)
+ 
+ 
+ @pytest.mark.skip_fips(

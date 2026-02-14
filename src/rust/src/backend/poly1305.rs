@@ -2,18 +2,27 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
-use crate::backend::hashes::already_finalized_error;
+use cryptography_crypto::constant_time;
+use pyo3::types::PyBytesMethods;
+
 use crate::buf::CffiBuf;
 use crate::error::{CryptographyError, CryptographyResult};
 use crate::exceptions;
-use pyo3::types::PyBytesMethods;
 
-#[cfg(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_LIBRESSL))]
+#[cfg(any(
+    CRYPTOGRAPHY_IS_BORINGSSL,
+    CRYPTOGRAPHY_IS_LIBRESSL,
+    CRYPTOGRAPHY_IS_AWSLC
+))]
 struct Poly1305Boring {
     context: cryptography_openssl::poly1305::Poly1305State,
 }
 
-#[cfg(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_LIBRESSL))]
+#[cfg(any(
+    CRYPTOGRAPHY_IS_BORINGSSL,
+    CRYPTOGRAPHY_IS_LIBRESSL,
+    CRYPTOGRAPHY_IS_AWSLC
+))]
 impl Poly1305Boring {
     fn new(key: CffiBuf<'_>) -> CryptographyResult<Poly1305Boring> {
         if key.as_bytes().len() != 32 {
@@ -33,7 +42,7 @@ impl Poly1305Boring {
         &mut self,
         py: pyo3::Python<'p>,
     ) -> CryptographyResult<pyo3::Bound<'p, pyo3::types::PyBytes>> {
-        let result = pyo3::types::PyBytes::new_bound_with(py, 16usize, |b| {
+        let result = pyo3::types::PyBytes::new_with(py, 16usize, |b| {
             self.context.finalize(b.as_mut());
             Ok(())
         })?;
@@ -41,12 +50,20 @@ impl Poly1305Boring {
     }
 }
 
-#[cfg(not(any(CRYPTOGRAPHY_IS_LIBRESSL, CRYPTOGRAPHY_IS_BORINGSSL)))]
+#[cfg(not(any(
+    CRYPTOGRAPHY_IS_LIBRESSL,
+    CRYPTOGRAPHY_IS_BORINGSSL,
+    CRYPTOGRAPHY_IS_AWSLC
+)))]
 struct Poly1305Open {
     signer: openssl::sign::Signer<'static>,
 }
 
-#[cfg(not(any(CRYPTOGRAPHY_IS_LIBRESSL, CRYPTOGRAPHY_IS_BORINGSSL)))]
+#[cfg(not(any(
+    CRYPTOGRAPHY_IS_LIBRESSL,
+    CRYPTOGRAPHY_IS_BORINGSSL,
+    CRYPTOGRAPHY_IS_AWSLC
+)))]
 impl Poly1305Open {
     fn new(key: CffiBuf<'_>) -> CryptographyResult<Poly1305Open> {
         if cryptography_openssl::fips::is_enabled() {
@@ -79,7 +96,7 @@ impl Poly1305Open {
         &mut self,
         py: pyo3::Python<'p>,
     ) -> CryptographyResult<pyo3::Bound<'p, pyo3::types::PyBytes>> {
-        let result = pyo3::types::PyBytes::new_bound_with(py, self.signer.len()?, |b| {
+        let result = pyo3::types::PyBytes::new_with(py, self.signer.len()?, |b| {
             let n = self.signer.sign(b).unwrap();
             assert_eq!(n, b.len());
             Ok(())
@@ -90,9 +107,17 @@ impl Poly1305Open {
 
 #[pyo3::pyclass(module = "cryptography.hazmat.bindings._rust.openssl.poly1305")]
 struct Poly1305 {
-    #[cfg(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_LIBRESSL))]
+    #[cfg(any(
+        CRYPTOGRAPHY_IS_BORINGSSL,
+        CRYPTOGRAPHY_IS_LIBRESSL,
+        CRYPTOGRAPHY_IS_AWSLC
+    ))]
     inner: Option<Poly1305Boring>,
-    #[cfg(not(any(CRYPTOGRAPHY_IS_LIBRESSL, CRYPTOGRAPHY_IS_BORINGSSL)))]
+    #[cfg(not(any(
+        CRYPTOGRAPHY_IS_LIBRESSL,
+        CRYPTOGRAPHY_IS_BORINGSSL,
+        CRYPTOGRAPHY_IS_AWSLC
+    )))]
     inner: Option<Poly1305Open>,
 }
 
@@ -100,11 +125,19 @@ struct Poly1305 {
 impl Poly1305 {
     #[new]
     fn new(key: CffiBuf<'_>) -> CryptographyResult<Poly1305> {
-        #[cfg(any(CRYPTOGRAPHY_IS_BORINGSSL, CRYPTOGRAPHY_IS_LIBRESSL))]
+        #[cfg(any(
+            CRYPTOGRAPHY_IS_BORINGSSL,
+            CRYPTOGRAPHY_IS_LIBRESSL,
+            CRYPTOGRAPHY_IS_AWSLC
+        ))]
         return Ok(Poly1305 {
             inner: Some(Poly1305Boring::new(key)?),
         });
-        #[cfg(not(any(CRYPTOGRAPHY_IS_LIBRESSL, CRYPTOGRAPHY_IS_BORINGSSL)))]
+        #[cfg(not(any(
+            CRYPTOGRAPHY_IS_LIBRESSL,
+            CRYPTOGRAPHY_IS_BORINGSSL,
+            CRYPTOGRAPHY_IS_AWSLC
+        )))]
         return Ok(Poly1305 {
             inner: Some(Poly1305Open::new(key)?),
         });
@@ -136,7 +169,9 @@ impl Poly1305 {
     fn update(&mut self, data: CffiBuf<'_>) -> CryptographyResult<()> {
         self.inner
             .as_mut()
-            .map_or(Err(already_finalized_error()), |b| b.update(data))
+            .map_or(Err(exceptions::already_finalized_error()), |b| {
+                b.update(data)
+            })
     }
 
     fn finalize<'p>(
@@ -146,7 +181,9 @@ impl Poly1305 {
         let res = self
             .inner
             .as_mut()
-            .map_or(Err(already_finalized_error()), |b| b.finalize(py));
+            .map_or(Err(exceptions::already_finalized_error()), |b| {
+                b.finalize(py)
+            });
         self.inner = None;
 
         res
@@ -155,7 +192,7 @@ impl Poly1305 {
     fn verify(&mut self, py: pyo3::Python<'_>, signature: &[u8]) -> CryptographyResult<()> {
         let actual_bound = self.finalize(py)?;
         let actual = actual_bound.as_bytes();
-        if actual.len() != signature.len() || !openssl::memcmp::eq(actual, signature) {
+        if !constant_time::bytes_eq(actual, signature) {
             return Err(CryptographyError::from(
                 exceptions::InvalidSignature::new_err("Value did not match computed tag."),
             ));
@@ -165,7 +202,7 @@ impl Poly1305 {
     }
 }
 
-#[pyo3::pymodule]
+#[pyo3::pymodule(gil_used = false)]
 pub(crate) mod poly1305 {
     #[pymodule_export]
     use super::Poly1305;
