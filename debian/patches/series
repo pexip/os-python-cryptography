@@ -6,12 +6,8 @@ drop-cffi-dep.patch
 #pexip-dodgy-int.patch
 
 downgrade-deps.patch
-#0004-update-to-asn1-0.19-and-use-X509GeneralizedTime.patch
-#0005-Support-128-bit-OID-arcs-11820.patch
-
+0004-Adapt-the-upstream-changes-for-pyo3-0.27-PR-13708.patch
 pexip-ossl300-non-deprecated.patch
 pexip-docs-no-inline-tags.patch
 pexip-pyopenssl-bindings.patch
 pexip-ssl_security_level.patch
-
-CVE-2026-26007.patch
