@@ -1,3 +1,4 @@
+docs: remove dependency on sphinx_inline_tabs
 --- a/docs/conf.py
 +++ b/docs/conf.py
 @@ -47,7 +47,7 @@

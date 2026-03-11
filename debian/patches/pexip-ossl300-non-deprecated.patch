@@ -1,3 +1,4 @@
+Make python-cryptography work without deprecated OSSL symbols
 diff --git a/src/_cffi_src/openssl/bignum.py b/src/_cffi_src/openssl/bignum.py
 index f14c96c0c..c19b57995 100644
 --- a/src/_cffi_src/openssl/bignum.py

@@ -1,3 +1,4 @@
+expose SSL(_CTX)_(get|set)_security_level symbols
 --- a/src/_cffi_src/openssl/ssl.py
 +++ b/src/_cffi_src/openssl/ssl.py
 @@ -322,6 +322,10 @@
