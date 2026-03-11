@@ -1,0 +1,28 @@
+deps: downgrade so we don't have to fork the world
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -22,10 +22,10 @@
+ 
+ [workspace.dependencies]
+ asn1 = { version = "0.23.0", default-features = false }
+-pyo3 = { version = ">=0.27,<0.28", features = ["abi3"] }
++pyo3 = { version = ">=0.27,<0.28", features = ["abi3", "abi3-py313"] }
+ pyo3-build-config = { version = ">=0.27,<0.28" }
+-openssl = "0.10.73"
+-openssl-sys = "0.9.109"
++openssl = "0.10.72"
++openssl-sys = "0.9.107"
+ 
+ [profile.release]
+ overflow-checks = true
+--- a/src/rust/cryptography-cffi/Cargo.toml
++++ b/src/rust/cryptography-cffi/Cargo.toml
+@@ -12,7 +12,7 @@
+ openssl-sys.workspace = true
+ 
+ [build-dependencies]
+-cc = "1.2.34"
++cc = "1.2.19"
+ 
+ [lints.rust]
+ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(python_implementation, values("CPython", "PyPy"))'] }

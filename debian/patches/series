@@ -3,6 +3,7 @@ drop-cffi-dep.patch
 
 downgrade-deps.patch
 0004-Adapt-the-upstream-changes-for-pyo3-0.27-PR-13708.patch
+pexip-downgrade-deps.patch
 pexip-ossl300-non-deprecated.patch
 pexip-docs-no-inline-tags.patch
 pexip-pyopenssl-bindings.patch
