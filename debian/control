@@ -42,7 +42,7 @@ Vcs-Browser: https://salsa.debian.org/python-team/packages/python-cryptography
 Vcs-Git: https://salsa.debian.org/python-team/packages/python-cryptography.git
 Homepage: https://cryptography.io/
 Testsuite: autopkgtest-pkg-pybuild
-XS-Pexip-Upstream: http://deb.debian.org/debian/ trixie
+XS-Pexip-Upstream: http://deb.debian.org/debian/ forky
 
 Package: python3-cryptography
 Architecture: any
