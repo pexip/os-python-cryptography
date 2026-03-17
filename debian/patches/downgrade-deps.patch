@@ -21,8 +21,8 @@ index a698cc1..bf425f5 100644
 -openssl = "0.10.74"
 -openssl-sys = "0.9.110"
 +asn1 = { version = "0.23.0", default-features = false }
-+pyo3 = { version = ">=0.27,<0.28", features = ["abi3"] }
-+pyo3-build-config = { version = ">=0.27,<0.28" }
++pyo3 = { version = ">=0.27,<0.29", features = ["abi3"] }
++pyo3-build-config = { version = ">=0.27,<0.29" }
 +openssl = "0.10.73"
 +openssl-sys = "0.9.109"
  

@@ -1,3 +1,10 @@
+python-cryptography (46.0.5-2) unstable; urgency=medium
+
+  * Team upload.
+  * Support building against pyo3 0.28.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 17 Mar 2026 11:38:26 +0000
+
 python-cryptography (46.0.5-1) unstable; urgency=medium
 
   * New upstream version.

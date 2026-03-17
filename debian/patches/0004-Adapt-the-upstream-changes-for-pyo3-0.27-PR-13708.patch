@@ -17,10 +17,10 @@ Subject: Adapt the upstream changes for pyo3 0.27 (PR #13708).
  tests/hazmat/primitives/test_pkcs12.py  | 16 +++++++++-------
  12 files changed, 72 insertions(+), 52 deletions(-)
 
-diff --git a/src/rust/src/asn1.rs b/src/rust/src/asn1.rs
-index ab5499b..01fe8a2 100644
---- a/src/rust/src/asn1.rs
-+++ b/src/rust/src/asn1.rs
+Index: python-cryptography/src/rust/src/asn1.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/asn1.rs
++++ python-cryptography/src/rust/src/asn1.rs
 @@ -14,7 +14,7 @@ pub(crate) fn py_oid_to_oid(
      py_oid: pyo3::Bound<'_, pyo3::PyAny>,
  ) -> pyo3::PyResult<asn1::ObjectIdentifier> {
@@ -30,7 +30,7 @@ index ab5499b..01fe8a2 100644
          .get()
          .oid
          .clone())
-@@ -85,8 +85,8 @@ pub(crate) fn py_uint_to_big_endian_bytes<'p>(
+@@ -85,8 +85,8 @@ pub(crate) fn py_uint_to_big_endian_byte
          .extract::<usize>()?
          / 8
          + 1;
@@ -41,10 +41,10 @@ index ab5499b..01fe8a2 100644
  }
  
  pub(crate) fn encode_der_data<'p>(
-diff --git a/src/rust/src/backend/ciphers.rs b/src/rust/src/backend/ciphers.rs
-index 11ff21f..c22e12d 100644
---- a/src/rust/src/backend/ciphers.rs
-+++ b/src/rust/src/backend/ciphers.rs
+Index: python-cryptography/src/rust/src/backend/ciphers.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/backend/ciphers.rs
++++ python-cryptography/src/rust/src/backend/ciphers.rs
 @@ -592,18 +592,18 @@ fn cipher_supported(
  
  #[pyo3::pyfunction]
@@ -68,10 +68,10 @@ index 11ff21f..c22e12d 100644
          c.borrow_mut().aad_bytes_remaining -= n;
      }
  }
-diff --git a/src/rust/src/backend/dh.rs b/src/rust/src/backend/dh.rs
-index e419485..15d6b51 100644
---- a/src/rust/src/backend/dh.rs
-+++ b/src/rust/src/backend/dh.rs
+Index: python-cryptography/src/rust/src/backend/dh.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/backend/dh.rs
++++ python-cryptography/src/rust/src/backend/dh.rs
 @@ -184,7 +184,9 @@ impl DHPrivateKey {
  
          let parameter_numbers = DHParameterNumbers {
@@ -105,10 +105,10 @@ index e419485..15d6b51 100644
              g: py_g.extract()?,
          })
      }
-diff --git a/src/rust/src/buf.rs b/src/rust/src/buf.rs
-index 3b66f76..e5dab35 100644
---- a/src/rust/src/buf.rs
-+++ b/src/rust/src/buf.rs
+Index: python-cryptography/src/rust/src/buf.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/buf.rs
++++ python-cryptography/src/rust/src/buf.rs
 @@ -10,7 +10,9 @@ use pyo3::types::PyAnyMethods;
  use crate::types;
  
@@ -120,7 +120,7 @@ index 3b66f76..e5dab35 100644
      if pyobj.is_instance_of::<pyo3::types::PyString>() {
          format!(
              "Cannot convert \"{}\" instance to a buffer.\nDid you mean to pass a bytestring instead?",
-@@ -26,7 +28,7 @@ fn generate_non_convertible_buffer_error_msg(pyobj: &pyo3::Bound<'_, pyo3::PyAny
+@@ -26,7 +28,7 @@ fn generate_non_convertible_buffer_error
  
  #[cfg(Py_3_11)]
  fn _extract_buffer_length(
@@ -153,7 +153,7 @@ index 3b66f76..e5dab35 100644
          let buf = if len == 0 {
              &[]
          } else {
-@@ -118,7 +122,7 @@ impl<'a> pyo3::conversion::FromPyObject<'a> for CffiBuf<'a> {
+@@ -118,7 +122,7 @@ impl<'a> pyo3::conversion::FromPyObject<
              unsafe { slice::from_raw_parts(ptrval as *const u8, len) }
          };
          Ok(CffiBuf {
@@ -177,7 +177,7 @@ index 3b66f76..e5dab35 100644
          let buf = if len == 0 {
              &mut []
          } else {
-@@ -157,7 +163,7 @@ impl<'a> pyo3::conversion::FromPyObject<'a> for CffiMutBuf<'a> {
+@@ -157,7 +163,7 @@ impl<'a> pyo3::conversion::FromPyObject<
              unsafe { slice::from_raw_parts_mut(ptrval as *mut u8, len) }
          };
          Ok(CffiMutBuf {
@@ -186,11 +186,11 @@ index 3b66f76..e5dab35 100644
              _bufobj: bufobj,
              buf,
          })
-diff --git a/src/rust/src/declarative_asn1/encode.rs b/src/rust/src/declarative_asn1/encode.rs
-index 6ba2b12..3af9caa 100644
---- a/src/rust/src/declarative_asn1/encode.rs
-+++ b/src/rust/src/declarative_asn1/encode.rs
-@@ -31,10 +31,10 @@ impl asn1::Asn1Writable for AnnotatedTypeObject<'_> {
+Index: python-cryptography/src/rust/src/declarative_asn1/encode.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/declarative_asn1/encode.rs
++++ python-cryptography/src/rust/src/declarative_asn1/encode.rs
+@@ -31,10 +31,10 @@ impl asn1::Asn1Writable for AnnotatedTyp
                  &asn1::SequenceWriter::new(&|w| {
                      for (name, ann_type) in fields.bind(py).into_iter() {
                          let name = name
@@ -203,11 +203,11 @@ index 6ba2b12..3af9caa 100644
                              .map_err(|_| asn1::WriteError::AllocationError)?;
                          let object = AnnotatedTypeObject {
                              annotated_type: ann_type.get(),
-diff --git a/src/rust/src/error.rs b/src/rust/src/error.rs
-index 0125a15..84c5a03 100644
---- a/src/rust/src/error.rs
-+++ b/src/rust/src/error.rs
-@@ -34,8 +34,8 @@ impl From<pyo3::PyErr> for CryptographyError {
+Index: python-cryptography/src/rust/src/error.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/error.rs
++++ python-cryptography/src/rust/src/error.rs
+@@ -34,8 +34,8 @@ impl From<pyo3::PyErr> for CryptographyE
      }
  }
  
@@ -240,10 +240,10 @@ index 0125a15..84c5a03 100644
              assert!(matches!(e, CryptographyError::Py(_)));
  
              let e = cryptography_key_parsing::KeyParsingError::OpenSSL(
-diff --git a/src/rust/src/exceptions.rs b/src/rust/src/exceptions.rs
-index da7f33c..0abf470 100644
---- a/src/rust/src/exceptions.rs
-+++ b/src/rust/src/exceptions.rs
+Index: python-cryptography/src/rust/src/exceptions.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/exceptions.rs
++++ python-cryptography/src/rust/src/exceptions.rs
 @@ -27,18 +27,18 @@ pub(crate) enum Reasons {
      UNSUPPORTED_MAC,
  }
@@ -275,10 +275,10 @@ index da7f33c..0abf470 100644
  
  pub(crate) fn already_finalized_error() -> CryptographyError {
      CryptographyError::from(AlreadyFinalized::new_err("Context was already finalized."))
-diff --git a/src/rust/src/x509/crl.rs b/src/rust/src/x509/crl.rs
-index c6a50e7..d9a83cd 100644
---- a/src/rust/src/x509/crl.rs
-+++ b/src/rust/src/x509/crl.rs
+Index: python-cryptography/src/rust/src/x509/crl.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/x509/crl.rs
++++ python-cryptography/src/rust/src/x509/crl.rs
 @@ -153,7 +153,7 @@ impl CertificateRevocationList {
  
          if idx.is_instance_of::<pyo3::types::PySlice>() {
@@ -288,10 +288,10 @@ index c6a50e7..d9a83cd 100644
                  .indices(self.len().try_into().unwrap())?;
              let result = pyo3::types::PyList::empty(py);
              for i in (indices.start..indices.stop).step_by(indices.step.try_into().unwrap()) {
-diff --git a/src/rust/src/x509/extensions.rs b/src/rust/src/x509/extensions.rs
-index 739455f..7a866b3 100644
---- a/src/rust/src/x509/extensions.rs
-+++ b/src/rust/src/x509/extensions.rs
+Index: python-cryptography/src/rust/src/x509/extensions.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/x509/extensions.rs
++++ python-cryptography/src/rust/src/x509/extensions.rs
 @@ -399,14 +399,14 @@ fn encode_tls_features(
  fn encode_scts(ext: &pyo3::Bound<'_, pyo3::PyAny>) -> CryptographyResult<Vec<u8>> {
      let mut length = 0;
@@ -327,10 +327,10 @@ index 739455f..7a866b3 100644
                  .clone();
              let bytes = py_uint_to_big_endian_bytes(ext.py(), intval)?;
              Ok(Some(asn1::write_single(
-diff --git a/src/rust/src/x509/sign.rs b/src/rust/src/x509/sign.rs
-index a75a873..970e2e8 100644
---- a/src/rust/src/x509/sign.rs
-+++ b/src/rust/src/x509/sign.rs
+Index: python-cryptography/src/rust/src/x509/sign.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/x509/sign.rs
++++ python-cryptography/src/rust/src/x509/sign.rs
 @@ -315,7 +315,7 @@ pub(crate) fn sign_data<'p>(
              private_key.call_method1(pyo3::intern!(py, "sign"), (data, hash_algorithm))?
          }
@@ -340,10 +340,10 @@ index a75a873..970e2e8 100644
  }
  
  pub(crate) fn verify_signature_with_signature_algorithm<'p>(
-diff --git a/src/rust/src/x509/verify/mod.rs b/src/rust/src/x509/verify/mod.rs
-index aabbc05..709be61 100644
---- a/src/rust/src/x509/verify/mod.rs
-+++ b/src/rust/src/x509/verify/mod.rs
+Index: python-cryptography/src/rust/src/x509/verify/mod.rs
+===================================================================
+--- python-cryptography.orig/src/rust/src/x509/verify/mod.rs
++++ python-cryptography/src/rust/src/x509/verify/mod.rs
 @@ -446,7 +446,7 @@ fn build_subject_owner(
          let value = subject
              .getattr(pyo3::intern!(py, "_packed"))?
@@ -353,30 +353,27 @@ index aabbc05..709be61 100644
              .clone();
          Ok(SubjectOwner::IPAddress(value.unbind()))
      } else {
-diff --git a/tests/hazmat/primitives/test_pkcs12.py b/tests/hazmat/primitives/test_pkcs12.py
-index 96b4d59..3ed0e7d 100644
---- a/tests/hazmat/primitives/test_pkcs12.py
-+++ b/tests/hazmat/primitives/test_pkcs12.py
-@@ -478,7 +478,9 @@ class TestPKCS12Creation:
+Index: python-cryptography/tests/hazmat/primitives/test_pkcs12.py
+===================================================================
+--- python-cryptography.orig/tests/hazmat/primitives/test_pkcs12.py
++++ python-cryptography/tests/hazmat/primitives/test_pkcs12.py
+@@ -478,7 +478,7 @@ class TestPKCS12Creation:
          )
          with pytest.raises(TypeError) as exc:
              serialize_key_and_certificates(b"name", key, key, None, encryption)
 -        assert "object cannot be converted to 'Certificate'" in str(exc.value)
-+        assert "object cannot be cast as" in str(
-+            exc.value
-+        ) and "Certificate" in str(exc.value)
++        assert "object cannot be cast as" in str(exc.value) or "is not an instance of 'Certificate'" in str(exc.value)
  
          with pytest.raises(TypeError) as exc:
              serialize_key_and_certificates(b"name", key, cert, None, key)
-@@ -899,18 +901,18 @@ class TestPKCS12TrustStoreCreation:
+@@ -899,18 +899,14 @@ class TestPKCS12TrustStoreCreation:
  
          with pytest.raises(TypeError) as exc:
              serialize_java_truststore([cert], encryption)
 -        assert "object cannot be converted to 'PKCS12Certificate'" in str(
-+        assert "object cannot be cast as" in str(
-             exc.value
+-            exc.value
 -        )
-+        ) and "PKCS12Certificate" in str(exc.value)
++        assert "object cannot be cast as" in str(exc.value) or "is not an instance of 'PKCS12Certificate'" in str(exc.value)
  
          with pytest.raises(TypeError) as exc:
              serialize_java_truststore(
@@ -384,22 +381,20 @@ index 96b4d59..3ed0e7d 100644
                  encryption,
              )
 -        assert "object cannot be converted to 'PKCS12Certificate'" in str(
-+        assert "object cannot be cast as" in str(
-             exc.value
+-            exc.value
 -        )
-+        ) and "PKCS12Certificate" in str(exc.value)
++        assert "object cannot be cast as" in str(exc.value) or "is not an instance of 'PKCS12Certificate'" in str(exc.value)
  
          with pytest.raises(TypeError) as exc:
              serialize_java_truststore([PKCS12Certificate(cert, None)], cert)
-@@ -920,9 +922,9 @@ class TestPKCS12TrustStoreCreation:
+@@ -920,9 +916,7 @@ class TestPKCS12TrustStoreCreation:
          )
          with pytest.raises(TypeError) as exc:
              serialize_java_truststore([key], encryption)
 -        assert "object cannot be converted to 'PKCS12Certificate'" in str(
-+        assert "object cannot be cast as" in str(
-             exc.value
+-            exc.value
 -        )
-+        ) and "PKCS12Certificate" in str(exc.value)
++        assert "object cannot be cast as" in str(exc.value) or "is not an instance of 'PKCS12Certificate'" in str(exc.value)
  
  
  @pytest.mark.skip_fips(
