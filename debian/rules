@@ -44,6 +44,10 @@ override_dh_auto_configure:
 	cargo generate-lockfile --offline
 	dh_auto_configure
 
+override_dh_auto_test:
+	dh_auto_test
+	@echo "Running tests with FIPS mode enabled"
+	FIPS_FORCE_ENABLE=1 dh_auto_test
 
 override_dh_dwz:
 	dh_dwz --no-dwz-multifile
