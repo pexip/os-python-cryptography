@@ -1,0 +1,262 @@
+FIPS: teach HMAC/HKDF code and tests about SP800-131a
+--- python-cryptography.orig/tests/hazmat/primitives/test_hmac.py
++++ python-cryptography/tests/hazmat/primitives/test_hmac.py
+@@ -31,7 +31,7 @@ class TestHMACCopy:
+ 
+ class TestHMAC:
+     def test_hmac_reject_unicode(self, backend):
+-        h = hmac.HMAC(b"mykey", hashes.SHA1(), backend=backend)
++        h = hmac.HMAC(b"sp800-131a-key", hashes.SHA1(), backend=backend)
+         with pytest.raises(TypeError):
+             h.update("\u00fc")  # type: ignore[arg-type]
+ 
+@@ -44,7 +44,7 @@ class TestHMAC:
+             )
+ 
+     def test_raises_after_finalize(self, backend):
+-        h = hmac.HMAC(b"key", hashes.SHA1(), backend=backend)
++        h = hmac.HMAC(b"sp800-131a-key", hashes.SHA1(), backend=backend)
+         h.finalize()
+ 
+         with pytest.raises(AlreadyFinalized):
+@@ -57,17 +57,17 @@ class TestHMAC:
+             h.finalize()
+ 
+     def test_verify(self, backend):
+-        h = hmac.HMAC(b"", hashes.SHA1(), backend=backend)
++        h = hmac.HMAC(b"sp800-131a-key", hashes.SHA1(), backend=backend)
+         digest = h.finalize()
+ 
+-        h = hmac.HMAC(b"", hashes.SHA1(), backend=backend)
++        h = hmac.HMAC(b"sp800-131a-key", hashes.SHA1(), backend=backend)
+         h.verify(digest)
+ 
+         with pytest.raises(AlreadyFinalized):
+             h.verify(b"")
+ 
+     def test_invalid_verify(self, backend):
+-        h = hmac.HMAC(b"", hashes.SHA1(), backend=backend)
++        h = hmac.HMAC(b"sp800-131a-key", hashes.SHA1(), backend=backend)
+         with pytest.raises(InvalidSignature):
+             h.verify(b"")
+ 
+@@ -75,16 +75,16 @@ class TestHMAC:
+             h.verify(b"")
+ 
+     def test_verify_reject_unicode(self, backend):
+-        h = hmac.HMAC(b"", hashes.SHA1(), backend=backend)
++        h = hmac.HMAC(b"sp800-131a-key", hashes.SHA1(), backend=backend)
+         with pytest.raises(TypeError):
+             h.verify("")  # type: ignore[arg-type]
+ 
+     def test_unsupported_hash(self, backend):
+         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_HASH):
+-            hmac.HMAC(b"key", DummyHashAlgorithm(), backend)
++            hmac.HMAC(b"sp800-131a-key", DummyHashAlgorithm(), backend)
+ 
+         with raises_unsupported_algorithm(_Reasons.UNSUPPORTED_HASH):
+-            hmac.HMAC(b"key", hashes.SHAKE256(digest_size=256), backend)
++            hmac.HMAC(b"sp800-131a-key", hashes.SHAKE256(digest_size=256), backend)
+ 
+     def test_buffer_protocol(self, backend):
+         key = bytearray(b"2b7e151628aed2a6abf7158809cf4f3c")
+@@ -96,5 +96,5 @@ class TestHMAC:
+ 
+     def test_algorithm(self):
+         alg = hashes.SHA256()
+-        h = hmac.HMAC(b"123456", alg)
++        h = hmac.HMAC(b"sp800-131a-key", alg)
+         assert h.algorithm is alg
+--- python-cryptography.orig/tests/hazmat/primitives/test_kbkdf.py
++++ python-cryptography/tests/hazmat/primitives/test_kbkdf.py
+@@ -40,7 +40,7 @@ class TestKBKDFHMAC:
+             backend=backend,
+         )
+ 
+-        key = kdf.derive(b"material")
++        key = kdf.derive(b"longer-material")
+ 
+         kdf = KBKDFHMAC(
+             hashes.SHA256(),
+@@ -56,7 +56,7 @@ class TestKBKDFHMAC:
+         )
+ 
+         with pytest.raises(InvalidKey):
+-            kdf.verify(b"material2", key)
++            kdf.verify(b"longer-material2", key)
+ 
+     def test_already_finalized(self, backend):
+         kdf = KBKDFHMAC(
+@@ -72,10 +72,10 @@ class TestKBKDFHMAC:
+             backend=backend,
+         )
+ 
+-        kdf.derive(b"material")
++        kdf.derive(b"longer-material")
+ 
+         with pytest.raises(AlreadyFinalized):
+-            kdf.derive(b"material2")
++            kdf.derive(b"longer-material2")
+ 
+         kdf = KBKDFHMAC(
+             hashes.SHA256(),
+@@ -90,10 +90,10 @@ class TestKBKDFHMAC:
+             backend=backend,
+         )
+ 
+-        key = kdf.derive(b"material")
++        key = kdf.derive(b"longer-material")
+ 
+         with pytest.raises(AlreadyFinalized):
+-            kdf.verify(b"material", key)
++            kdf.verify(b"longer-material", key)
+ 
+         kdf = KBKDFHMAC(
+             hashes.SHA256(),
+@@ -107,10 +107,10 @@ class TestKBKDFHMAC:
+             None,
+             backend=backend,
+         )
+-        kdf.verify(b"material", key)
++        kdf.verify(b"longer-material", key)
+ 
+         with pytest.raises(AlreadyFinalized):
+-            kdf.verify(b"material", key)
++            kdf.verify(b"longer-material", key)
+ 
+     def test_key_length(self, backend):
+         kdf = KBKDFHMAC(
+@@ -489,8 +489,8 @@ class TestKBKDFHMAC:
+             backend=backend,
+         )
+ 
+-        key = kdf.derive(bytearray(b"material"))
+-        assert key == b"\xb7\x01\x05\x98\xf5\x1a\x12L\xc7."
++        key = kdf.derive(bytearray(b"longer-material"))
++        assert key == b"|j\xacjBsO;,\xd1"
+ 
+ 
+ class TestKBKDFCMAC:
+--- python-cryptography.orig/tests/hazmat/primitives/test_hkdf.py
++++ python-cryptography/tests/hazmat/primitives/test_hkdf.py
+@@ -119,8 +119,8 @@ class TestHKDF:
+         hkdf = HKDF(
+             hashes.SHA256(),
+             int(vector["l"]),
+-            salt=vector["salt"],
+-            info=vector["info"],
++            salt=vector["salt"] or None,
++            info=vector["info"] or None,
+             backend=backend,
+         )
+         ikm = binascii.unhexlify(vector["ikm"])
+@@ -134,8 +134,8 @@ class TestHKDF:
+         hkdf = HKDF(
+             hashes.SHA256(),
+             int(vector["l"]),
+-            salt=vector["salt"],
+-            info=vector["info"],
++            salt=vector["salt"] or None,
++            info=vector["info"] or None,
+             backend=backend,
+         )
+         ikm = bytearray(binascii.unhexlify(vector["ikm"]))
+@@ -207,10 +207,10 @@ class TestHKDFExpand:
+         info = binascii.unhexlify(b"f0f1f2f3f4f5f6f7f8f9")
+         hkdf = HKDFExpand(hashes.SHA256(), 42, info, backend)
+ 
+-        hkdf.derive(b"first")
++        hkdf.derive(b"first-derivation")
+ 
+         with pytest.raises(AlreadyFinalized):
+-            hkdf.derive(b"second")
++            hkdf.derive(b"second derivation")
+ 
+     def test_unicode_error(self, backend):
+         info = binascii.unhexlify(b"f0f1f2f3f4f5f6f7f8f9")
+--- python-cryptography.orig/tests/hazmat/primitives/utils.py
++++ python-cryptography/tests/hazmat/primitives/utils.py
+@@ -245,6 +245,8 @@ def generate_hmac_test(param_loader, pat
+ 
+ def hmac_test(backend, algorithm, params):
+     msg, md, key = params
++    if backend._fips_enabled and len(key) < 14:
++        pytest.skip("key not SP800-131a compliant")
+     h = hmac.HMAC(binascii.unhexlify(key), algorithm, backend=backend)
+     h.update(binascii.unhexlify(msg))
+     assert h.finalize() == binascii.unhexlify(md.encode("ascii"))
+@@ -331,6 +333,8 @@ def aead_tag_exception_test(backend, cip
+ 
+ 
+ def hkdf_derive_test(backend, algorithm, params):
++    if backend._fips_enabled and len(params["salt"]) < 28:
++        pytest.skip("salt not SP800-131a compliant")
+     hkdf = HKDF(
+         algorithm,
+         int(params["l"]),
+--- python-cryptography.orig/src/rust/src/backend/hmac.rs
++++ python-cryptography/src/rust/src/backend/hmac.rs
+@@ -3,6 +3,7 @@
+ // for complete details.
+ 
+ use cryptography_crypto::constant_time;
++use cryptography_openssl::fips;
+ use pyo3::types::PyBytesMethods;
+ use openssl::mac as ossl_mac;
+ 
+@@ -30,10 +31,16 @@ impl Hmac {
+         let md = message_digest_from_algorithm(py, algorithm)?;
+         let mut ctx = ossl_mac::MacCtx::new(&ossl_mac::Mac::hmac())?;
+         ctx.init_digest(key, &md).map_err(|_| {
+-            exceptions::UnsupportedAlgorithm::new_err((
+-                "Digest is not supported for HMAC",
+-                exceptions::Reasons::UNSUPPORTED_HASH,
+-            ))
++            if fips::is_enabled() && key.len() < 14 {
++                pyo3::exceptions::PyValueError::new_err(
++                    "HMAC key must be at least 112 bits (14 bytes)",
++                )
++            } else {
++                exceptions::UnsupportedAlgorithm::new_err((
++                    "Digest is not supported for HMAC",
++                    exceptions::Reasons::UNSUPPORTED_HASH,
++                ))
++            }
+         })?;
+ 
+         Ok(Hmac {
+--- python-cryptography.orig/src/rust/src/backend/kdf.rs
++++ python-cryptography/src/rust/src/backend/kdf.rs
+@@ -7,6 +7,7 @@ use base64::engine::general_purpose::STA
+ #[cfg(CRYPTOGRAPHY_OPENSSL_320_OR_GREATER)]
+ use base64::engine::Engine;
+ use cryptography_crypto::constant_time;
++use cryptography_openssl::fips;
+ use pyo3::types::{PyAnyMethods, PyBytesMethods};
+ 
+ use crate::backend::hashes;
+@@ -484,6 +485,13 @@ impl Hkdf {
+         }
+ 
+         let salt = if let Some(salt) = salt {
++            if fips::is_enabled() && salt.as_bytes(py).len() < 14 {
++                return Err(CryptographyError::from(
++                    pyo3::exceptions::PyValueError::new_err(
++                        "Hkdf salt must be at least 112 bits (14 bytes)",
++                    )
++                ));
++            }
+             salt
+         } else {
+             pyo3::types::PyBytes::new_with(py, digest_size, |_| Ok(()))?.into()
+--- python-cryptography.orig/tests/bench/test_hkdf.py
++++ python-cryptography/tests/bench/test_hkdf.py
+@@ -11,7 +11,7 @@ def test_hkdf(benchmark):
+         hkdf = HKDF(
+             hashes.SHA512(),
+             16000,
+-            salt=b"salt",
++            salt=b"sp800-131a-salt",
+             info=b"info",
+         )
+         hkdf.derive(b"0" * 64)
