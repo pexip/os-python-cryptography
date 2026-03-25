@@ -3,6 +3,7 @@ python-cryptography (46.0.5-2+pexip25u2) pexip-trixie; urgency=medium
   * Run tests with FIPS mode enabled too.
   * d/p: add SP800-56b patch.
   * d/p: add SP800-131a patch.
+  * d/p: add DigestSqueeze patch.
 
  -- Huw Jones <huw@pexip.com>  Mon, 23 Mar 2026 16:57:45 +0000
 

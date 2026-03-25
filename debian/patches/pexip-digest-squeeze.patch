@@ -1,0 +1,12 @@
+Gracefully handle old providers that don't support the `squeeze_xof` method.
+--- python-cryptography.orig/src/rust/src/backend/hashes.rs
++++ python-cryptography/src/rust/src/backend/hashes.rs
+@@ -228,7 +228,7 @@ impl XOFHash {
+                 )
+             })?;
+         let result = pyo3::types::PyBytes::new_with(py, length, |b| {
+-            self.ctx.squeeze_xof(b).unwrap();
++            self.ctx.squeeze_xof(b).map_err(CryptographyError::from)?;
+             Ok(())
+         })?;
+         Ok(result)
