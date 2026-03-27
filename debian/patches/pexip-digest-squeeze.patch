@@ -1,7 +1,38 @@
-Gracefully handle old providers that don't support the `squeeze_xof` method.
---- python-cryptography.orig/src/rust/src/backend/hashes.rs
-+++ python-cryptography/src/rust/src/backend/hashes.rs
-@@ -228,7 +228,7 @@ impl XOFHash {
+Gracefully handle old providers that don't support `EVP_DigestSqueeze`.
+--- a/src/rust/src/backend/hashes.rs
++++ b/src/rust/src/backend/hashes.rs
+@@ -141,6 +141,7 @@ impl Hash {
+ pub(crate) struct XOFHash {
+     #[pyo3(get)]
+     algorithm: pyo3::Py<pyo3::PyAny>,
++    md: openssl::hash::MessageDigest,
+     ctx: openssl::hash::Hasher,
+     bytes_remaining: u64,
+     squeezed: bool,
+@@ -192,6 +193,7 @@ impl XOFHash {
+                 Ok(XOFHash {
+                     algorithm: algorithm.clone().unbind(),
+                     ctx,
++                    md: openssl::hash::MessageDigest::fetch(&md.name()?)?,
+                     bytes_remaining,
+                     squeezed: false,
+                 })
+@@ -217,6 +219,14 @@ impl XOFHash {
+         py: pyo3::Python<'p>,
+         length: usize,
+     ) -> CryptographyResult<pyo3::Bound<'p, pyo3::types::PyBytes>> {
++        let provider = self.md.provider().map_err(CryptographyError::from)?;
++        if provider.version().map_err(CryptographyError::from)? < (3, 3, 0) {
++            return Err(CryptographyError::from(
++                pyo3::exceptions::PyNotImplementedError::new_err(
++                    "Current provider doesn't implement squeeze_xof",
++                )
++            ));
++        }
+         self.squeezed = true;
+         // We treat digest_size as the maximum total output for this API
+         self.bytes_remaining = self
+@@ -228,7 +238,7 @@ impl XOFHash {
                  )
              })?;
          let result = pyo3::types::PyBytes::new_with(py, length, |b| {
@@ -10,3 +41,78 @@ Gracefully handle old providers that don't support the `squeeze_xof` method.
              Ok(())
          })?;
          Ok(result)
+@@ -238,6 +248,7 @@ impl XOFHash {
+         Ok(XOFHash {
+             algorithm: self.algorithm.clone_ref(py),
+             ctx: self.ctx.clone(),
++            md: self.md.clone(),
+             bytes_remaining: self.bytes_remaining,
+             squeezed: self.squeezed,
+         })
+--- a/tests/hazmat/primitives/test_xofhash.py
++++ b/tests/hazmat/primitives/test_xofhash.py
+@@ -4,6 +4,7 @@
+ 
+ 
+ import binascii
++import functools
+ import os
+ import random
+ import sys
+@@ -18,6 +19,16 @@ from ...utils import load_nist_vectors
+ from .utils import _load_all_params
+ 
+ 
++def _maybe_skip_squeeze(func):
++    @functools.wraps(func)
++    def _wrapper(*args, **kwargs):
++        try:
++            func(*args, **kwargs)
++        except NotImplementedError:
++            pytest.skip("Squeeze not supported by backend")
++    return _wrapper
++
++
+ @pytest.mark.supported(
+     only_if=lambda backend: (
+         not rust_openssl.CRYPTOGRAPHY_OPENSSL_330_OR_GREATER
+@@ -50,6 +61,7 @@ class TestXOFHash:
+         with pytest.raises(TypeError):
+             hashes.XOFHash(hashes.SHA256())  # type: ignore[arg-type]
+ 
++    @_maybe_skip_squeeze
+     def test_raises_update_after_squeeze(self, backend):
+         h = hashes.XOFHash(hashes.SHAKE128(digest_size=256))
+         h.update(b"foo")
+@@ -58,6 +70,7 @@ class TestXOFHash:
+         with pytest.raises(AlreadyFinalized):
+             h.update(b"bar")
+ 
++    @_maybe_skip_squeeze
+     def test_copy(self, backend):
+         h = hashes.XOFHash(hashes.SHAKE128(digest_size=256))
+         h.update(b"foo")
+@@ -65,6 +78,7 @@ class TestXOFHash:
+         h2 = h.copy()
+         assert h2.squeeze(10) == h.squeeze(10)
+ 
++    @_maybe_skip_squeeze
+     def test_exhaust_bytes(self, backend):
+         h = hashes.XOFHash(hashes.SHAKE128(digest_size=256))
+         h.update(b"foo")
+@@ -81,6 +95,7 @@ class TestXOFHash:
+     skip_message="Requires backend with XOF support",
+ )
+ class TestXOFSHAKE128:
++    @_maybe_skip_squeeze
+     def test_shake128_variable(self, backend, subtests):
+         vectors = _load_all_params(
+             os.path.join("hashes", "SHAKE"),
+@@ -109,6 +124,7 @@ class TestXOFSHAKE128:
+     skip_message="Requires backend with XOF support",
+ )
+ class TestXOFSHAKE256:
++    @_maybe_skip_squeeze
+     def test_shake256_variable(self, backend, subtests):
+         vectors = _load_all_params(
+             os.path.join("hashes", "SHAKE"),
