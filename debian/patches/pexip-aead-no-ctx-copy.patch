@@ -1,0 +1,49 @@
+aead: avoid copying EVP_CIPHER_CTX due to lack of EVP_CIPHER_CTX_copy (see  https://github.com/openssl/openssl/issues/21887).
+--- python-cryptography.orig/src/rust/src/backend/aead.rs
++++ python-cryptography/src/rust/src/backend/aead.rs
+@@ -27,8 +27,8 @@ enum Aad<'a> {
+ }
+ 
+ struct EvpCipherAead {
+-    base_encryption_ctx: openssl::cipher_ctx::CipherCtx,
+-    base_decryption_ctx: openssl::cipher_ctx::CipherCtx,
++    cipher: openssl::cipher::Cipher,
++    key: Vec<u8>,
+     tag_len: usize,
+     tag_first: bool,
+ }
+@@ -40,14 +40,9 @@ impl EvpCipherAead {
+         tag_len: usize,
+         tag_first: bool,
+     ) -> CryptographyResult<EvpCipherAead> {
+-        let mut base_encryption_ctx = openssl::cipher_ctx::CipherCtx::new()?;
+-        base_encryption_ctx.encrypt_init(Some(cipher), Some(key), None)?;
+-        let mut base_decryption_ctx = openssl::cipher_ctx::CipherCtx::new()?;
+-        base_decryption_ctx.decrypt_init(Some(cipher), Some(key), None)?;
+-
+         Ok(EvpCipherAead {
+-            base_encryption_ctx,
+-            base_decryption_ctx,
++            cipher: cipher.to_owned(),
++            key: key.to_vec(),
+             tag_len,
+             tag_first,
+         })
+@@ -135,7 +130,7 @@ impl EvpCipherAead {
+         nonce: Option<&[u8]>,
+     ) -> CryptographyResult<pyo3::Bound<'p, pyo3::types::PyBytes>> {
+         let mut ctx = openssl::cipher_ctx::CipherCtx::new()?;
+-        ctx.copy(&self.base_encryption_ctx)?;
++        ctx.encrypt_init(Some(&self.cipher), Some(&self.key), None)?;
+         Self::encrypt_with_context(
+             py,
+             ctx,
+@@ -202,7 +197,7 @@ impl EvpCipherAead {
+         nonce: Option<&[u8]>,
+     ) -> CryptographyResult<pyo3::Bound<'p, pyo3::types::PyBytes>> {
+         let mut ctx = openssl::cipher_ctx::CipherCtx::new()?;
+-        ctx.copy(&self.base_decryption_ctx)?;
++        ctx.decrypt_init(Some(&self.cipher), Some(&self.key), None)?;
+         Self::decrypt_with_context(
+             py,
+             ctx,
