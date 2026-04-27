@@ -1,3 +1,10 @@
+python-cryptography (46.0.7-1) unstable; urgency=medium
+
+  * New upstream version.
+  * Bump Standards-Version to 4.7.4.
+
+ -- Andrey Rakhmatullin <wrar@debian.org>  Thu, 09 Apr 2026 12:18:03 +0500
+
 python-cryptography (46.0.6-1+pexip25u1) pexip-trixie; urgency=medium
 
   * New upstream release
