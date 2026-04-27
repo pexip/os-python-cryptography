@@ -1,3 +1,9 @@
+python-cryptography (46.0.7-1+pexip25u1) pexip-trixie; urgency=medium
+
+  * New upstream release
+
+ -- Huw Jones <huw@pexip.com>  Mon, 27 Apr 2026 11:40:41 +0100
+
 python-cryptography (46.0.7-1) unstable; urgency=medium
 
   * New upstream version.
