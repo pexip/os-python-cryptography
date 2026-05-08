@@ -403,7 +403,66 @@ diff --git a/src/rust/src/backend/ec.rs b/src/rust/src/backend/ec.rs
 index 75e6acf2d..aa7d3956e 100644
 --- a/src/rust/src/backend/ec.rs
 +++ b/src/rust/src/backend/ec.rs
-@@ -489,7 +489,7 @@ fn public_key_from_numbers(
+@@ -99,7 +99,7 @@ fn py_curve_from_curve<'p>(
+ fn check_key_infinity(
+     ec: &openssl::ec::EcKeyRef<impl openssl::pkey::HasPublic>,
+ ) -> CryptographyResult<()> {
+-    if ec.public_key().is_infinity(ec.group()) {
++    if (&ec.public_key()).is_infinity(&ec.group()) {
+         return Err(CryptographyError::from(
+             pyo3::exceptions::PyValueError::new_err(
+                 "Cannot load an EC public key where the point is at infinity",
+@@ -121,7 +121,7 @@ pub(crate) fn private_key_from_pkey(
+     let ec_key = pkey
+         .ec_key()
+         .map_err(|_| pyo3::exceptions::PyValueError::new_err("Invalid EC key"))?;
+-    let curve = py_curve_from_curve(py, ec_key.group())?;
++    let curve = py_curve_from_curve(py, &ec_key.group())?;
+     check_key_infinity(&ec_key)?;
+     Ok(ECPrivateKey {
+         pkey: pkey.to_owned(),
+@@ -134,7 +134,7 @@ pub(crate) fn public_key_from_pkey(
+     pkey: &openssl::pkey::PKeyRef<openssl::pkey::Public>,
+ ) -> CryptographyResult<ECPublicKey> {
+     let ec = pkey.ec_key()?;
+-    let curve = py_curve_from_curve(py, ec.group())?;
++    let curve = py_curve_from_curve(py, &ec.group())?;
+ 
+     ECPublicKey::new(pkey.to_owned(), curve.into())
+ }
+@@ -301,7 +301,7 @@ impl ECPrivateKey {
+ 
+     fn public_key(&self, py: pyo3::Python<'_>) -> CryptographyResult<ECPublicKey> {
+         let orig_ec = self.pkey.ec_key().unwrap();
+-        let ec = openssl::ec::EcKey::from_public_key(orig_ec.group(), orig_ec.public_key())?;
++        let ec = openssl::ec::EcKey::from_public_key(&orig_ec.group(), &orig_ec.public_key())?;
+         let pkey = openssl::pkey::PKey::from_ec_key(ec)?;
+ 
+         Ok(ECPublicKey {
+@@ -320,11 +320,11 @@ impl ECPrivateKey {
+         let mut x = openssl::bn::BigNum::new()?;
+         let mut y = openssl::bn::BigNum::new()?;
+         ec.public_key()
+-            .affine_coordinates(ec.group(), &mut x, &mut y, &mut bn_ctx)?;
++            .affine_coordinates(&ec.group(), &mut x, &mut y, &mut bn_ctx)?;
+         let py_x = utils::bn_to_py_int(py, &x)?;
+         let py_y = utils::bn_to_py_int(py, &y)?;
+ 
+-        let py_private_key = utils::bn_to_py_int(py, ec.private_key())?;
++        let py_private_key = utils::bn_to_py_int(py, &ec.private_key())?;
+ 
+         let public_numbers = EllipticCurvePublicNumbers {
+             x: py_x.extract()?,
+@@ -441,7 +441,7 @@ impl ECPublicKey {
+         let mut x = openssl::bn::BigNum::new()?;
+         let mut y = openssl::bn::BigNum::new()?;
+         ec.public_key()
+-            .affine_coordinates(ec.group(), &mut x, &mut y, &mut bn_ctx)?;
++            .affine_coordinates(&ec.group(), &mut x, &mut y, &mut bn_ctx)?;
+         let py_x = utils::bn_to_py_int(py, &x)?;
+         let py_y = utils::bn_to_py_int(py, &y)?;
+ 
+@@ -507,7 +507,7 @@ fn public_key_from_numbers(
      let mut point = openssl::ec::EcPoint::new(curve)?;
      let mut bn_ctx = openssl::bn::BigNumContext::new()?;
      point
@@ -412,6 +471,24 @@ index 75e6acf2d..aa7d3956e 100644
          .map_err(|_| {
              pyo3::exceptions::PyValueError::new_err(
                  "Invalid EC key. Point is not on the curve specified.",
+@@ -545,7 +545,7 @@ impl EllipticCurvePrivateNumbers {
+         let mut bn_ctx = openssl::bn::BigNumContext::new()?;
+         let mut expected_pub = openssl::ec::EcPoint::new(&curve)?;
+         expected_pub.mul_generator(&curve, &private_value, &bn_ctx)?;
+-        if !expected_pub.eq(&curve, public_key.public_key(), &mut bn_ctx)? {
++        if !expected_pub.eq(&curve, &public_key.public_key(), &mut bn_ctx)? {
+             return Err(CryptographyError::from(
+                 pyo3::exceptions::PyValueError::new_err("Invalid EC key."),
+             ));
+@@ -554,7 +554,7 @@ impl EllipticCurvePrivateNumbers {
+         let private_key = openssl::ec::EcKey::from_private_components(
+             &curve,
+             &private_value,
+-            public_key.public_key(),
++            &public_key.public_key(),
+         )
+         .map_err(|_| pyo3::exceptions::PyValueError::new_err("Invalid EC key."))?;
+ 
 diff --git a/src/rust/src/backend/hmac.rs b/src/rust/src/backend/hmac.rs
 index 28bf75949..a006b7ed1 100644
 --- a/src/rust/src/backend/hmac.rs
@@ -477,4 +554,239 @@ index 28bf75949..a006b7ed1 100644
 +            ctx: Some(self.get_ctx()?.to_owned()),
              algorithm: self.algorithm.clone_ref(py),
          })
+     }
+diff --git a/src/rust/src/backend/dh.rs b/src/rust/src/backend/dh.rs
+index 28bf75949..a006b7ed1 100644
+--- a/src/rust/src/backend/dh.rs
++++ b/src/rust/src/backend/dh.rs
+@@ -131,9 +131,9 @@ fn dh_parameters_from_numbers(
+ fn clone_dh<T: openssl::pkey::HasParams>(
+     dh: &openssl::dh::Dh<T>,
+ ) -> CryptographyResult<openssl::dh::Dh<openssl::pkey::Params>> {
+-    let p = dh.prime_p().to_owned()?;
+-    let q = dh.prime_q().map(|q| q.to_owned()).transpose()?;
+-    let g = dh.generator().to_owned()?;
++    let p = dh.prime_p();
++    let q = dh.prime_q();
++    let g = dh.generator();
+     Ok(openssl::dh::Dh::from_pqg(p, q, g)?)
+ }
+ 
+@@ -172,15 +172,15 @@ impl DHPrivateKey {
+     fn private_numbers(&self, py: pyo3::Python<'_>) -> CryptographyResult<DHPrivateNumbers> {
+         let dh = self.pkey.dh().unwrap();
+ 
+-        let py_p = utils::bn_to_py_int(py, dh.prime_p())?;
++        let py_p = utils::bn_to_py_int(py, &dh.prime_p())?;
+         let py_q = dh
+             .prime_q()
+-            .map(|q| utils::bn_to_py_int(py, q))
++            .map(|q| utils::bn_to_py_int(py, &q))
+             .transpose()?;
+-        let py_g = utils::bn_to_py_int(py, dh.generator())?;
++        let py_g = utils::bn_to_py_int(py, &dh.generator())?;
+ 
+-        let py_pub_key = utils::bn_to_py_int(py, dh.public_key())?;
+-        let py_private_key = utils::bn_to_py_int(py, dh.private_key())?;
++        let py_pub_key = utils::bn_to_py_int(py, &dh.public_key())?;
++        let py_private_key = utils::bn_to_py_int(py, &dh.private_key())?;
+ 
+         let parameter_numbers = DHParameterNumbers {
+             p: py_p.extract()?,
+@@ -206,7 +206,7 @@ impl DHPrivateKey {
+         let dh = clone_dh(&orig_dh)?;
+ 
+         let pkey =
+-            openssl::pkey::PKey::from_dh(dh.set_public_key(orig_dh.public_key().to_owned()?)?)?;
++            openssl::pkey::PKey::from_dh(dh.set_public_key(orig_dh.public_key())?)?;
+ 
+         Ok(DHPublicKey { pkey })
+     }
+@@ -282,14 +282,14 @@ impl DHPublicKey {
+     fn public_numbers(&self, py: pyo3::Python<'_>) -> CryptographyResult<DHPublicNumbers> {
+         let dh = self.pkey.dh().unwrap();
+ 
+-        let py_p = utils::bn_to_py_int(py, dh.prime_p())?;
++        let py_p = utils::bn_to_py_int(py, &dh.prime_p())?;
+         let py_q = dh
+             .prime_q()
+-            .map(|q| utils::bn_to_py_int(py, q))
++            .map(|q| utils::bn_to_py_int(py, &q))
+             .transpose()?;
+-        let py_g = utils::bn_to_py_int(py, dh.generator())?;
++        let py_g = utils::bn_to_py_int(py, &dh.generator())?;
+ 
+-        let py_pub_key = utils::bn_to_py_int(py, dh.public_key())?;
++        let py_pub_key = utils::bn_to_py_int(py, &dh.public_key())?;
+ 
+         let parameter_numbers = DHParameterNumbers {
+             p: py_p.extract()?,
+@@ -325,13 +325,13 @@ impl DHParameters {
+     }
+ 
+     fn parameter_numbers(&self, py: pyo3::Python<'_>) -> CryptographyResult<DHParameterNumbers> {
+-        let py_p = utils::bn_to_py_int(py, self.dh.prime_p())?;
++        let py_p = utils::bn_to_py_int(py, &self.dh.prime_p())?;
+         let py_q = self
+             .dh
+             .prime_q()
+-            .map(|q| utils::bn_to_py_int(py, q))
++            .map(|q| utils::bn_to_py_int(py, &q))
+             .transpose()?;
+-        let py_g = utils::bn_to_py_int(py, self.dh.generator())?;
++        let py_g = utils::bn_to_py_int(py, &self.dh.generator())?;
+ 
+         Ok(DHParameterNumbers {
+             p: py_p.extract()?,
+@@ -354,13 +354,14 @@ impl DHParameters {
+             ));
+         }
+ 
+-        let p_bytes = utils::bn_to_big_endian_bytes(self.dh.prime_p())?;
++        let p_bytes = utils::bn_to_big_endian_bytes(&self.dh.prime_p())?;
+         let q_bytes = self
+             .dh
+             .prime_q()
++            .as_deref()
+             .map(utils::bn_to_big_endian_bytes)
+             .transpose()?;
+-        let g_bytes = utils::bn_to_big_endian_bytes(self.dh.generator())?;
++        let g_bytes = utils::bn_to_big_endian_bytes(&self.dh.generator())?;
+         let asn1dh_params = common::DHParams {
+             p: asn1::BigUint::new(&p_bytes).unwrap(),
+             q: q_bytes.as_ref().map(|q| asn1::BigUint::new(q).unwrap()),
+diff --git a/src/rust/src/backend/dsa.rs b/src/rust/src/backend/dsa.rs
+index 28bf75949..a006b7ed1 100644
+--- a/src/rust/src/backend/dsa.rs
++++ b/src/rust/src/backend/dsa.rs
+@@ -61,7 +61,7 @@ fn generate_parameters(key_size: u32) ->
+ fn clone_dsa_params<T: openssl::pkey::HasParams>(
+     d: &openssl::dsa::Dsa<T>,
+ ) -> Result<openssl::dsa::Dsa<openssl::pkey::Params>, openssl::error::ErrorStack> {
+-    openssl::dsa::Dsa::from_pqg(d.p().to_owned()?, d.q().to_owned()?, d.g().to_owned()?)
++    openssl::dsa::Dsa::from_pqg(d.p(), d.q(), d.g())
+ }
+ 
+ #[pyo3::pymethods]
+@@ -94,10 +94,10 @@ impl DsaPrivateKey {
+     fn public_key(&self) -> CryptographyResult<DsaPublicKey> {
+         let priv_dsa = self.pkey.dsa()?;
+         let pub_dsa = openssl::dsa::Dsa::from_public_components(
+-            priv_dsa.p().to_owned()?,
+-            priv_dsa.q().to_owned()?,
+-            priv_dsa.g().to_owned()?,
+-            priv_dsa.pub_key().to_owned()?,
++            priv_dsa.p(),
++            priv_dsa.q(),
++            priv_dsa.g(),
++            priv_dsa.pub_key(),
+         )
+         .unwrap();
+         let pkey = openssl::pkey::PKey::from_dsa(pub_dsa)?;
+@@ -112,12 +112,12 @@ impl DsaPrivateKey {
+     fn private_numbers(&self, py: pyo3::Python<'_>) -> CryptographyResult<DsaPrivateNumbers> {
+         let dsa = self.pkey.dsa().unwrap();
+ 
+-        let py_p = utils::bn_to_py_int(py, dsa.p())?;
+-        let py_q = utils::bn_to_py_int(py, dsa.q())?;
+-        let py_g = utils::bn_to_py_int(py, dsa.g())?;
++        let py_p = utils::bn_to_py_int(py, &dsa.p())?;
++        let py_q = utils::bn_to_py_int(py, &dsa.q())?;
++        let py_g = utils::bn_to_py_int(py, &dsa.g())?;
+ 
+-        let py_pub_key = utils::bn_to_py_int(py, dsa.pub_key())?;
+-        let py_private_key = utils::bn_to_py_int(py, dsa.priv_key())?;
++        let py_pub_key = utils::bn_to_py_int(py, &dsa.pub_key())?;
++        let py_private_key = utils::bn_to_py_int(py, &dsa.priv_key())?;
+ 
+         let parameter_numbers = DsaParameterNumbers {
+             p: py_p.extract()?,
+@@ -196,11 +196,11 @@ impl DsaPublicKey {
+     fn public_numbers(&self, py: pyo3::Python<'_>) -> CryptographyResult<DsaPublicNumbers> {
+         let dsa = self.pkey.dsa().unwrap();
+ 
+-        let py_p = utils::bn_to_py_int(py, dsa.p())?;
+-        let py_q = utils::bn_to_py_int(py, dsa.q())?;
+-        let py_g = utils::bn_to_py_int(py, dsa.g())?;
++        let py_p = utils::bn_to_py_int(py, &dsa.p())?;
++        let py_q = utils::bn_to_py_int(py, &dsa.q())?;
++        let py_g = utils::bn_to_py_int(py, &dsa.g())?;
+ 
+-        let py_pub_key = utils::bn_to_py_int(py, dsa.pub_key())?;
++        let py_pub_key = utils::bn_to_py_int(py, &dsa.pub_key())?;
+ 
+         let parameter_numbers = DsaParameterNumbers {
+             p: py_p.extract()?,
+@@ -240,9 +240,9 @@ impl DsaParameters {
+     }
+ 
+     fn parameter_numbers(&self, py: pyo3::Python<'_>) -> CryptographyResult<DsaParameterNumbers> {
+-        let py_p = utils::bn_to_py_int(py, self.dsa.p())?;
+-        let py_q = utils::bn_to_py_int(py, self.dsa.q())?;
+-        let py_g = utils::bn_to_py_int(py, self.dsa.g())?;
++        let py_p = utils::bn_to_py_int(py, &self.dsa.p())?;
++        let py_q = utils::bn_to_py_int(py, &self.dsa.q())?;
++        let py_g = utils::bn_to_py_int(py, &self.dsa.g())?;
+ 
+         Ok(DsaParameterNumbers {
+             p: py_p.extract()?,
+--- python-cryptography.orig/src/rust/src/backend/rsa.rs
++++ python-cryptography/src/rust/src/backend/rsa.rs
+@@ -365,8 +365,8 @@ impl RsaPrivateKey {
+     fn public_key(&self) -> CryptographyResult<RsaPublicKey> {
+         let priv_rsa = self.pkey.rsa().unwrap();
+         let rsa = openssl::rsa::Rsa::from_public_components(
+-            priv_rsa.n().to_owned()?,
+-            priv_rsa.e().to_owned()?,
++            priv_rsa.n(),
++            priv_rsa.e(),
+         )
+         .unwrap();
+         let pkey = openssl::pkey::PKey::from_rsa(rsa)?;
+@@ -376,14 +376,14 @@ impl RsaPrivateKey {
+     fn private_numbers(&self, py: pyo3::Python<'_>) -> CryptographyResult<RsaPrivateNumbers> {
+         let rsa = self.pkey.rsa().unwrap();
+ 
+-        let py_p = utils::bn_to_py_int(py, rsa.p().unwrap())?;
+-        let py_q = utils::bn_to_py_int(py, rsa.q().unwrap())?;
+-        let py_d = utils::bn_to_py_int(py, rsa.d())?;
+-        let py_dmp1 = utils::bn_to_py_int(py, rsa.dmp1().unwrap())?;
+-        let py_dmq1 = utils::bn_to_py_int(py, rsa.dmq1().unwrap())?;
+-        let py_iqmp = utils::bn_to_py_int(py, rsa.iqmp().unwrap())?;
+-        let py_e = utils::bn_to_py_int(py, rsa.e())?;
+-        let py_n = utils::bn_to_py_int(py, rsa.n())?;
++        let py_p = utils::bn_to_py_int(py, &rsa.p().unwrap())?;
++        let py_q = utils::bn_to_py_int(py, &rsa.q().unwrap())?;
++        let py_d = utils::bn_to_py_int(py, &rsa.d())?;
++        let py_dmp1 = utils::bn_to_py_int(py, &rsa.dmp1().unwrap())?;
++        let py_dmq1 = utils::bn_to_py_int(py, &rsa.dmq1().unwrap())?;
++        let py_iqmp = utils::bn_to_py_int(py, &rsa.iqmp().unwrap())?;
++        let py_e = utils::bn_to_py_int(py, &rsa.e())?;
++        let py_n = utils::bn_to_py_int(py, &rsa.n())?;
+ 
+         let public_numbers = RsaPublicNumbers {
+             e: py_e.extract()?,
+@@ -510,8 +510,8 @@ impl RsaPublicKey {
+     fn public_numbers(&self, py: pyo3::Python<'_>) -> CryptographyResult<RsaPublicNumbers> {
+         let rsa = self.pkey.rsa().unwrap();
+ 
+-        let py_e = utils::bn_to_py_int(py, rsa.e())?;
+-        let py_n = utils::bn_to_py_int(py, rsa.n())?;
++        let py_e = utils::bn_to_py_int(py, &rsa.e())?;
++        let py_n = utils::bn_to_py_int(py, &rsa.n())?;
+ 
+         Ok(RsaPublicNumbers {
+             e: py_e.extract()?,
+diff --git a/src/rust/src/backend/utils.rs b/src/rust/src/backend/utils.rs
+index 28bf75949..a006b7ed1 100644
+--- a/src/rust/src/backend/utils.rs
++++ b/src/rust/src/backend/utils.rs
+@@ -318,7 +318,7 @@ pub(crate) fn pkey_public_bytes<'p>(
+             let mut bn_ctx = openssl::bn::BigNumContext::new()?;
+             let data = ec
+                 .public_key()
+-                .to_bytes(ec.group(), point_form, &mut bn_ctx)?;
++                .to_bytes(&ec.group(), point_form, &mut bn_ctx)?;
+             return Ok(pyo3::types::PyBytes::new(py, &data));
+         }
      }
