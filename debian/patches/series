@@ -12,3 +12,5 @@ pexip-rsa-sp800-56b.patch
 pexip-sp800-131a.patch
 pexip-digest-squeeze.patch
 pexip-aead-no-ctx-copy.patch
+# kill dodgy int patch after ~April 2030
+pexip-dodgy-int.patch

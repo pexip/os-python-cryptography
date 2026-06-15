@@ -7,7 +7,7 @@ Section: python
 Build-Depends: cargo,
                debhelper-compat (= 13),
                dh-sequence-python3,
-               librust-asn1-0.23-dev,
+               librust-asn1-0.23-dev (>= 0.23.0-2+pexip25u4),
                librust-cc-1.2-dev,
                librust-cfg-if-dev,
                librust-foreign-types-0.3-dev,
